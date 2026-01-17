@@ -1,6 +1,6 @@
 {
   "name": "ccg-ros2-workflow",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "ROS2 Multi-model Collaborative Development Workflow - Codex (Low-level) + Gemini (High-level) + Claude (Orchestration)",
   "main": "bin/cli.js",
   "bin": {
@@ -23,7 +23,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/你的用户名/ccg-ros2-workflow.git"
+    "url": "https://github.com/GuYu-001/ccg-ros2-workflow.git"
   },
   "engines": {
     "node": ">=16.0.0"
