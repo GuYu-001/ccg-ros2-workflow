@@ -15,7 +15,7 @@ $ARGUMENTS
 ```
 # 新会话调用
 Bash({
-  command: "/Users/super/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> - \"$PWD\" <<'EOF'
+  command: "$HOME/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> - \"$PWD\" <<'EOF'
 ROLE_FILE: <角色提示词路径>
 <TASK>
 需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
@@ -30,7 +30,7 @@ EOF",
 
 # 复用会话调用
 Bash({
-  command: "/Users/super/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> resume <SESSION_ID> - \"$PWD\" <<'EOF'
+  command: "$HOME/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> resume <SESSION_ID> - \"$PWD\" <<'EOF'
 ROLE_FILE: <角色提示词路径>
 <TASK>
 需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
@@ -48,10 +48,10 @@ EOF",
 
 | 阶段 | Codex | Gemini |
 |------|-------|--------|
-| 分析 | `/Users/super/.claude/.ccg/prompts/codex/analyzer.md` | `/Users/super/.claude/.ccg/prompts/gemini/analyzer.md` |
-| 规划 | `/Users/super/.claude/.ccg/prompts/codex/architect.md` | `/Users/super/.claude/.ccg/prompts/gemini/architect.md` |
-| 实施 | `/Users/super/.claude/.ccg/prompts/codex/architect.md` | `/Users/super/.claude/.ccg/prompts/gemini/frontend.md` |
-| 审查 | `/Users/super/.claude/.ccg/prompts/codex/reviewer.md` | `/Users/super/.claude/.ccg/prompts/gemini/reviewer.md` |
+| 分析 | `$HOME/.claude/.ccg/prompts/codex/analyzer.md` | `$HOME/.claude/.ccg/prompts/gemini/analyzer.md` |
+| 规划 | `$HOME/.claude/.ccg/prompts/codex/architect.md` | `$HOME/.claude/.ccg/prompts/gemini/architect.md` |
+| 实施 | `$HOME/.claude/.ccg/prompts/codex/architect.md` | `$HOME/.claude/.ccg/prompts/gemini/frontend.md` |
+| 审查 | `$HOME/.claude/.ccg/prompts/codex/reviewer.md` | `$HOME/.claude/.ccg/prompts/gemini/reviewer.md` |
 
 **会话复用**：每次调用返回 `SESSION_ID: xxx`，后续阶段用 `resume xxx` 复用上下文。
 
@@ -112,14 +112,14 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 **前端/全栈任务**：先调用 `ui-ux-designer` agent
 ```
-执行 agent: /Users/super/.claude/agents/ccg/ui-ux-designer.md
+执行 agent: $HOME/.claude/agents/ccg/ui-ux-designer.md
 输入: 项目上下文 + 用户需求 + 技术栈
 输出: UI/UX 设计方案
 ```
 
 **所有任务**：调用 `planner` agent
 ```
-执行 agent: /Users/super/.claude/agents/ccg/planner.md
+执行 agent: $HOME/.claude/agents/ccg/planner.md
 输入: 项目上下文 + UI设计方案(如有) + 用户需求
 输出: 功能规划文档
 ```

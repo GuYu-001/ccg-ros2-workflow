@@ -27,7 +27,7 @@ description: '多模型调试：Codex 后端诊断 + Gemini 前端诊断，交�
 
 ```
 Bash({
-  command: "/Users/super/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> - \"$PWD\" <<'EOF'
+  command: "$HOME/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> - \"$PWD\" <<'EOF'
 ROLE_FILE: <角色提示词路径>
 <TASK>
 需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
@@ -45,8 +45,8 @@ EOF",
 
 | 模型 | 提示词 |
 |------|--------|
-| Codex | `/Users/super/.claude/.ccg/prompts/codex/debugger.md` |
-| Gemini | `/Users/super/.claude/.ccg/prompts/gemini/debugger.md` |
+| Codex | `$HOME/.claude/.ccg/prompts/codex/debugger.md` |
+| Gemini | `$HOME/.claude/.ccg/prompts/gemini/debugger.md` |
 
 **并行调用**：使用 `run_in_background: true` 启动，用 `TaskOutput` 等待结果。**必须等所有模型返回后才能进入下一阶段**。
 
@@ -86,11 +86,11 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 **⚠️ 必须发起两个并行 Bash 调用**（参照上方调用规范）：
 
 1. **Codex 后端诊断**：`Bash({ command: "...--backend codex...", run_in_background: true })`
-   - ROLE_FILE: `/Users/super/.claude/.ccg/prompts/codex/debugger.md`
+   - ROLE_FILE: `$HOME/.claude/.ccg/prompts/codex/debugger.md`
    - OUTPUT：诊断假设（按可能性排序），每个假设包含原因、证据、修复建议
 
 2. **Gemini 前端诊断**：`Bash({ command: "...--backend gemini...", run_in_background: true })`
-   - ROLE_FILE: `/Users/super/.claude/.ccg/prompts/gemini/debugger.md`
+   - ROLE_FILE: `$HOME/.claude/.ccg/prompts/gemini/debugger.md`
    - OUTPUT：诊断假设（按可能性排序），每个假设包含原因、证据、修复建议
 
 用 `TaskOutput` 等待两个模型的诊断结果。**必须等所有模型返回后才能进入下一阶段**。

@@ -129,7 +129,6 @@ async function install() {
 
   filesToUpdate.forEach(file => {
     replaceInFile(file, {
-      '/Users/super': homeDir,
       '\\$HOME': homeDir
     });
   });
@@ -219,7 +218,7 @@ async function configureApiKeys() {
   console.log('\n🔑 配置 API 密钥\n');
 
   const geminiKey = await question('Gemini API Key (留空跳过): ');
-  const geminiBaseUrl = await question('Gemini Base URL (默认 https://api.ikuncode.cc): ');
+  const geminiBaseUrl = await question('Gemini Base URL (留空使用官方): ');
   const codexKey = await question('Codex API Key (留空跳过): ');
 
   // 检测 shell 配置文件
@@ -234,7 +233,7 @@ async function configureApiKeys() {
   const envVars = [];
   if (geminiKey) {
     envVars.push(`export GEMINI_API_KEY="${geminiKey}"`);
-    envVars.push(`export GOOGLE_GEMINI_BASE_URL="${geminiBaseUrl || 'https://api.ikuncode.cc'}"`);
+    envVars.push(`export GOOGLE_GEMINI_BASE_URL="${geminiBaseUrl || 'https://generativelanguage.googleapis.com'}"`);
     envVars.push('export GEMINI_MODEL="gemini-3-pro-preview"');
   }
   if (codexKey) {

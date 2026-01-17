@@ -24,7 +24,7 @@ $ARGUMENTS
 
 ```
 Bash({
-  command: "/Users/super/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> - \"$PWD\" <<'EOF'
+  command: "$HOME/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> - \"$PWD\" <<'EOF'
 ROLE_FILE: <角色提示词路径>
 <TASK>
 需求：<增强后的需求>
@@ -42,8 +42,8 @@ EOF",
 
 | 阶段 | Codex | Gemini |
 |------|-------|--------|
-| 分析 | `/Users/super/.claude/.ccg/prompts/codex/analyzer.md` | `/Users/super/.claude/.ccg/prompts/gemini/analyzer.md` |
-| 规划 | `/Users/super/.claude/.ccg/prompts/codex/architect.md` | `/Users/super/.claude/.ccg/prompts/gemini/architect.md` |
+| 分析 | `$HOME/.claude/.ccg/prompts/codex/analyzer.md` | `$HOME/.claude/.ccg/prompts/gemini/analyzer.md` |
+| 规划 | `$HOME/.claude/.ccg/prompts/codex/architect.md` | `$HOME/.claude/.ccg/prompts/gemini/architect.md` |
 
 **会话复用**：每次调用返回 `SESSION_ID: xxx`（通常由 wrapper 输出），**必须保存**以供后续 `/ccg:execute` 使用。
 
@@ -119,12 +119,12 @@ mcp__ace-tool__search_context({
 将**原始需求**（不带预设观点）分发给两个模型：
 
 1. **Codex 后端分析**：
-   - ROLE_FILE: `/Users/super/.claude/.ccg/prompts/codex/analyzer.md`
+   - ROLE_FILE: `$HOME/.claude/.ccg/prompts/codex/analyzer.md`
    - 关注：技术可行性、架构影响、性能考量、潜在风险
    - OUTPUT: 多角度解决方案 + 优劣势分析
 
 2. **Gemini 前端分析**：
-   - ROLE_FILE: `/Users/super/.claude/.ccg/prompts/gemini/analyzer.md`
+   - ROLE_FILE: `$HOME/.claude/.ccg/prompts/gemini/analyzer.md`
    - 关注：UI/UX 影响、用户体验、视觉设计
    - OUTPUT: 多角度解决方案 + 优劣势分析
 
@@ -144,11 +144,11 @@ mcp__ace-tool__search_context({
 为降低 Claude 合成计划的遗漏风险，可并行让两个模型输出“计划草案”（仍然**不允许**修改文件）：
 
 1. **Codex 计划草案**（后端权威）：
-   - ROLE_FILE: `/Users/super/.claude/.ccg/prompts/codex/architect.md`
+   - ROLE_FILE: `$HOME/.claude/.ccg/prompts/codex/architect.md`
    - OUTPUT: Step-by-step plan + pseudo-code（重点：数据流/边界条件/错误处理/测试策略）
 
 2. **Gemini 计划草案**（前端权威）：
-   - ROLE_FILE: `/Users/super/.claude/.ccg/prompts/gemini/architect.md`
+   - ROLE_FILE: `$HOME/.claude/.ccg/prompts/gemini/architect.md`
    - OUTPUT: Step-by-step plan + pseudo-code（重点：信息架构/交互/可访问性/视觉一致性）
 
 用 `TaskOutput` 等待两个模型的完整结果，并记录其建议的关键差异点。

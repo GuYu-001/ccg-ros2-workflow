@@ -34,7 +34,7 @@ description: '前端专项工作流（研究→构思→计划→执行→优化
 ```
 # 新会话调用
 Bash({
-  command: "/Users/super/.claude/bin/codeagent-wrapper --lite --backend gemini - \"$PWD\" <<'EOF'
+  command: "$HOME/.claude/bin/codeagent-wrapper --lite --backend gemini - \"$PWD\" <<'EOF'
 ROLE_FILE: <角色提示词路径>
 <TASK>
 需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
@@ -49,7 +49,7 @@ EOF",
 
 # 复用会话调用
 Bash({
-  command: "/Users/super/.claude/bin/codeagent-wrapper --lite --backend gemini resume <SESSION_ID> - \"$PWD\" <<'EOF'
+  command: "$HOME/.claude/bin/codeagent-wrapper --lite --backend gemini resume <SESSION_ID> - \"$PWD\" <<'EOF'
 ROLE_FILE: <角色提示词路径>
 <TASK>
 需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
@@ -67,9 +67,9 @@ EOF",
 
 | 阶段 | Gemini |
 |------|--------|
-| 分析 | `/Users/super/.claude/.ccg/prompts/gemini/analyzer.md` |
-| 规划 | `/Users/super/.claude/.ccg/prompts/gemini/architect.md` |
-| 审查 | `/Users/super/.claude/.ccg/prompts/gemini/reviewer.md` |
+| 分析 | `$HOME/.claude/.ccg/prompts/gemini/analyzer.md` |
+| 规划 | `$HOME/.claude/.ccg/prompts/gemini/architect.md` |
+| 审查 | `$HOME/.claude/.ccg/prompts/gemini/reviewer.md` |
 
 **会话复用**：每次调用返回 `SESSION_ID: xxx`，后续阶段用 `resume xxx` 复用上下文。阶段 2 保存 `GEMINI_SESSION`，阶段 3 和 5 使用 `resume` 复用。
 
@@ -101,7 +101,7 @@ EOF",
 `[模式：构思]` - Gemini 主导分析
 
 **⚠️ 必须调用 Gemini**（参照上方调用规范）：
-- ROLE_FILE: `/Users/super/.claude/.ccg/prompts/gemini/analyzer.md`
+- ROLE_FILE: `$HOME/.claude/.ccg/prompts/gemini/analyzer.md`
 - 需求：增强后的需求（如未增强则用 $ARGUMENTS）
 - 上下文：阶段 1 收集的项目上下文
 - OUTPUT: UI 可行性分析、推荐方案（至少 2 个）、用户体验评估
@@ -115,7 +115,7 @@ EOF",
 `[模式：计划]` - Gemini 主导规划
 
 **⚠️ 必须调用 Gemini**（使用 `resume <GEMINI_SESSION>` 复用会话）：
-- ROLE_FILE: `/Users/super/.claude/.ccg/prompts/gemini/architect.md`
+- ROLE_FILE: `$HOME/.claude/.ccg/prompts/gemini/architect.md`
 - 需求：用户选择的方案
 - 上下文：阶段 2 的分析结果
 - OUTPUT: 组件结构、UI 流程、样式方案
@@ -135,7 +135,7 @@ Claude 综合规划，请求用户批准后存入 `.claude/plan/任务名.md`
 `[模式：优化]` - Gemini 主导审查
 
 **⚠️ 必须调用 Gemini**（参照上方调用规范）：
-- ROLE_FILE: `/Users/super/.claude/.ccg/prompts/gemini/reviewer.md`
+- ROLE_FILE: `$HOME/.claude/.ccg/prompts/gemini/reviewer.md`
 - 需求：审查以下前端代码变更
 - 上下文：git diff 或代码内容
 - OUTPUT: 可访问性、响应式、性能、设计一致性问题列表

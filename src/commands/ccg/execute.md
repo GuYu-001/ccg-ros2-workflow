@@ -25,7 +25,7 @@ $ARGUMENTS
 ```
 # 复用会话调用（推荐）- 原型生成（Implementation Prototype）
 Bash({
-  command: "/Users/super/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> resume <SESSION_ID> - \"$PWD\" <<'EOF'
+  command: "$HOME/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> resume <SESSION_ID> - \"$PWD\" <<'EOF'
 ROLE_FILE: <角色提示词路径>
 <TASK>
 需求：<任务描述>
@@ -40,7 +40,7 @@ EOF",
 
 # 新会话调用 - 原型生成（Implementation Prototype）
 Bash({
-  command: "/Users/super/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> - \"$PWD\" <<'EOF'
+  command: "$HOME/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> - \"$PWD\" <<'EOF'
 ROLE_FILE: <角色提示词路径>
 <TASK>
 需求：<任务描述>
@@ -58,7 +58,7 @@ EOF",
 
 ```
 Bash({
-  command: "/Users/super/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> resume <SESSION_ID> - \"$PWD\" <<'EOF'
+  command: "$HOME/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> resume <SESSION_ID> - \"$PWD\" <<'EOF'
 ROLE_FILE: <角色提示词路径>
 <TASK>
 Scope: Audit the final code changes.
@@ -83,8 +83,8 @@ EOF",
 
 | 阶段 | Codex | Gemini |
 |------|-------|--------|
-| 实施 | `/Users/super/.claude/.ccg/prompts/codex/architect.md` | `/Users/super/.claude/.ccg/prompts/gemini/frontend.md` |
-| 审查 | `/Users/super/.claude/.ccg/prompts/codex/reviewer.md` | `/Users/super/.claude/.ccg/prompts/gemini/reviewer.md` |
+| 实施 | `$HOME/.claude/.ccg/prompts/codex/architect.md` | `$HOME/.claude/.ccg/prompts/gemini/frontend.md` |
+| 审查 | `$HOME/.claude/.ccg/prompts/codex/reviewer.md` | `$HOME/.claude/.ccg/prompts/gemini/reviewer.md` |
 
 **会话复用**：如果 `/ccg:plan` 提供了 SESSION_ID，使用 `resume <SESSION_ID>` 复用上下文。
 
@@ -169,7 +169,7 @@ mcp__ace-tool__search_context({
 
 **限制**：上下文 < 32k tokens
 
-1. 调用 Gemini（使用 `/Users/super/.claude/.ccg/prompts/gemini/frontend.md`）
+1. 调用 Gemini（使用 `$HOME/.claude/.ccg/prompts/gemini/frontend.md`）
 2. 输入：计划内容 + 检索到的上下文 + 目标文件
 3. OUTPUT: `Unified Diff Patch ONLY. Strictly prohibit any actual modifications.`
 4. **Gemini 是前端设计的权威，其 CSS/React/Vue 原型为最终视觉基准**
@@ -178,7 +178,7 @@ mcp__ace-tool__search_context({
 
 #### Route B: 后端/逻辑/算法 → Codex
 
-1. 调用 Codex（使用 `/Users/super/.claude/.ccg/prompts/codex/architect.md`）
+1. 调用 Codex（使用 `$HOME/.claude/.ccg/prompts/codex/architect.md`）
 2. 输入：计划内容 + 检索到的上下文 + 目标文件
 3. OUTPUT: `Unified Diff Patch ONLY. Strictly prohibit any actual modifications.`
 4. **Codex 是后端逻辑的权威，利用其逻辑运算与 Debug 能力**
@@ -238,12 +238,12 @@ mcp__ace-tool__search_context({
 **变更生效后，强制立即并行调用** Codex 和 Gemini 进行 Code Review：
 
 1. **Codex 审查**（`run_in_background: true`）：
-   - ROLE_FILE: `/Users/super/.claude/.ccg/prompts/codex/reviewer.md`
+   - ROLE_FILE: `$HOME/.claude/.ccg/prompts/codex/reviewer.md`
    - 输入：变更的 Diff + 目标文件
    - 关注：安全性、性能、错误处理、逻辑正确性
 
 2. **Gemini 审查**（`run_in_background: true`）：
-   - ROLE_FILE: `/Users/super/.claude/.ccg/prompts/gemini/reviewer.md`
+   - ROLE_FILE: `$HOME/.claude/.ccg/prompts/gemini/reviewer.md`
    - 输入：变更的 Diff + 目标文件
    - 关注：可访问性、设计一致性、用户体验
 

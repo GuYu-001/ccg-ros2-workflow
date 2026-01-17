@@ -28,7 +28,7 @@ description: '多模型技术分析（并行执行）：Codex 后端视角 + Gem
 
 ```
 Bash({
-  command: "/Users/super/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> - \"$PWD\" <<'EOF'
+  command: "$HOME/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> - \"$PWD\" <<'EOF'
 ROLE_FILE: <角色提示词路径>
 <TASK>
 需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
@@ -46,8 +46,8 @@ EOF",
 
 | 模型 | 提示词 |
 |------|--------|
-| Codex | `/Users/super/.claude/.ccg/prompts/codex/analyzer.md` |
-| Gemini | `/Users/super/.claude/.ccg/prompts/gemini/analyzer.md` |
+| Codex | `$HOME/.claude/.ccg/prompts/codex/analyzer.md` |
+| Gemini | `$HOME/.claude/.ccg/prompts/gemini/analyzer.md` |
 
 **并行调用**：使用 `run_in_background: true` 启动，用 `TaskOutput` 等待结果。**必须等所有模型返回后才能进入下一阶段**。
 
@@ -87,11 +87,11 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 **⚠️ 必须发起两个并行 Bash 调用**（参照上方调用规范）：
 
 1. **Codex 后端分析**：`Bash({ command: "...--backend codex...", run_in_background: true })`
-   - ROLE_FILE: `/Users/super/.claude/.ccg/prompts/codex/analyzer.md`
+   - ROLE_FILE: `$HOME/.claude/.ccg/prompts/codex/analyzer.md`
    - OUTPUT：技术可行性、架构影响、性能考量
 
 2. **Gemini 前端分析**：`Bash({ command: "...--backend gemini...", run_in_background: true })`
-   - ROLE_FILE: `/Users/super/.claude/.ccg/prompts/gemini/analyzer.md`
+   - ROLE_FILE: `$HOME/.claude/.ccg/prompts/gemini/analyzer.md`
    - OUTPUT：UI/UX 影响、用户体验、视觉设计考量
 
 用 `TaskOutput` 等待两个模型的完整结果。**必须等所有模型返回后才能进入下一阶段**。

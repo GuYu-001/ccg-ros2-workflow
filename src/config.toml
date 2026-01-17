@@ -30,7 +30,7 @@ distro = "humble"
 target = "physical_robot"
 
 [paths]
-prompts = "/Users/super/.claude/.ccg/prompts"
+prompts = "$HOME/.claude/.ccg/prompts"
 
 [mcp]
 provider = "ace-tool"

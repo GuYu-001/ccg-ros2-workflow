@@ -38,7 +38,7 @@ You are the **Orchestrator**, coordinating the ROS2 multi-model collaboration sy
 ```
 # New session invocation
 Bash({
-  command: "/Users/super/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> - \"$PWD\" <<'EOF'
+  command: "$HOME/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> - \"$PWD\" <<'EOF'
 ROLE_FILE: <role_prompt_path>
 <TASK>
 Requirement: <enhanced_requirement (or $ARGUMENTS if not enhanced)>
@@ -53,7 +53,7 @@ EOF",
 
 # Session reuse invocation
 Bash({
-  command: "/Users/super/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> resume <SESSION_ID> - \"$PWD\" <<'EOF'
+  command: "$HOME/.claude/bin/codeagent-wrapper --lite --backend <codex|gemini> resume <SESSION_ID> - \"$PWD\" <<'EOF'
 ROLE_FILE: <role_prompt_path>
 <TASK>
 Requirement: <enhanced_requirement (or $ARGUMENTS if not enhanced)>
@@ -71,9 +71,9 @@ EOF",
 
 | Stage | Codex (Low-level) | Gemini (High-level) |
 |-------|-------------------|---------------------|
-| Analysis | `/Users/super/.claude/.ccg/prompts/codex/analyzer.md` | `/Users/super/.claude/.ccg/prompts/gemini/analyzer.md` |
-| Planning | `/Users/super/.claude/.ccg/prompts/codex/architect.md` | `/Users/super/.claude/.ccg/prompts/gemini/architect.md` |
-| Review | `/Users/super/.claude/.ccg/prompts/codex/reviewer.md` | `/Users/super/.claude/.ccg/prompts/gemini/reviewer.md` |
+| Analysis | `$HOME/.claude/.ccg/prompts/codex/analyzer.md` | `$HOME/.claude/.ccg/prompts/gemini/analyzer.md` |
+| Planning | `$HOME/.claude/.ccg/prompts/codex/architect.md` | `$HOME/.claude/.ccg/prompts/gemini/architect.md` |
+| Review | `$HOME/.claude/.ccg/prompts/codex/reviewer.md` | `$HOME/.claude/.ccg/prompts/gemini/reviewer.md` |
 
 **Session Reuse**: Each invocation returns `SESSION_ID: xxx`, use `--resume xxx` in subsequent stages to reuse context.
 
