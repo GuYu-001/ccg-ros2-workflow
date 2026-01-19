@@ -1,5 +1,5 @@
 ---
-description: '前端专项工作流（研究→构思→计划→执行→优化→评审），Gemini 主导'
+description: '上层应用专项工作流（研究→构思→计划→执行→优化→评审），Gemini 主导集成、可视化、Launch、Python节点'
 ---
 
 # Frontend - 前端专项开发

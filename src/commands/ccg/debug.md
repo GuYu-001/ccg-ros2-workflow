@@ -1,5 +1,5 @@
 ---
-description: '多模型调试：Codex 后端诊断 + Gemini 前端诊断，交叉验证定位问题'
+description: '多模型调试：Codex 底层控制诊断 + Gemini 上层应用诊断，交叉验证定位问题'
 ---
 
 # Debug - 多模型调试

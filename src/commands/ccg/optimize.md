@@ -1,5 +1,5 @@
 ---
-description: '多模型性能优化：Codex 后端优化 + Gemini 前端优化'
+description: '多模型性能优化：Codex 底层实时性优化 + Gemini 上层集成优化'
 ---
 
 # Optimize - 多模型性能优化

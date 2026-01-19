@@ -1,5 +1,5 @@
 ---
-description: '多模型技术分析（并行执行）：Codex 后端视角 + Gemini 前端视角，交叉验证后综合见解'
+description: '多模型技术分析（并行执行）：Codex 底层控制分析 + Gemini 上层集成分析，交叉验证后综合见解'
 ---
 
 # Analyze - 多模型技术分析

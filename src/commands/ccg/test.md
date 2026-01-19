@@ -1,5 +1,5 @@
 ---
-description: '多模型测试生成：智能路由 Codex 后端测试 / Gemini 前端测试'
+description: '多模型测试生成：智能路由 Codex 底层单元测试 / Gemini 上层集成测试'
 ---
 
 # Test - 多模型测试生成
