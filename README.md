@@ -5,7 +5,7 @@
 
 ROS2 多模型协作开发工具 - 基于 Claude Code CLI
 
-> **v1.0.8** - 根据 Codex+Gemini 双模型分析优化工作流
+> **v1.0.9** - 提示词文件统一使用英文
 
 ## 特性
 
@@ -221,6 +221,11 @@ npx ccg-ros2-workflow
 MIT
 
 ## 更新日志
+
+### v1.0.9
+- 提示词文件统一使用英文
+- 保留 "Code comments in Chinese" 指令
+- 语言规范：提示词(英文) / 交互(中文) / 注释(中文)
 
 ### v1.0.8
 - 基于 Codex+Gemini 双模型交叉验证分析优化
