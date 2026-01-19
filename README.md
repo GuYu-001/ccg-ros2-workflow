@@ -36,15 +36,26 @@ ccg-ros2-workflow
 
 ## 前置依赖
 
-需要先安装：
+**必须安装**：
 
-- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code)
-- [Codex CLI](https://github.com/openai/codex) (可选)
-- [Gemini CLI](https://github.com/google/gemini-cli) (可选)
-- [ace-tool](https://augmentcode.com/) (推荐，提供代码上下文)
+- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) - 核心运行环境
 
 ```bash
-# Gemini CLI
+# Claude Code CLI (必须)
+npm install -g @anthropic-ai/claude-code
+```
+
+**可选安装**（启用多模型协作）：
+
+- [Codex CLI](https://github.com/openai/codex) - 底层控制专家
+- [Gemini CLI](https://github.com/google/gemini-cli) - 上层集成专家
+- [ace-tool](https://augmentcode.com/) - 代码上下文引擎（推荐）
+
+```bash
+# Codex CLI (可选)
+npm install -g @openai/codex
+
+# Gemini CLI (可选)
 npm install -g @google/gemini-cli
 ```
 
