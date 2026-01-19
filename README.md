@@ -70,38 +70,38 @@ npm install -g @google/gemini-cli
 
 | 命令 | 说明 |
 |------|------|
-| `/ccg:workflow` | 🚀 主工作流 - 6阶段完整开发流程（研究→构思→计划→执行→优化→评审） |
-| `/ccg:plan` | 📋 多模型协作规划 - Codex + Gemini 双模型生成实施计划 |
-| `/ccg:execute` | ⚡ 多模型协作执行 - 根据计划获取原型 → Claude 重构实施 |
+| `/ccg:workflow` | 🚀 ROS2 多模型协作开发 (研究→构思→计划→执行→优化→评审)，智能路由 Codex/Gemini |
+| `/ccg:plan` | 📋 多模型协作规划 - 上下文检索 + 双模型分析 → 生成 Step-by-step 实施计划 |
+| `/ccg:execute` | ⚡ 多模型协作执行 - 根据计划获取原型 → Claude 重构实施 → 多模型审计交付 |
 | `/ccg:feat` | ✨ 智能功能开发 - 自动识别输入类型，规划/讨论/实施全流程 |
 
 ### 专项开发
 
 | 命令 | 说明 |
 |------|------|
-| `/ccg:frontend` | 🎨 前端专项开发 - Gemini 主导（Python 节点、配置、诊断） |
-| `/ccg:backend` | 🔧 后端专项开发 - Codex 主导（C++ 节点、控制、驱动） |
+| `/ccg:frontend` | 🎨 上层应用专项工作流 - Gemini 主导集成、可视化、Launch、Python节点 |
+| `/ccg:backend` | 🔧 底层控制专项工作流 - Codex 主导控制算法、C++节点、驱动 |
 
 ### 分析与优化
 
 | 命令 | 说明 |
 |------|------|
-| `/ccg:analyze` | 🔍 多模型技术分析 - Codex 底层视角 + Gemini 上层视角交叉验证 |
-| `/ccg:review` | 👀 多模型代码审查 - 双模型交叉验证 git diff |
-| `/ccg:test` | 🧪 多模型测试生成 - Codex 后端测试 / Gemini 前端测试 |
-| `/ccg:debug` | 🐛 多模型调试 - Codex 后端诊断 + Gemini 前端诊断 |
-| `/ccg:optimize` | ⚡ 多模型性能优化 - Codex 后端优化 + Gemini 前端优化 |
+| `/ccg:analyze` | 🔍 多模型技术分析 - Codex 底层控制分析 + Gemini 上层集成分析，交叉验证后综合见解 |
+| `/ccg:review` | 👀 多模型代码审查 - 无参数时自动审查 git diff，双模型交叉验证 |
+| `/ccg:test` | 🧪 多模型测试生成 - 智能路由 Codex 底层单元测试 / Gemini 上层集成测试 |
+| `/ccg:debug` | 🐛 多模型调试 - Codex 底层控制诊断 + Gemini 上层应用诊断，交叉验证定位问题 |
+| `/ccg:optimize` | ⚡ 多模型性能优化 - Codex 底层实时性优化 + Gemini 上层集成优化 |
 
 ### 辅助工具
 
 | 命令 | 说明 |
 |------|------|
-| `/ccg:init` | 🏗️ 初始化项目 AI 上下文 - 生成 CLAUDE.md 索引 |
-| `/ccg:enhance` | 📝 Prompt 优化 - 使用 ace-tool 增强用户提示词 |
-| `/ccg:commit` | 💾 智能 Git 提交 - 分析改动生成 Conventional Commit |
-| `/ccg:rollback` | ⏪ 交互式 Git 回滚 - 安全回滚到历史版本 |
-| `/ccg:clean-branches` | 🧹 清理 Git 分支 - 安全清理已合并/过期分支 |
-| `/ccg:worktree` | 🌲 Git Worktree 管理 - 创建工作树支持 IDE 集成 |
+| `/ccg:init` | 🏗️ 初始化项目 AI 上下文 - 生成根级与模块级 CLAUDE.md 索引 |
+| `/ccg:enhance` | 📝 Prompt 优化 - 使用 ace-tool enhance_prompt 优化提示词，展示原始与增强版本供确认 |
+| `/ccg:commit` | 💾 智能 Git 提交 - 分析改动生成 Conventional Commit 信息，支持拆分建议 |
+| `/ccg:rollback` | ⏪ 交互式 Git 回滚 - 安全回滚分支到历史版本，支持 reset/revert 模式 |
+| `/ccg:clean-branches` | 🧹 清理 Git 分支 - 安全清理已合并或过期分支，默认 dry-run 模式 |
+| `/ccg:worktree` | 🌲 Git Worktree 管理 - 在 ../.ccg/项目名/ 目录创建，支持 IDE 集成和内容迁移 |
 
 ## 架构
 
@@ -128,6 +128,16 @@ npm install -g @google/gemini-cli
 | **Gemini** | 上层集成 | Launch 文件、YAML 配置、Python 节点、系统诊断、参数管理 |
 | **Claude** | 编排执行 | 综合两个模型输出、执行代码修改、协调工作流 |
 
+### 智能路由
+
+系统根据任务类型自动分配到合适的模型：
+
+| 任务类型 | 路由目标 |
+|----------|----------|
+| 控制算法、C++、硬件驱动、实时性 | → Codex |
+| Launch、YAML、Python、诊断、集成 | → Gemini |
+| 代码审查、测试 | → 双模型并行 |
+
 ## 配置
 
 安装后配置文件位于：
@@ -136,10 +146,10 @@ npm install -g @google/gemini-cli
 ~/.claude/
 ├── .ccg/
 │   ├── config.toml          # 主配置
-│   └── prompts/             # 提示词
-│       ├── codex/           # 底层分析/架构/审查/调试/优化/测试
-│       ├── gemini/          # 上层分析/架构/审查/调试/优化/测试/前端
-│       └── claude/          # 编排分析/架构/审查/调试/优化/测试
+│   └── prompts/             # 提示词 (19个)
+│       ├── codex/           # analyzer, architect, reviewer, debugger, optimizer, tester
+│       ├── gemini/          # analyzer, architect, reviewer, debugger, optimizer, tester, frontend
+│       └── claude/          # analyzer, architect, reviewer, debugger, optimizer, tester
 ├── commands/ccg/            # 17 个命令文件
 ├── mcp_servers.json         # MCP 配置 (ace-tool)
 └── bin/
