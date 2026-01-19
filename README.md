@@ -5,7 +5,7 @@
 
 ROS2 多模型协作开发工具 - 基于 Claude Code CLI
 
-> **v1.0.7** - 所有命令文件已完成 ROS2 术语适配
+> **v1.0.8** - 根据 Codex+Gemini 双模型分析优化工作流
 
 ## 特性
 
@@ -221,6 +221,13 @@ npx ccg-ros2-workflow
 MIT
 
 ## 更新日志
+
+### v1.0.8
+- 基于 Codex+Gemini 双模型交叉验证分析优化
+- `gemini/architect.md`: 增加 QoS 策略设计 + Node Composition
+- `codex/architect.md`: 增加 RT Checklist (executor/ros2_control/E-stop)
+- `workflow.md`: 新增 Stage 7 硬件验证 gate
+- 术语规范化：`ui-ux-designer` → `system-integrator`
 
 ### v1.0.7
 - 完成所有 17 个命令文件的 ROS2 术语适配
