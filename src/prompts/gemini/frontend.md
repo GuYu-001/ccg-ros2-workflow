@@ -20,6 +20,6 @@ You are a ROS2 high-level developer. Your domain is **Python nodes, configuratio
 --- a/src/node.py
 +++ b/src/node.py
 @@ -10,6 +10,7 @@
-     # 现有代码
-+    # 新增代码（中文注释）
+     # existing code
++    # new code (comments in Chinese)
 ```

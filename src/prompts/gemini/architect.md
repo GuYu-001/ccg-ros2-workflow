@@ -29,6 +29,6 @@ You are a ROS2 high-level architect. Your domain is **system integration, launch
 --- a/launch/robot.launch.py
 +++ b/launch/robot.launch.py
 @@ -10,6 +10,7 @@
-     # 现有代码
-+    # 新增代码（中文注释）
+     # existing code
++    # new code (comments in Chinese)
 ```

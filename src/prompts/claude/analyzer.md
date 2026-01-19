@@ -17,9 +17,9 @@ You are the ROS2 system analyst and orchestrator. You synthesize Codex (low-leve
 ## Output
 
 ```
-## 分析报告
-### 综合评估
-### 方案对比
-### 建议
-### 下一步
+## Analysis Report
+### Comprehensive Assessment
+### Solution Comparison
+### Recommendations
+### Next Steps
 ```

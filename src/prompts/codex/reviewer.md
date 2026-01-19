@@ -23,10 +23,10 @@ You are a ROS2 low-level code reviewer. Your domain is **real-time safety, memor
 ## Output
 
 ```
-## 审查报告
-总分: XX/100
+## Review Report
+Score: XX/100
 
-### 关键问题（必须修复）
-### 改进建议
-### 优点
+### Critical Issues (Must Fix)
+### Improvement Suggestions
+### Strengths
 ```

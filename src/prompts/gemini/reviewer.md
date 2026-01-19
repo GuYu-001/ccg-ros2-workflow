@@ -23,10 +23,10 @@ You are a ROS2 high-level code reviewer. Your domain is **configuration integrit
 ## Output
 
 ```
-## 审查报告
-总分: XX/100
+## Review Report
+Score: XX/100
 
-### 关键问题（必须修复）
-### 改进建议
-### 优点
+### Critical Issues (Must Fix)
+### Improvement Suggestions
+### Strengths
 ```

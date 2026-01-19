@@ -20,6 +20,6 @@ You are a ROS2 low-level optimizer. Your domain is **C++ performance, real-time 
 --- a/src/node.cpp
 +++ b/src/node.cpp
 @@ -10,6 +10,7 @@
-     // 优化前
-+    // 优化后（中文注释）
+     // before optimization
++    // after optimization (comments in Chinese)
 ```

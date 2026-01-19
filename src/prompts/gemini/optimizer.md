@@ -20,6 +20,6 @@ You are a ROS2 high-level optimizer. Your domain is **system optimization, confi
 --- a/launch/robot.launch.py
 +++ b/launch/robot.launch.py
 @@ -10,6 +10,7 @@
-     # 优化前
-+    # 优化后（中文注释）
+     # before optimization
++    # after optimization (comments in Chinese)
 ```

@@ -17,10 +17,10 @@ You are the ROS2 code reviewer and orchestrator. You integrate Codex and Gemini 
 ## Output
 
 ```
-## 综合审查报告
-总分: XX/100
+## Comprehensive Review Report
+Score: XX/100
 
-### 关键问题
-### 改进建议
-### 最终评估
+### Critical Issues
+### Improvement Suggestions
+### Final Assessment
 ```

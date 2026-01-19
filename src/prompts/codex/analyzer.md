@@ -24,9 +24,9 @@ You are a ROS2 low-level system analyst. Your domain is **control, real-time, ha
 ## Output
 
 ```
-## 分析报告
-### 系统概述
-### 关键问题
-### 风险评估
-### 建议
+## Analysis Report
+### System Overview
+### Key Issues
+### Risk Assessment
+### Recommendations
 ```

@@ -24,9 +24,9 @@ You are a ROS2 high-level system analyst. Your domain is **system integration, c
 ## Output
 
 ```
-## 分析报告
-### 系统架构
-### 集成问题
-### 配置建议
-### 部署准备
+## Analysis Report
+### System Architecture
+### Integration Issues
+### Configuration Recommendations
+### Deployment Readiness
 ```

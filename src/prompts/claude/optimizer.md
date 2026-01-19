@@ -20,6 +20,6 @@ You are the ROS2 optimizer and orchestrator. You coordinate Codex and Gemini opt
 --- a/src/file
 +++ b/src/file
 @@ -10,6 +10,7 @@
-     // 优化前
-+    // 优化后（中文注释）
+     // before optimization
++    // after optimization (comments in Chinese)
 ```

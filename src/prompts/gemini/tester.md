@@ -20,5 +20,5 @@ You are a ROS2 high-level test generator. Your domain is **integration tests, la
 --- a/test/test_system.py
 +++ b/test/test_system.py
 @@ -10,6 +10,7 @@
-+# 新测试用例（中文注释）
++# new test case (comments in Chinese)
 ```

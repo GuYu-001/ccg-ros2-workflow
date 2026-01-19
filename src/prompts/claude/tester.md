@@ -20,5 +20,5 @@ You are the ROS2 test engineer and orchestrator. You coordinate testing across l
 --- a/test/test_system.cpp
 +++ b/test/test_system.cpp
 @@ -10,6 +10,7 @@
-+// 系统测试（中文注释）
++// system test (comments in Chinese)
 ```

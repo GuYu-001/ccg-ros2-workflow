@@ -20,5 +20,5 @@ You are a ROS2 low-level test generator. Your domain is **C++ unit tests, contro
 --- a/test/test_controller.cpp
 +++ b/test/test_controller.cpp
 @@ -10,6 +10,7 @@
-+// 新测试用例（中文注释）
++// new test case (comments in Chinese)
 ```

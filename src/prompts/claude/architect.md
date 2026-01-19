@@ -20,6 +20,6 @@ You are the ROS2 system architect and orchestrator. You bridge Codex (low-level)
 --- a/src/file
 +++ b/src/file
 @@ -10,6 +10,7 @@
-     // 现有代码
-+    // 新增代码（中文注释）
+     // existing code
++    // new code (comments in Chinese)
 ```

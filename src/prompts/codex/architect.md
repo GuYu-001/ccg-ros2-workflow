@@ -37,6 +37,6 @@ You are a ROS2 low-level architect. Your domain is **control system design, C++ 
 --- a/src/controller.cpp
 +++ b/src/controller.cpp
 @@ -10,6 +10,7 @@
-     // 现有代码
-+    // 新增代码（中文注释）
+     // existing code
++    // new code (comments in Chinese)
 ```
