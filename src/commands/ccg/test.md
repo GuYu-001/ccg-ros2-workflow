@@ -15,14 +15,14 @@ description: '多模型测试生成：智能路由 Codex 底层单元测试 / Ge
 ## 上下文
 
 - 测试目标：$ARGUMENTS
-- 智能路由：后端 → Codex，前端 → Gemini，全栈 → 并行
+- 智能路由：底层控制 → Codex，上层应用 → Gemini，全栈 → 并行
 - 遵循项目现有测试框架和风格
 
 ## 你的角色
 
 你是**测试工程师**，编排测试生成流程：
-- **Codex** – 后端测试生成（**后端权威**）
-- **Gemini** – 前端测试生成（**前端权威**）
+- **Codex** – 底层控制测试生成（**C++/实时/硬件权威**）
+- **Gemini** – 上层应用测试生成（**Python/Launch/集成权威**）
 - **Claude (自己)** – 整合测试、验证运行
 
 ---
@@ -62,8 +62,8 @@ EOF",
 
 | 代码类型 | 路由 |
 |---------|------|
-| 后端 | Codex |
-| 前端 | Gemini |
+| 底层控制 | Codex |
+| 上层应用 | Gemini |
 | 全栈 | 并行执行两者 |
 
 **并行调用**：使用 `run_in_background: true` 启动，用 `TaskOutput` 等待结果。**必须等所有模型返回后才能进入下一阶段**。
@@ -95,7 +95,7 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 1. 检索目标代码的完整实现
 2. 查找现有测试文件和测试框架配置
-3. 识别代码类型：[后端/前端/全栈]
+3. 识别代码类型：[底层控制/上层应用/全栈]
 4. 评估当前测试覆盖率和缺口
 
 ### 🔬 阶段 2：智能路由测试生成
@@ -104,9 +104,9 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 **⚠️ 根据代码类型必须调用对应模型**（参照上方调用规范）：
 
-- **后端代码** → `Bash({ command: "...--backend codex...", run_in_background: false })`
+- **底层控制代码** → `Bash({ command: "...--backend codex...", run_in_background: false })`
   - ROLE_FILE: `$HOME/.claude/.ccg/prompts/codex/tester.md`
-- **前端代码** → `Bash({ command: "...--backend gemini...", run_in_background: false })`
+- **上层应用代码** → `Bash({ command: "...--backend gemini...", run_in_background: false })`
   - ROLE_FILE: `$HOME/.claude/.ccg/prompts/gemini/tester.md`
 - **全栈代码** → 并行调用两者：
   1. `Bash({ command: "...--backend codex...", run_in_background: true })`
@@ -144,7 +144,7 @@ OUTPUT：完整测试代码（使用项目现有测试框架，覆盖正常路�
 ## 🧪 测试生成：<测试目标>
 
 ### 分析结果
-- 代码类型：[后端/前端/全栈]
+- 代码类型：[底层控制/上层应用/全栈]
 - 测试框架：<检测到的框架>
 
 ### 生成的测试
@@ -169,6 +169,6 @@ OUTPUT：完整测试代码（使用项目现有测试框架，覆盖正常路�
 ## 关键规则
 
 1. **测试行为，不测试实现** – 关注输入输出
-2. **智能路由** – 后端测试用 Codex，前端测试用 Gemini
+2. **智能路由** – 底层控制测试用 Codex，上层应用测试用 Gemini
 3. **复用现有模式** – 遵循项目已有的测试风格
 4. 外部模型对文件系统**零写入权限**

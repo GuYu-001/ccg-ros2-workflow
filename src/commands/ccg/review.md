@@ -77,15 +77,15 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 **⚠️ 必须发起两个并行 Bash 调用**（参照上方调用规范）：
 
-1. **Codex 后端审查**：`Bash({ command: "...--backend codex...", run_in_background: true })`
+1. **Codex 底层控制审查**：`Bash({ command: "...--backend codex...", run_in_background: true })`
    - ROLE_FILE: `$HOME/.claude/.ccg/prompts/codex/reviewer.md`
    - 需求：审查代码变更（git diff 内容）
    - OUTPUT：按 Critical/Major/Minor/Suggestion 分类列出安全性、性能、错误处理问题
 
-2. **Gemini 前端审查**：`Bash({ command: "...--backend gemini...", run_in_background: true })`
+2. **Gemini 上层应用审查**：`Bash({ command: "...--backend gemini...", run_in_background: true })`
    - ROLE_FILE: `$HOME/.claude/.ccg/prompts/gemini/reviewer.md`
    - 需求：审查代码变更（git diff 内容）
-   - OUTPUT：按 Critical/Major/Minor/Suggestion 分类列出可访问性、响应式、设计一致性问题
+   - OUTPUT：按 Critical/Major/Minor/Suggestion 分类列出Launch编排、可视化配置、参数一致性问题
 
 用 `TaskOutput` 等待两个模型的审查结果。**必须等所有模型返回后才能进入下一阶段**。
 
@@ -126,5 +126,5 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 ## 关键规则
 
 1. **无参数 = 审查 git diff** – 自动获取当前变更
-2. **双模型交叉验证** – 后端问题以 Codex 为准，前端问题以 Gemini 为准
+2. **双模型交叉验证** – 底层控制问题以 Codex 为准，上层应用问题以 Gemini 为准
 3. 外部模型对文件系统**零写入权限**

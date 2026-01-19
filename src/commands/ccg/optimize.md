@@ -15,14 +15,14 @@ description: '多模型性能优化：Codex 底层实时性优化 + Gemini 上�
 ## 上下文
 
 - 优化目标：$ARGUMENTS
-- Codex 专注后端性能（数据库、算法、缓存）
-- Gemini 专注前端性能（渲染、加载、交互）
+- Codex 专注底层控制性能（实时性、内存、算法效率）
+- Gemini 专注上层应用性能（节点通信、启动时间、资源占用）
 
 ## 你的角色
 
 你是**性能工程师**，编排多模型优化流程：
-- **Codex** – 后端性能优化（**后端权威**）
-- **Gemini** – 前端性能优化（**前端权威**）
+- **Codex** – 底层控制性能优化（**C++/实时/硬件权威**）
+- **Gemini** – 上层应用性能优化（**Python/Launch/集成权威**）
 - **Claude (自己)** – 综合优化、实施变更
 
 ---
@@ -97,14 +97,14 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 **⚠️ 必须发起两个并行 Bash 调用**（参照上方调用规范）：
 
-1. **Codex 后端分析**：`Bash({ command: "...--backend codex...", run_in_background: true })`
+1. **Codex 底层控制分析**：`Bash({ command: "...--backend codex...", run_in_background: true })`
    - ROLE_FILE: `$HOME/.claude/.ccg/prompts/codex/optimizer.md`
-   - 需求：分析后端性能问题（$ARGUMENTS）
+   - 需求：分析底层控制性能问题（$ARGUMENTS）
    - OUTPUT：性能瓶颈列表、优化方案、预期收益
 
-2. **Gemini 前端分析**：`Bash({ command: "...--backend gemini...", run_in_background: true })`
+2. **Gemini 上层应用分析**：`Bash({ command: "...--backend gemini...", run_in_background: true })`
    - ROLE_FILE: `$HOME/.claude/.ccg/prompts/gemini/optimizer.md`
-   - 需求：分析前端性能问题（Core Web Vitals）
+   - 需求：分析上层应用性能问题（节点通信、启动时间）
    - OUTPUT：性能瓶颈列表、优化方案、预期收益
 
 用 `TaskOutput` 等待两个模型的完整结果。**必须等所有模型返回后才能进入下一阶段**。
@@ -137,17 +137,17 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 | 类型 | 指标 | 良好 | 需优化 |
 |------|------|------|--------|
-| 后端 | API 响应 | <100ms | >500ms |
-| 后端 | 数据库查询 | <50ms | >200ms |
-| 前端 | LCP | <2.5s | >4s |
-| 前端 | FID | <100ms | >300ms |
-| 前端 | CLS | <0.1 | >0.25 |
+| 底层控制 | 控制周期 | <1ms | >10ms |
+| 底层控制 | 实时抖动 | <100μs | >1ms |
+| 上层应用 | 节点启动 | <2s | >5s |
+| 上层应用 | 消息延迟 | <10ms | >100ms |
+| 上层应用 | CPU 占用 | <50% | >80% |
 
 ## 常见优化模式
 
-**后端**：N+1→批量加载、缺索引→复合索引、重复计算→缓存、同步→异步
+**底层控制**：锁竞争→无锁队列、频繁分配→内存池、阻塞调用→异步回调、低效算法→优化数据结构
 
-**前端**：大 Bundle→代码分割、频繁重渲染→memo、大列表→虚拟滚动、未优化图片→WebP
+**上层应用**：串行启动→并行Launch、频繁话题→QoS调优、大消息→压缩/分片、Python瓶颈→C++重写
 
 ---
 
@@ -156,4 +156,4 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 1. **先测量后优化** – 没有数据不盲目优化
 2. **性价比优先** – 高影响 + 低难度优先
 3. **不破坏功能** – 优化不能引入 bug
-4. **信任规则** – 后端以 Codex 为准，前端以 Gemini 为准
+4. **信任规则** – 底层控制以 Codex 为准，上层应用以 Gemini 为准

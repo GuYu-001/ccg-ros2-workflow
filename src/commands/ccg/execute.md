@@ -125,9 +125,9 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
    | 任务类型 | 判断依据 | 路由 |
    |----------|----------|------|
-   | **前端** | 页面、组件、UI、样式、布局 | Gemini |
-   | **后端** | API、接口、数据库、逻辑、算法 | Codex |
-   | **全栈** | 同时包含前后端 | Codex ∥ Gemini 并行 |
+   | **上层应用** | Python 节点、Launch、配置、可视化 | Gemini |
+   | **底层控制** | C++ 节点、控制算法、硬件驱动 | Codex |
+   | **全栈** | 同时包含上层和底层 | Codex ∥ Gemini 并行 |
 
 ---
 
@@ -165,30 +165,30 @@ mcp__ace-tool__search_context({
 
 **根据任务类型路由**：
 
-#### Route A: 前端/UI/样式 → Gemini
+#### Route A: 上层应用/Python/Launch → Gemini
 
 **限制**：上下文 < 32k tokens
 
 1. 调用 Gemini（使用 `$HOME/.claude/.ccg/prompts/gemini/frontend.md`）
 2. 输入：计划内容 + 检索到的上下文 + 目标文件
 3. OUTPUT: `Unified Diff Patch ONLY. Strictly prohibit any actual modifications.`
-4. **Gemini 是前端设计的权威，其 CSS/React/Vue 原型为最终视觉基准**
-5. ⚠️ **警告**：忽略 Gemini 对后端逻辑的建议
+4. **Gemini 是上层应用的权威，其 Python/Launch/配置原型为最终基准**
+5. ⚠️ **警告**：忽略 Gemini 对底层控制逻辑的建议
 6. 若计划包含 `GEMINI_SESSION`：优先 `resume <GEMINI_SESSION>`
 
-#### Route B: 后端/逻辑/算法 → Codex
+#### Route B: 底层控制/C++/算法 → Codex
 
 1. 调用 Codex（使用 `$HOME/.claude/.ccg/prompts/codex/architect.md`）
 2. 输入：计划内容 + 检索到的上下文 + 目标文件
 3. OUTPUT: `Unified Diff Patch ONLY. Strictly prohibit any actual modifications.`
-4. **Codex 是后端逻辑的权威，利用其逻辑运算与 Debug 能力**
+4. **Codex 是底层控制的权威，利用其实时性与算法能力**
 5. 若计划包含 `CODEX_SESSION`：优先 `resume <CODEX_SESSION>`
 
 #### Route C: 全栈 → 并行调用
 
 1. **并行调用**（`run_in_background: true`）：
-   - Gemini：处理前端部分
-   - Codex：处理后端部分
+   - Gemini：处理上层应用部分
+   - Codex：处理底层控制部分
 2. 用 `TaskOutput` 等待两个模型的完整结果
 3. 各自使用计划中对应的 `SESSION_ID` 进行 `resume`（若缺失则创建新会话）
 
@@ -210,7 +210,7 @@ mcp__ace-tool__search_context({
    - 识别潜在冲突或副作用
 
 3. **重构清理**：
-   - 将"脏原型"重构为**高可读、高可维护性、企业发布级代码**
+   - 将"脏原型"重构为**高可读、高可维护性、生产级代码**
    - 去除冗余代码
    - 确保符合项目现有代码规范
    - **非必要不生成注释与文档**，代码自解释
@@ -240,19 +240,19 @@ mcp__ace-tool__search_context({
 1. **Codex 审查**（`run_in_background: true`）：
    - ROLE_FILE: `$HOME/.claude/.ccg/prompts/codex/reviewer.md`
    - 输入：变更的 Diff + 目标文件
-   - 关注：安全性、性能、错误处理、逻辑正确性
+   - 关注：实时性、内存安全、算法正确性
 
 2. **Gemini 审查**（`run_in_background: true`）：
    - ROLE_FILE: `$HOME/.claude/.ccg/prompts/gemini/reviewer.md`
    - 输入：变更的 Diff + 目标文件
-   - 关注：可访问性、设计一致性、用户体验
+   - 关注：节点通信、配置完整性、系统集成
 
 用 `TaskOutput` 等待两个模型的完整审查结果。优先复用 Phase 3 的会话（`resume <SESSION_ID>`）以保持上下文一致。
 
 #### 5.2 整合修复
 
 1. 综合 Codex + Gemini 的审查意见
-2. 按信任规则权衡：后端以 Codex 为准，前端以 Gemini 为准
+2. 按信任规则权衡：底层控制以 Codex 为准，上层应用以 Gemini 为准
 3. 执行必要的修复
 4. 修复后按需重复 Phase 5.1（直到风险可接受）
 
@@ -266,7 +266,7 @@ mcp__ace-tool__search_context({
 ### 变更摘要
 | 文件 | 操作 | 说明 |
 |------|------|------|
-| path/to/file.ts | 修改 | 描述 |
+| path/to/file.cpp | 修改 | 描述 |
 
 ### 审计结果
 - Codex：<通过/发现 N 个问题>
@@ -283,7 +283,7 @@ mcp__ace-tool__search_context({
 
 1. **代码主权** – 所有文件修改由 Claude 执行，外部模型零写入权限
 2. **脏原型重构** – Codex/Gemini 的输出视为草稿，必须重构
-3. **信任规则** – 后端以 Codex 为准，前端以 Gemini 为准
+3. **信任规则** – 底层控制以 Codex 为准，上层应用以 Gemini 为准
 4. **最小变更** – 仅修改必要的代码，不引入副作用
 5. **强制审计** – 变更后必须进行多模型 Code Review
 
@@ -296,7 +296,7 @@ mcp__ace-tool__search_context({
 /ccg:execute .claude/plan/功能名.md
 
 # 直接执行任务（适用于已在上下文中讨论过的计划）
-/ccg:execute 根据之前的计划实施用户认证功能
+/ccg:execute 根据之前的计划实施控制器功能
 ```
 
 ---

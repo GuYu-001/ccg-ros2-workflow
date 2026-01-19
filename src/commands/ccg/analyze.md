@@ -16,8 +16,8 @@ description: '多模型技术分析（并行执行）：Codex 底层控制分析
 
 你是**分析协调者**，编排多模型分析流程：
 - **ace-tool** – 代码上下文检索
-- **Codex** – 后端/系统视角（**后端权威**）
-- **Gemini** – 前端/用户视角（**前端权威**）
+- **Codex** – 底层控制视角（**C++/实时/硬件权威**）
+- **Gemini** – 上层应用视角（**Python/Launch/集成权威**）
 - **Claude (自己)** – 综合见解
 
 ---
@@ -86,13 +86,13 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 **⚠️ 必须发起两个并行 Bash 调用**（参照上方调用规范）：
 
-1. **Codex 后端分析**：`Bash({ command: "...--backend codex...", run_in_background: true })`
+1. **Codex 底层控制分析**：`Bash({ command: "...--backend codex...", run_in_background: true })`
    - ROLE_FILE: `$HOME/.claude/.ccg/prompts/codex/analyzer.md`
-   - OUTPUT：技术可行性、架构影响、性能考量
+   - OUTPUT：控制算法可行性、实时性影响、硬件兼容性
 
-2. **Gemini 前端分析**：`Bash({ command: "...--backend gemini...", run_in_background: true })`
+2. **Gemini 上层应用分析**：`Bash({ command: "...--backend gemini...", run_in_background: true })`
    - ROLE_FILE: `$HOME/.claude/.ccg/prompts/gemini/analyzer.md`
-   - OUTPUT：UI/UX 影响、用户体验、视觉设计考量
+   - OUTPUT：系统集成影响、节点通信设计、配置管理考量
 
 用 `TaskOutput` 等待两个模型的完整结果。**必须等所有模型返回后才能进入下一阶段**。
 
@@ -107,7 +107,7 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
    - **一致观点**（强信号）
    - **分歧点**（需权衡）
    - **互补见解**（各自领域洞察）
-3. 按信任规则权衡：后端以 Codex 为准，前端以 Gemini 为准
+3. 按信任规则权衡：底层控制以 Codex 为准，上层应用以 Gemini 为准
 
 ### 📊 阶段 4：综合输出
 
@@ -140,13 +140,13 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 | 场景 | 示例 |
 |------|------|
-| 技术选型 | "比较 Redux vs Zustand" |
-| 架构评估 | "评估微服务拆分方案" |
-| 性能分析 | "分析 API 响应慢的原因" |
-| 安全审计 | "评估认证模块安全性" |
+| 控制方案 | "比较 PID vs MPC 控制器" |
+| 架构评估 | "评估节点拆分方案" |
+| 性能分析 | "分析控制循环延迟原因" |
+| 安全审计 | "评估急停模块安全性" |
 
 ## 关键规则
 
 1. **仅分析不修改** – 本命令不执行任何代码变更
-2. **信任规则** – 后端以 Codex 为准，前端以 Gemini 为准
+2. **信任规则** – 底层控制以 Codex 为准，上层应用以 Gemini 为准
 3. 外部模型对文件系统**零写入权限**

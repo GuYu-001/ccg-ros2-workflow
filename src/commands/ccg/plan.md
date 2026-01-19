@@ -118,14 +118,14 @@ mcp__ace-tool__search_context({
 
 将**原始需求**（不带预设观点）分发给两个模型：
 
-1. **Codex 后端分析**：
+1. **Codex 底层控制分析**：
    - ROLE_FILE: `$HOME/.claude/.ccg/prompts/codex/analyzer.md`
-   - 关注：技术可行性、架构影响、性能考量、潜在风险
+   - 关注：实时性能、算法正确性、内存安全、硬件接口
    - OUTPUT: 多角度解决方案 + 优劣势分析
 
-2. **Gemini 前端分析**：
+2. **Gemini 上层应用分析**：
    - ROLE_FILE: `$HOME/.claude/.ccg/prompts/gemini/analyzer.md`
-   - 关注：UI/UX 影响、用户体验、视觉设计
+   - 关注：系统集成 影响、节点交互、可视化配置
    - OUTPUT: 多角度解决方案 + 优劣势分析
 
 用 `TaskOutput` 等待两个模型的完整结果。**📌 保存 SESSION_ID**（`CODEX_SESSION` 和 `GEMINI_SESSION`）。
@@ -136,20 +136,20 @@ mcp__ace-tool__search_context({
 
 1. **识别一致观点**（强信号）
 2. **识别分歧点**（需权衡）
-3. **互补优势**：后端逻辑以 Codex 为准，前端设计以 Gemini 为准
+3. **互补优势**：底层控制逻辑以 Codex 为准，上层应用设计以 Gemini 为准
 4. **逻辑推演**：消除方案中的逻辑漏洞
 
 #### 2.3（可选但推荐）双模型产出“计划草案”
 
 为降低 Claude 合成计划的遗漏风险，可并行让两个模型输出“计划草案”（仍然**不允许**修改文件）：
 
-1. **Codex 计划草案**（后端权威）：
+1. **Codex 计划草案**（C++/实时/硬件权威）：
    - ROLE_FILE: `$HOME/.claude/.ccg/prompts/codex/architect.md`
    - OUTPUT: Step-by-step plan + pseudo-code（重点：数据流/边界条件/错误处理/测试策略）
 
-2. **Gemini 计划草案**（前端权威）：
+2. **Gemini 计划草案**（Python/Launch/集成权威）：
    - ROLE_FILE: `$HOME/.claude/.ccg/prompts/gemini/architect.md`
-   - OUTPUT: Step-by-step plan + pseudo-code（重点：信息架构/交互/可访问性/视觉一致性）
+   - OUTPUT: Step-by-step plan + pseudo-code（重点：节点通信/参数配置/Launch编排/可视化效果）
 
 用 `TaskOutput` 等待两个模型的完整结果，并记录其建议的关键差异点。
 
@@ -161,8 +161,8 @@ mcp__ace-tool__search_context({
 ## 📋 实施计划：<任务名称>
 
 ### 任务类型
-- [ ] 前端 (→ Gemini)
-- [ ] 后端 (→ Codex)
+- [ ] 上层应用 (→ Gemini)
+- [ ] 底层控制 (→ Codex)
 - [ ] 全栈 (→ 并行)
 
 ### 技术方案
@@ -176,7 +176,7 @@ mcp__ace-tool__search_context({
 ### 关键文件
 | 文件 | 操作 | 说明 |
 |------|------|------|
-| path/to/file.ts:L10-L50 | 修改 | 描述 |
+| path/to/node.cpp:L10-L50 | 修改 | 描述 |
 
 ### 风险与缓解
 | 风险 | 缓解措施 |
@@ -255,6 +255,6 @@ mcp__ace-tool__search_context({
 
 1. **仅规划不实施** – 本命令不执行任何代码变更
 2. **不问 Y/N** – 只展示计划，让用户决定下一步
-3. **信任规则** – 后端以 Codex 为准，前端以 Gemini 为准
+3. **信任规则** – 底层控制以 Codex 为准，上层应用以 Gemini 为准
 4. 外部模型对文件系统**零写入权限**
 5. **SESSION_ID 交接** – 计划末尾必须包含 `CODEX_SESSION` / `GEMINI_SESSION`（供 `/ccg:execute resume <SESSION_ID>` 使用）

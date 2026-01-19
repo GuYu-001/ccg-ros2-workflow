@@ -1,5 +1,5 @@
 ---
-description: '智能功能开发 - 自动识别输入类型，规划/讨论/实施全流程'
+description: '智能功能开发 - 自动识别输入类型，规划/讨论/实施全流程（ROS2 Humble 物理机器人）'
 ---
 
 # Feat - 智能功能开发
@@ -98,29 +98,29 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 #### 2.1 上下文检索
 
-调用 `mcp__ace-tool__search_context` 检索相关代码、组件、技术栈。
+调用 `mcp__ace-tool__search_context` 检索相关代码、节点、技术栈。
 
 #### 2.2 任务类型判断
 
 | 任务类型 | 判断依据 | 调用流程 |
 |----------|----------|----------|
-| **前端** | 页面、组件、UI、样式、布局 | ui-ux-designer → planner |
-| **后端** | API、接口、数据库、逻辑、算法 | planner |
-| **全栈** | 同时包含前后端 | ui-ux-designer → planner |
+| **上层应用** | Launch、RViz、参数、配置、Python 节点 | ui-ux-designer → planner |
+| **底层控制** | 控制算法、C++ 节点、硬件驱动、实时性能 | planner |
+| **系统集成** | 同时包含上层应用与底层控制 | ui-ux-designer → planner |
 
 #### 2.3 调用 Agents
 
-**前端/全栈任务**：先调用 `ui-ux-designer` agent
+**上层应用/系统集成任务**：先调用 `ui-ux-designer` agent
 ```
 执行 agent: $HOME/.claude/agents/ccg/ui-ux-designer.md
 输入: 项目上下文 + 用户需求 + 技术栈
-输出: UI/UX 设计方案
+输出: 系统集成设计方案
 ```
 
 **所有任务**：调用 `planner` agent
 ```
 执行 agent: $HOME/.claude/agents/ccg/planner.md
-输入: 项目上下文 + UI设计方案(如有) + 用户需求
+输入: 项目上下文 + 上层应用方案(如有) + 用户需求
 输出: 功能规划文档
 ```
 
@@ -148,15 +148,15 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 #### 3.2 任务类型分析
 
-从计划提取任务分类：前端 / 后端 / 全栈
+从计划提取任务分类：上层应用 / 底层控制 / 系统集成
 
 #### 3.3 多模型路由实施
 
 按上方调用规范调用外部模型：
 
-- **前端任务**：调用 Gemini，使用实施提示词
-- **后端任务**：调用 Codex，使用实施提示词
-- **全栈任务**：并行调用 Codex + Gemini（`run_in_background: true`），用 `TaskOutput` 等待结果
+- **上层应用任务**：调用 Gemini，使用实施提示词
+- **底层控制任务**：调用 Codex，使用实施提示词
+- **系统集成任务**：并行调用 Codex + Gemini（`run_in_background: true`），用 `TaskOutput` 等待结果
 
 **⚠️ 强制规则：必须等待 TaskOutput 返回所有模型的完整结果后才能进入下一阶段**
 
@@ -177,10 +177,10 @@ git diff --name-status
 
 1. **强制响应要求**：每次交互必须首先说明判断的操作类型
 2. **文档一致性**：规划文档与实际执行保持同步
-3. **依赖关系管理**：前端任务必须确保 UI 设计完整性
+3. **依赖关系管理**：上层应用任务必须确保 Launch/RViz 配置完整性
 4. **多模型信任规则**：
-   - 前端以 Gemini 为准
-   - 后端以 Codex 为准
+   - 上层应用以 Gemini 为准
+   - 底层控制以 Codex 为准
 5. **用户沟通透明**：所有判断和动作都要明确告知用户
 
 ---
