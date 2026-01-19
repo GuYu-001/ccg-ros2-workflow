@@ -1,6 +1,11 @@
 # CCG-ROS2-Workflow
 
+[![npm version](https://badge.fury.io/js/ccg-ros2-workflow.svg)](https://www.npmjs.com/package/ccg-ros2-workflow)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ROS2 多模型协作开发工具 - 基于 Claude Code CLI
+
+> **v1.0.7** - 所有命令文件已完成 ROS2 术语适配
 
 ## 特性
 
@@ -203,3 +208,17 @@ npx ccg-ros2-workflow
 ## License
 
 MIT
+
+## 更新日志
+
+### v1.0.7
+- 完成所有 17 个命令文件的 ROS2 术语适配
+- 术语映射：前端/后端 → 上层应用/底层控制
+- 任务路由：Launch/Python → Gemini，C++/控制 → Codex
+
+### v1.0.6
+- 更新 README 文档，添加完整命令列表
+- 修复 "仿真" → "集成" 术语
+
+### v1.0.5
+- 初始 ROS2 Humble 物理机器人版本
