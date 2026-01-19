@@ -15,7 +15,7 @@ Execute a structured ROS2 development workflow for physical robots using quality
 ## Context
 
 - Task to develop: $ARGUMENTS
-- Structured 6-stage workflow with quality gates
+- Structured 7-stage workflow with quality gates
 - Multi-model collaboration: Codex (Low-level Control) + Gemini (System Integration) + Claude (Orchestration)
 - MCP service integration (ace-tool) for enhanced functionality
 - Target: Physical robot development (no simulation)
@@ -95,7 +95,7 @@ If still not complete after 10 minutes, continue polling with `TaskOutput`, **ne
 ## Communication Protocols
 
 1. Responses start with a mode tag `[Mode: X]`, initially `[Mode: Research]`.
-2. Core workflow strictly follows the sequence `Research -> Ideation -> Plan -> Execute -> Optimize -> Review`.
+2. Core workflow strictly follows the sequence `Research -> Ideation -> Plan -> Execute -> Optimize -> Review -> Hardware`.
 3. Must request user confirmation after completing each stage.
 4. Force stop if score is below 7 or user does not approve.
 5. When needing to ask the user, prefer using the `AskUserQuestion` tool for interaction.
@@ -175,6 +175,26 @@ Use `TaskOutput` to wait for results. Integrate review feedback, execute optimiz
 - Run tests to verify functionality (colcon test)
 - Report issues and suggestions
 - Request final user confirmation
+
+### 🔧 Stage 7: Hardware Validation (Physical Robot Gate)
+
+`[Mode: Hardware]` - Physical robot verification:
+
+**Pre-deployment Checklist**:
+- [ ] Driver detection: verify hardware interfaces are detected (`ros2 control list_hardware_interfaces`)
+- [ ] Calibration: confirm sensor/actuator calibration data loaded
+- [ ] E-stop: test emergency stop functionality
+- [ ] Safety limits: verify joint limits, velocity limits, torque limits
+
+**Runtime Validation**:
+- [ ] Control frequency: measure actual loop rate vs target (e.g., 1kHz)
+- [ ] CPU usage: monitor real-time thread CPU load
+- [ ] Latency: measure end-to-end control latency
+- [ ] QoS health: check topic reliability and deadline violations
+
+**Documentation**:
+- Record measured metrics in `.claude/validation/hardware_report.md`
+- Flag any metrics outside acceptable range
 
 ---
 

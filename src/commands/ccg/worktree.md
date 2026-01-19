@@ -45,7 +45,7 @@ parent-directory/
 │   └── src/
 └── .ccg/                   # worktree 管理目录
     └── your-project/
-        ├── feature-ui/     # 功能分支
+        ├── feature-nav/    # 功能分支
         ├── hotfix/         # 修复分支
         └── debug/          # 调试 worktree
 ```
@@ -80,30 +80,30 @@ parent-directory/
 
 ```bash
 # 基本创建
-/worktree add feature-ui
+/worktree add feature-nav
 
 # 创建并用 IDE 打开
-/worktree add feature-ui -o
+/worktree add feature-nav -o
 
 # 创建指定分支
-/worktree add hotfix -b fix/login -o
+/worktree add hotfix -b fix/controller -o
 
 # 迁移未提交内容
-/worktree migrate feature-ui --from main
+/worktree migrate feature-nav --from main
 
 # 迁移 stash 内容
-/worktree migrate feature-ui --stash
+/worktree migrate feature-nav --stash
 
 # 管理操作
 /worktree list
-/worktree remove feature-ui
+/worktree remove feature-nav
 /worktree prune
 ```
 
 ## 输出示例
 
 ```
-✅ Worktree created at ../.ccg/项目名/feature-ui
+✅ Worktree created at ../.ccg/项目名/feature-nav
 ✅ 已复制 .env
 ✅ 已复制 .env.local
 📋 已从 .gitignore 复制 2 个环境文件

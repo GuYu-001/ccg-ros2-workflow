@@ -4,6 +4,8 @@ description: '上层应用专项工作流（研究→构思→计划→执行→
 
 # Frontend - 上层应用专项开发
 
+> **命名说明**：此处 "Frontend" 指 ROS2 上层应用（Python 节点、Launch、配置），非 Web 前端
+
 ## 使用方法
 
 ```bash

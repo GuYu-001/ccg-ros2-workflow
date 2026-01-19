@@ -104,15 +104,15 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 | 任务类型 | 判断依据 | 调用流程 |
 |----------|----------|----------|
-| **上层应用** | Launch、RViz、参数、配置、Python 节点 | ui-ux-designer → planner |
+| **上层应用** | Launch、RViz、参数、配置、Python 节点 | system-integrator → planner |
 | **底层控制** | 控制算法、C++ 节点、硬件驱动、实时性能 | planner |
-| **系统集成** | 同时包含上层应用与底层控制 | ui-ux-designer → planner |
+| **系统集成** | 同时包含上层应用与底层控制 | system-integrator → planner |
 
 #### 2.3 调用 Agents
 
-**上层应用/系统集成任务**：先调用 `ui-ux-designer` agent
+**上层应用/系统集成任务**：先调用 `system-integrator` agent
 ```
-执行 agent: $HOME/.claude/agents/ccg/ui-ux-designer.md
+执行 agent: $HOME/.claude/agents/ccg/system-integrator.md
 输入: 项目上下文 + 用户需求 + 技术栈
 输出: 系统集成设计方案
 ```
