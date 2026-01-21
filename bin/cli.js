@@ -158,60 +158,128 @@ async function configureMCP() {
   console.log('ace-tool 是 Augment Code 的代码上下文引擎');
   console.log('它能让 AI 自动理解你的项目结构和代码\n');
 
-  // 检查是否已安装 ace-tool
-  let aceToolInstalled = false;
-  try {
-    execSync('which ace-tool', { stdio: 'ignore' });
-    aceToolInstalled = true;
-    console.log('✅ 检测到 ace-tool 已安装\n');
-  } catch {
-    console.log('⚠️  未检测到 ace-tool\n');
+  // 选择操作
+  console.log('请选择操作：');
+  console.log('1. 安装/更新 ace-tool (Node.js 版本)');
+  console.log('2. 安装/更新 ace-tool-rs (Rust 版本，推荐)');
+  console.log('3. 卸载 ace-tool MCP 配置');
+  console.log('4. 返回');
+
+  const choice = await question('\n请选择 (1-4): ');
+
+  if (choice === '4') return;
+
+  if (choice === '3') {
+    await uninstallMCP();
+    return;
   }
 
-  if (!aceToolInstalled) {
-    console.log('安装 ace-tool 的方式：');
-    console.log('1. 访问 https://augmentcode.com/ 注册账号');
-    console.log('2. 按照官方指引安装 ace-tool CLI\n');
+  const pkg = choice === '2' ? 'ace-tool-rs' : 'ace-tool';
+  const pkgName = choice === '2' ? 'ace-tool-rs (Rust)' : 'ace-tool (Node.js)';
 
-    const proceed = await question('是否继续配置 MCP？(可以稍后安装 ace-tool) (Y/n): ');
-    if (proceed.toLowerCase() === 'n') {
-      return;
-    }
+  console.log(`\n📦 配置 ${pkgName}\n`);
+
+  // 获取 Token
+  console.log('获取 Token 的方式：');
+  console.log('- 官方服务: https://augmentcode.com/ 注册获取');
+  console.log('- 中转服务: 使用第三方中转（需要 Base URL）\n');
+
+  const baseUrl = await question('Base URL (使用官方服务请留空): ');
+  const token = await question('Token (必填): ');
+
+  if (!token.trim()) {
+    console.log('\n❌ Token 不能为空');
+    return;
   }
+
+  // 构建 MCP 配置
+  const args = [pkg, 'mcp'];
+  if (baseUrl.trim()) {
+    args.push('--base-url', baseUrl.trim());
+  }
+  args.push('--token', token.trim());
+
+  const mcpServerConfig = {
+    command: 'npx',
+    args: args,
+    env: pkg === 'ace-tool-rs' ? { RUST_LOG: 'info' } : {}
+  };
 
   // 读取或创建 MCP 配置
   let mcpConfig = {};
   if (fs.existsSync(MCP_CONFIG_PATH)) {
     try {
       mcpConfig = JSON.parse(fs.readFileSync(MCP_CONFIG_PATH, 'utf8'));
-      console.log('检测到已有 MCP 配置，将添加 ace-tool\n');
+      console.log('\n检测到已有 MCP 配置，将更新 ace-tool\n');
     } catch {
       mcpConfig = {};
     }
   }
 
+  // 备份现有配置
+  if (Object.keys(mcpConfig).length > 0) {
+    const backupDir = path.join(CLAUDE_DIR, 'backup');
+    fs.mkdirSync(backupDir, { recursive: true });
+    const backupPath = path.join(backupDir, `mcp_servers_${Date.now()}.json`);
+    fs.writeFileSync(backupPath, JSON.stringify(mcpConfig, null, 2));
+    console.log(`已备份配置到: ${backupPath}`);
+  }
+
   // 添加 ace-tool 配置
-  mcpConfig['ace-tool'] = {
-    command: 'ace-tool',
-    args: ['mcp'],
-    env: {}
-  };
+  mcpConfig['ace-tool'] = mcpServerConfig;
 
   // 写入配置
   fs.mkdirSync(CLAUDE_DIR, { recursive: true });
   fs.writeFileSync(MCP_CONFIG_PATH, JSON.stringify(mcpConfig, null, 2));
 
-  console.log('✅ MCP 配置已写入: ~/.claude/mcp_servers.json\n');
+  console.log('\n✅ MCP 配置已写入: ~/.claude/mcp_servers.json\n');
   console.log('配置内容：');
-  console.log(JSON.stringify(mcpConfig['ace-tool'], null, 2));
+  console.log(JSON.stringify(mcpServerConfig, null, 2));
 
-  console.log('\n📌 后续步骤：');
-  console.log('1. 确保已安装 ace-tool CLI');
-  console.log('2. 运行 ace-tool login 登录 Augment 账号');
-  console.log('3. 重启 Claude Code 使 MCP 生效');
+  console.log('\n📌 说明：');
+  console.log(`- 使用 npx ${pkg} 自动下载运行，无需手动安装`);
+  console.log('- Token 已配置，首次运行会自动下载包');
+  console.log('- 重启 Claude Code 使 MCP 生效');
+
   console.log('\n使用方式：');
   console.log('  在 workflow 中自动调用 mcp__ace-tool__search_context');
   console.log('  或手动调用 mcp__ace-tool__enhance_prompt');
+}
+
+async function uninstallMCP() {
+  console.log('\n🗑️  卸载 ace-tool MCP 配置\n');
+
+  if (!fs.existsSync(MCP_CONFIG_PATH)) {
+    console.log('未找到 MCP 配置文件');
+    return;
+  }
+
+  const confirm = await question('确定要移除 ace-tool MCP 配置吗？ (y/N): ');
+  if (confirm.toLowerCase() !== 'y') {
+    console.log('取消卸载');
+    return;
+  }
+
+  try {
+    let mcpConfig = JSON.parse(fs.readFileSync(MCP_CONFIG_PATH, 'utf8'));
+
+    if (!mcpConfig['ace-tool']) {
+      console.log('MCP 配置中没有 ace-tool');
+      return;
+    }
+
+    delete mcpConfig['ace-tool'];
+
+    if (Object.keys(mcpConfig).length === 0) {
+      fs.unlinkSync(MCP_CONFIG_PATH);
+      console.log('✅ 已删除: ~/.claude/mcp_servers.json');
+    } else {
+      fs.writeFileSync(MCP_CONFIG_PATH, JSON.stringify(mcpConfig, null, 2));
+      console.log('✅ 已从 MCP 配置中移除 ace-tool');
+    }
+  } catch (e) {
+    console.log('❌ 移除失败:', e.message);
+  }
 }
 
 async function configureApiKeys() {

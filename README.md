@@ -5,7 +5,7 @@
 
 ROS2 多模型协作开发工具 - 基于 Claude Code CLI
 
-> **v1.0.9** - 提示词文件统一使用英文
+> **v1.1.0** - 支持直接安装 ace-tool，无需手动安装
 
 ## 特性
 
@@ -176,22 +176,35 @@ npm install -g @google/gemini-cli
 
 ace-tool 是 Augment Code 的代码上下文引擎，让 AI 自动理解项目结构。
 
-安装时选择「配置 ace-tool MCP」会自动添加到 `~/.claude/mcp_servers.json`：
+### 安装方式
+
+运行安装程序，选择「配置 ace-tool MCP」：
+
+```bash
+npx ccg-ros2-workflow
+# 选择 3. 配置 ace-tool MCP
+# 选择版本：ace-tool (Node.js) 或 ace-tool-rs (Rust，推荐)
+# 输入 Token（从 augmentcode.com 或中转服务获取）
+```
+
+### 配置示例
 
 ```json
 {
   "ace-tool": {
-    "command": "ace-tool",
-    "args": ["mcp"],
-    "env": {}
+    "command": "npx",
+    "args": ["ace-tool-rs", "mcp", "--token", "your-token"],
+    "env": { "RUST_LOG": "info" }
   }
 }
 ```
 
-使用前需要：
-1. 安装 ace-tool CLI（访问 https://augmentcode.com/）
-2. 运行 `ace-tool login` 登录
-3. 重启 Claude Code
+### Token 获取
+
+- **官方服务**: https://augmentcode.com/ 注册获取
+- **中转服务**: 使用第三方中转（需要配置 Base URL）
+
+配置完成后重启 Claude Code 即可使用。
 
 ## 语言配置
 
@@ -221,6 +234,12 @@ npx ccg-ros2-workflow
 MIT
 
 ## 更新日志
+
+### v1.1.0
+- 支持直接安装 ace-tool，无需手动安装 CLI
+- 支持 ace-tool (Node.js) 和 ace-tool-rs (Rust) 两种版本
+- 支持配置 Token 和 Base URL（中转服务）
+- 使用 npx 自动下载运行，首次使用自动安装
 
 ### v1.0.9
 - 提示词文件统一使用英文
