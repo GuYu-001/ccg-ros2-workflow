@@ -5,7 +5,7 @@
 
 ROS2 多模型协作开发工具 - 基于 Claude Code CLI
 
-> **v1.1.0** - 支持直接安装 ace-tool，无需手动安装
+> **v1.2.0** - 全新交互式菜单体验，支持更新检查
 
 ## 特性
 
@@ -29,10 +29,13 @@ ccg-ros2-workflow
 ```
 
 安装程序提供以下选项：
-1. 安装工作流
-2. 配置 API 密钥
+1. 安装/重装工作流
+2. 更新工作流
 3. 配置 ace-tool MCP
-4. 卸载工作流
+4. 配置 API 密钥
+5. 帮助
+6. 卸载工作流
+7. 退出
 
 ## 前置依赖
 
@@ -167,6 +170,10 @@ npm install -g @google/gemini-cli
 │       ├── gemini/          # analyzer, architect, reviewer, debugger, optimizer, tester, frontend
 │       └── claude/          # analyzer, architect, reviewer, debugger, optimizer, tester
 ├── commands/ccg/            # 17 个命令文件
+├── agents/ccg/              # 3 个 agent 文件
+│   ├── system-integrator.md # ROS2 系统集成设计
+│   ├── planner.md           # WBS 任务规划
+│   └── get-current-datetime.md
 ├── mcp_servers.json         # MCP 配置 (ace-tool)
 └── bin/
     └── codeagent-wrapper    # 模型调用脚本
@@ -234,6 +241,14 @@ npx ccg-ros2-workflow
 MIT
 
 ## 更新日志
+
+### v1.2.0
+- 全新交互式菜单 (inquirer + chalk)
+- 添加更新检查功能，支持 npm 版本对比
+- 新增 agents 目录，包含 3 个 agent 文件
+- 改进卸载流程，显示详细文件统计
+- 新增帮助命令，展示所有可用 /ccg: 命令
+- 优化安装流程，显示安装摘要
 
 ### v1.1.0
 - 支持直接安装 ace-tool，无需手动安装 CLI
