@@ -1,6 +1,6 @@
 {
   "name": "ccg-ros2-workflow",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "ROS2 Multi-model Collaborative Development Workflow - Codex (Low-level) + Gemini (High-level) + Claude (Orchestration)",
   "main": "bin/cli.js",
   "bin": {

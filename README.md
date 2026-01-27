@@ -5,7 +5,7 @@
 
 ROS2 多模型协作开发工具 - 基于 Claude Code CLI
 
-> **v1.3.0** - 参考 ccg-workflow 官方实现，全新交互式安装体验
+> **v1.4.0** - Agents 独立文件化，ROS2 完整版实现
 
 ## 特性
 
@@ -170,10 +170,11 @@ npm install -g @google/gemini-cli
 │       ├── gemini/          # analyzer, architect, reviewer, debugger, optimizer, tester, frontend
 │       └── claude/          # analyzer, architect, reviewer, debugger, optimizer, tester
 ├── commands/ccg/            # 17 个命令文件
-├── agents/ccg/              # 3 个 agent 文件
-│   ├── system-integrator.md # ROS2 系统集成设计
-│   ├── planner.md           # WBS 任务规划
-│   └── get-current-datetime.md
+├── agents/ccg/              # 4 个 agent 文件
+│   ├── planner.md           # ROS2 任务规划师 (WBS 方法论)
+│   ├── system-integrator.md # ROS2 系统集成设计师
+│   ├── init-architect.md    # 项目初始化架构师
+│   └── get-current-datetime.md # 时间工具
 ├── mcp_servers.json         # MCP 配置 (ace-tool)
 └── bin/
     └── codeagent-wrapper    # 模型调用脚本
@@ -241,6 +242,17 @@ npx ccg-ros2-workflow
 MIT
 
 ## 更新日志
+
+### v1.4.0
+- **Agents 目录改造**：agents 从 cli.js 内联生成改为独立文件
+- 新增 `src/agents/ccg/` 目录，包含 4 个 ROS2 专用 agent：
+  - `planner.md`：基于 WBS 方法论的 ROS2 任务规划师，支持 ace-tool 检索、Mermaid 依赖图
+  - `system-integrator.md`：ROS2 系统集成设计师（替代 ui-ux-designer），负责节点架构、Launch 配置、参数管理、QoS 策略
+  - `init-architect.md`：项目初始化架构师（通用版本）
+  - `get-current-datetime.md`：时间工具（通用版本）
+- 所有 agent 添加 frontmatter（name, tools, color 字段）
+- cli.js 改为使用 `copyRecursive` 安装 agents，与 commands/prompts 保持一致
+- 完整 ROS2 示例（PID 控制器、底盘驱动集成）
 
 ### v1.3.0
 - 参考 ccg-workflow 官方实现重写 CLI

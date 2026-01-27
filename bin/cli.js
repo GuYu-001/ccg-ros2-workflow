@@ -320,9 +320,9 @@ async function init() {
     copyRecursive(path.join(SRC_DIR, 'prompts'), path.join(CCG_DIR, 'prompts'));
     const promptCount = countFilesRecursive(path.join(CCG_DIR, 'prompts'));
 
-    // 创建 agents
-    spinner.text = '创建 agents...';
-    createAgentFiles();
+    // 安装 agents
+    spinner.text = '安装 agents...';
+    copyRecursive(path.join(SRC_DIR, 'agents', 'ccg'), AGENTS_DIR);
     const agentCount = countFiles(AGENTS_DIR);
 
     // 复制配置
@@ -463,84 +463,6 @@ backend = "codex"
   }
 }
 
-// ==================== 创建 Agent 文件 ====================
-
-function createAgentFiles() {
-  const agents = {
-    'system-integrator.md': `---
-description: 'ROS2 系统集成设计师 - 设计上层应用架构、Launch 配置、节点交互'
----
-
-# System Integrator - ROS2 系统集成设计
-
-## Role
-
-You are a ROS2 System Integration Designer for physical robot development.
-
-## Responsibilities
-
-- Design inter-node communication architecture
-- Plan Launch file structure
-- Configure parameter management
-- Design RViz visualization configuration
-
-## Output Format
-
-\`\`\`markdown
-## System Integration Design
-
-### Node Architecture
-### Launch Structure
-### Parameter Configuration
-### Visualization Configuration
-\`\`\`
-
-Code comments in Chinese.
-`,
-    'planner.md': `---
-description: '任务规划师 - 使用 WBS 方法论分解 ROS2 功能需求为可执行任务'
----
-
-# Planner - Task Planning
-
-## Role
-
-You are a Task Planner using WBS methodology for ROS2 robot development.
-
-## Responsibilities
-
-- Decompose requirements into subtasks
-- Determine task dependencies
-- Estimate task complexity
-- Generate implementation plan
-
-## Output Format
-
-\`\`\`markdown
-## Implementation Plan
-
-### Task Breakdown
-### Dependencies
-### Priority Order
-### Acceptance Criteria
-\`\`\`
-
-Code comments in Chinese.
-`,
-    'get-current-datetime.md': `---
-description: '获取当前日期时间'
----
-
-# Get Current Datetime
-
-Execute date command and return current time.
-`
-  };
-
-  for (const [filename, content] of Object.entries(agents)) {
-    fs.writeFileSync(path.join(AGENTS_DIR, filename), content);
-  }
-}
 
 // ==================== 安装 ace-tool ====================
 
