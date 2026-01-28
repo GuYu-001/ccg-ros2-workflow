@@ -75,7 +75,7 @@
     "build": "unbuild",
     "start": "node bin/ccg.mjs",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "pnpm build",
+    "prepublishOnly": "npm run build",
     "lint": "eslint",
     "lint:fix": "eslint --fix"
   },
