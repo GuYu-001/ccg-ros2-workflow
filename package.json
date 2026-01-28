@@ -1,40 +1,103 @@
 {
   "name": "ccg-ros2-workflow",
-  "version": "1.4.0",
-  "description": "ROS2 Multi-model Collaborative Development Workflow - Codex (Low-level) + Gemini (High-level) + Claude (Orchestration)",
-  "main": "bin/cli.js",
-  "bin": {
-    "ccg-ros2-workflow": "bin/cli.js"
+  "version": "2.0.0",
+  "description": "ROS2 Multi-Model Collaborative Development Workflow - Codex (Low-level Control) + Gemini (Upper-layer Application) + Claude (Orchestration)",
+  "type": "module",
+  "packageManager": "pnpm@10.17.1",
+  "author": {
+    "name": "CCG Contributors"
   },
-  "scripts": {
-    "test": "echo \"No tests yet\""
-  },
-  "keywords": [
-    "ros2",
-    "humble",
-    "claude-code",
-    "codex",
-    "gemini",
-    "multi-model",
-    "robotics",
-    "workflow"
-  ],
-  "author": "super",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/GuYu-001/ccg-ros2-workflow.git"
   },
-  "engines": {
-    "node": ">=16.0.0"
-  },
-  "files": [
-    "bin/",
-    "src/"
+  "keywords": [
+    "ros2",
+    "humble",
+    "robotics",
+    "claude",
+    "codex",
+    "gemini",
+    "multi-model",
+    "ai",
+    "collaboration",
+    "cli",
+    "workflow"
   ],
+  "bin": {
+    "ccg-ros2-workflow": "bin/ccg.mjs"
+  },
+  "main": "dist/index.mjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "files": [
+    "bin",
+    "dist",
+    "templates/commands/analyze.md",
+    "templates/commands/backend.md",
+    "templates/commands/clean-branches.md",
+    "templates/commands/commit.md",
+    "templates/commands/debug.md",
+    "templates/commands/enhance.md",
+    "templates/commands/execute.md",
+    "templates/commands/feat.md",
+    "templates/commands/frontend.md",
+    "templates/commands/init.md",
+    "templates/commands/optimize.md",
+    "templates/commands/plan.md",
+    "templates/commands/review.md",
+    "templates/commands/rollback.md",
+    "templates/commands/test.md",
+    "templates/commands/workflow.md",
+    "templates/commands/worktree.md",
+    "templates/commands/spec-init.md",
+    "templates/commands/spec-research.md",
+    "templates/commands/spec-plan.md",
+    "templates/commands/spec-impl.md",
+    "templates/commands/spec-review.md",
+    "templates/commands/agents/",
+    "templates/prompts/codex/",
+    "templates/prompts/gemini/analyzer.md",
+    "templates/prompts/gemini/architect.md",
+    "templates/prompts/gemini/debugger.md",
+    "templates/prompts/gemini/frontend.md",
+    "templates/prompts/gemini/optimizer.md",
+    "templates/prompts/gemini/reviewer.md",
+    "templates/prompts/gemini/tester.md",
+    "templates/prompts/claude/"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "unbuild",
+    "start": "node bin/ccg.mjs",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix"
+  },
   "dependencies": {
-    "inquirer": "^8.2.6",
-    "chalk": "^4.1.2",
-    "ora": "^5.4.1"
+    "ansis": "^4.1.0",
+    "cac": "^6.7.14",
+    "fs-extra": "^11.3.2",
+    "i18next": "^25.5.2",
+    "i18next-fs-backend": "^2.6.0",
+    "inquirer": "^12.9.6",
+    "ora": "^9.0.0",
+    "pathe": "^2.0.3",
+    "smol-toml": "^1.4.2"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^5.4.1",
+    "@types/fs-extra": "^11.0.4",
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.36.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "unbuild": "^3.6.1"
   }
 }

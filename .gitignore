@@ -1,4 +1,56 @@
+# Build outputs
+codeagent-wrapper/codeagent-wrapper
+codeagent-wrapper/*.exe
+*.exe
+
+# 但是允许 bin/ 目录下的预编译二进制文件
+!bin/*.exe
+dist/
 node_modules/
+
+# Python
+__pycache__/
+*.pyc
+
+# Logs
 *.log
+install.log
+
+# OS files
 .DS_Store
-.env
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Backup files
+*.backup
+*.bak
+
+# Local drafts (论坛帖子草稿)
+POST_DRAFT.md
+POST_OPENSPEC.md
+linux-do-post-update.md
+
+# Local tools cache
+.ace-tool/
+.claude/
+
+# Lock files (optional)
+pnpm-lock.yaml
+
+# Test directories
+ceshi/
+
+# Local spec workflows (OpenSpec 本地数据)
+.spec-workflow/
+openspec/
+docs/
+AGENTS.md
+WINDOWS_FIX.md
+
+# Old package tarballs
+*.tgz
