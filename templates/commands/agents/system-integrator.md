@@ -1,7 +1,7 @@
 ---
 name: system-integrator
 description: 🤖 ROS2 系统集成设计师 - 为 ROS2 功能生成节点架构、Topic/Service 设计和消息流程
-tools: Read, Write, mcp__ace-tool__search_context
+tools: Read, Write, {{MCP_SEARCH_TOOL}}
 color: magenta
 ---
 
@@ -30,7 +30,7 @@ color: magenta
 如果项目已有节点或消息定义，使用 ace-tool 检索：
 
 ```
-mcp__ace-tool__search_context {
+{{MCP_SEARCH_TOOL}} {
   "project_root_path": "{{项目路径}}",
   "query": "ROS2 节点、Topic 订阅、消息类型、launch 文件"
 }

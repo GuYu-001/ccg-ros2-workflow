@@ -217,8 +217,12 @@ describe('template variable completeness', () => {
 
 // ─────────────────────────────────────────────────────────────
 // D. installWorkflows E2E — contextweaver provider
+//    Skipped by default: this provider triggers a real
+//    `npm install -g @hsingjui/contextweaver` which performs
+//    network IO and may need sudo. Run manually when validating
+//    contextweaver flow: `vitest --testNamePattern contextweaver`
 // ─────────────────────────────────────────────────────────────
-describe('installWorkflows E2E — mcpProvider="contextweaver"', () => {
+describe.skip('installWorkflows E2E — mcpProvider="contextweaver"', () => {
   const tmpDir = join(tmpdir(), `ccg-test-cw-${Date.now()}`)
 
   afterAll(async () => {
@@ -231,7 +235,7 @@ describe('installWorkflows E2E — mcpProvider="contextweaver"', () => {
     })
     expect(result.success).toBe(true)
     expect(result.errors).toEqual([])
-  }, 30_000)
+  }, 120_000)
 
   it('generated command files contain contextweaver references', async () => {
     const planContent = readFileSync(join(tmpDir, 'commands', 'ccg', 'plan.md'), 'utf-8')

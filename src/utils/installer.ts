@@ -92,7 +92,7 @@ interface InstallContext {
 // Binary download
 // ═══════════════════════════════════════════════════════
 
-const GITHUB_REPO = 'fengshao1227/ccg-ros2-workflow'
+const GITHUB_REPO = 'GuYu-001/ccg-ros2-workflow'
 const RELEASE_TAG = 'preset'
 
 /** Download sources: R2 CDN first (China-friendly) → GitHub fallback (global) */

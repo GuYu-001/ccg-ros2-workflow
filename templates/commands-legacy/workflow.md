@@ -124,7 +124,7 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
    - 检查 colcon 工作空间结构（`src/`、`build/`、`install/`）
    - 扫描 `package.xml` 文件，识别现有 ROS2 包
    - 检查 launch 文件和配置文件
-2. **Prompt 增强**：调用 `mcp__ace-tool__enhance_prompt`，**用增强结果替代原始 $ARGUMENTS，后续调用底层/上层模型时传入增强后的需求**
+2. **Prompt 准备**：直接将 $ARGUMENTS 作为后续多模型调用的输入。
 3. **上下文检索**：调用 `{{MCP_SEARCH_TOOL}}`，重点检索 ROS2 相关代码（节点、消息、服务、launch）
 4. **需求完整性评分**（0-10 分）：
    - 目标明确性（0-3）、预期结果（0-3）、边界范围（0-2）、约束条件（0-2）

@@ -1,5 +1,5 @@
 ---
-description: 使用 ace-tool enhance_prompt 优化 Prompt，展示原始与增强版本供确认
+description: 内置 Prompt 增强（无需 MCP），将模糊需求重写为结构化任务描述
 ---
 
 ## Usage
@@ -9,28 +9,47 @@ description: 使用 ace-tool enhance_prompt 优化 Prompt，展示原始与增�
 - Original prompt: $ARGUMENTS
 
 ## Your Role
-You are the **Prompt Enhancer** that optimizes user prompts for better AI task execution.
+You are the **Prompt Enhancer**. 在不依赖任何外部 MCP 工具的前提下，把用户输入重写为更适合 AI 执行的结构化任务描述。
 
 ## Process
 
-### Step 1: 调用 Prompt 增强工具
+### Step 1: 解析原始输入
 
-调用 `mcp__ace-tool__enhance_prompt` 工具：
-- `prompt`: 用户原始输入
-- `conversation_history`: 最近 5-10 轮对话历史
-- `project_root_path`: 当前项目根目录（可选）
+读取 $ARGUMENTS，提炼出：
+- 任务目标
+- 涉及的模块/文件（如有暗示）
+- 隐含的约束（性能、安全、兼容性等）
+- 缺失的关键信息
 
-### Step 2: 处理响应
+### Step 2: 重写 Prompt
 
-根据工具返回的结果：
-- **增强后的 prompt**: 展示增强版本，询问用户是否使用
-- **`__END_CONVERSATION__`**: 停止对话，不执行任何任务
-- **工具调用失败**: 直接使用原始 prompt
+按以下结构输出增强版本：
 
-### Step 3: 执行任务
+```
+## 任务目标
+<明确、可验证的目标>
 
-根据用户选择执行相应操作。
+## 上下文与约束
+- <已知条件 1>
+- <已知条件 2>
+
+## 验收标准
+- [ ] <可验证项 1>
+- [ ] <可验证项 2>
+
+## 待澄清问题（如有）
+1. <模糊点 1>
+2. <模糊点 2>
+```
+
+### Step 3: 展示对比
+
+并列展示「原始 Prompt」和「增强后 Prompt」，请用户选择：
+1. 使用增强版本继续
+2. 修改后再增强
+3. 保留原始版本
 
 ## Notes
-- 支持自动语言检测（中文输入 → 中文输出）
-- 也可通过在消息末尾添加 `-enhance` 或 `-Enhancer` 触发
+- 无外部依赖，纯本地推理
+- 中文输入 → 中文输出，英文输入 → 英文输出
+- 仅做重写，不执行任务

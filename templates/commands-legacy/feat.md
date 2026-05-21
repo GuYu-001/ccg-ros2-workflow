@@ -103,7 +103,7 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 #### 2.0 Prompt 增强
 
-**如果 ace-tool MCP 可用**，调用 `mcp__ace-tool__enhance_prompt`，**用增强结果替代原始 $ARGUMENTS，后续调用 Codex/Gemini 时传入增强后的需求**
+**直接将 $ARGUMENTS 作为后续多模型调用的输入**。
 
 #### 2.1 上下文检索
 

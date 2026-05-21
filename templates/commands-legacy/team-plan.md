@@ -16,7 +16,7 @@ description: 'Agent Teams 规划 - Lead 调用 Codex/Gemini 并行分析，产�
 **Steps**
 1. **上下文收集**
    - 用 Glob/Grep/Read 分析项目结构、ROS2 工作空间、现有节点和消息定义。
-   - 如果 `mcp__ace-tool__search_context` 可用，优先语义检索。
+   - 如果 `{{MCP_SEARCH_TOOL}}` 可用，优先语义检索。
    - 整理出：ROS2 版本、包结构、节点拓扑、消息类型、CMakeLists 配置。
 
 2. **多模型并行分析（PARALLEL）**
