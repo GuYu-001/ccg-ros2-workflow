@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug in CCG workflow
+about: Report a bug in CCG-ROS2 workflow
 title: "[bug] "
 labels: bug
 assignees: ''
@@ -8,10 +8,11 @@ assignees: ''
 
 ## Environment
 
-- **CCG version**: (e.g., 1.7.75)
+- **CCG-ROS2 version**: (e.g., 3.0.0)
 - **Node.js version**: (e.g., 20.11.0)
 - **OS**: (e.g., macOS 15.1 / Ubuntu 24.04 / Windows 11)
 - **Claude Code version**: (e.g., 1.0.26)
+- **ROS2 version**: (e.g., Humble Hawksbill)
 
 ## Description
 
@@ -35,4 +36,4 @@ assignees: ''
 
 ## Additional Context
 
-<!-- Screenshots, related issues, etc. -->
+<!-- Screenshots, related issues, ROS2 workspace info, etc. -->

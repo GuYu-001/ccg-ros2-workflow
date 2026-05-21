@@ -36,16 +36,13 @@ description: 'Agent Teams 并行实施 - 读取计划文件，spawn Builder team
      确认开始？
      ```
 
-3. **使用 TeamCreate 创建 Team，然后 spawn teammates 加入该 Team**
-   - ⛔ **禁止使用普通 Agent 子代理。必须通过 TeamCreate 创建 team，再通过 Agent(team_name=...) spawn teammates 加入 team。**
-   - 先调用 TeamCreate 创建 team。
-   - 为每个子任务调用 TaskCreate 创建 task。
-   - 按 Layer 分组，通过 Agent(team_name=..., name="builder-N") spawn Builder teammates（Sonnet）。
-   - 通过 TaskUpdate(owner="builder-N") 将 task 分配给对应 Builder。
+3. **创建 Team + spawn Builders**
+   - 创建 Agent Team。
+   - 按 Layer 分组 spawn Builder teammates（Sonnet）。
    - 每个 Builder 的 spawn prompt 必须包含：
 
    ```
-   你是 Builder，负责实施一个子任务。严格按照以下指令执行。
+   你是 Builder，负责实施一个 ROS2 子任务。严格按照以下指令执行。
 
    ## 你的任务
    <从计划文件中提取该 Builder 负责的子任务全部内容，包括实施步骤>
@@ -60,9 +57,10 @@ description: 'Agent Teams 并行实施 - 读取计划文件，spawn Builder team
 
    ## 实施要求
    1. 严格按照实施步骤执行
-   2. 代码必须符合项目现有规范和模式
-   3. 完成后运行相关的 lint/typecheck 验证（如果项目有配置）
-   4. 代码应自解释，非必要不加注释
+   2. 代码必须符合 ROS2 Humble 规范和项目现有模式
+   3. C++ 节点完成后运行 colcon build 验证编译
+   4. Python 节点完成后运行 ament_flake8 验证
+   5. 代码应自解释，非必要不加注释
 
    ## 验收标准
    <从计划中提取>
@@ -73,11 +71,10 @@ description: 'Agent Teams 并行实施 - 读取计划文件，spawn Builder team
    - **依赖关系**：Layer 2 的 Builder 任务设为依赖 Layer 1 的对应任务，等 Layer 1 完成后自动解锁。
    - spawn 完成后，进入 **delegate 模式**，只协调不写码。
 
-4. **通过 TaskList + SendMessage 监控进度**
-   - 通过 TaskList 查看各 task 状态，通过 SendMessage 与 Builder 沟通。
-   - teammates 完成 task 后会自动发消息通知你，无需轮询。
+4. **监控进度**
+   - 等待所有 Builder 完成。
    - 如果某个 Builder 遇到问题并发消息求助：
-     * 通过 SendMessage 回复指导建议
+     * 分析问题，给出指导建议
      * 不要自己写代码替它完成
    - 如果某个 Builder 失败：
      * 记录失败原因
@@ -97,12 +94,13 @@ description: 'Agent Teams 并行实施 - 读取计划文件，spawn Builder team
    | ...     | ...    | ...  | ...      |
 
    ### 后续建议
-   1. 运行完整测试验证集成：`npm test` / `pnpm test`
-   2. 检查各模块间的集成是否正常
-   3. 提交代码：`git add -A && git commit`
+   1. 运行编译验证：`colcon build --packages-select <pkg>`
+   2. 运行测试：`colcon test --packages-select <pkg>`
+   3. 检查各节点间 Topic/Service 集成是否正常
+   4. 提交代码：`git add -A && git commit`
    ```
 
-   - 通过 SendMessage 发送 shutdown_request 关闭所有 teammates，清理 team。
+   - 关闭所有 teammates，清理 team。
 
 **Exit Criteria**
 - [ ] 所有 Builder 任务完成（或明确失败并记录原因）

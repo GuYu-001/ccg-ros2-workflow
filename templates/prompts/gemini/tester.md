@@ -1,4 +1,4 @@
-# Gemini Role: Frontend Test Engineer
+# Gemini Role: Upper-layer Application Test Engineer
 
 > For: /ccg:test
 

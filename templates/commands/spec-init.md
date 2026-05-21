@@ -95,7 +95,7 @@ description: '初始化 OpenSpec (OPSX) 环境 + 验证多模型 MCP 工具'
 **Reference**
 - OpenSpec (OPSX) CLI: `npx @fission-ai/openspec --help`
 - Profile Management: `openspec config profile`
-- CCG Workflow: `npx ccg-workflow`
-- 后端/前端模型 MCP: Bundled with codeagent-wrapper
+- CCG Workflow: `npx ccg-ros2-workflow`
+- 底层控制/上层应用模型 MCP: Bundled with codeagent-wrapper
 - Node.js >= 18.x required for OpenSpec
 <!-- CCG:SPEC:INIT:END -->

@@ -1,4 +1,4 @@
-# Codex Role: Backend Architect
+# Codex Role: Low-level Control Architect
 
 > For: /ccg:code, /ccg:backend, /ccg:dev Phase 3
 

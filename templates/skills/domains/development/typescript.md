@@ -1,6 +1,6 @@
 ---
 name: typescript
-description: TypeScript/JavaScript 开发。前后端、Node.js、React、Vue。当用户提到 TypeScript、JavaScript、Node、React、Vue、Next.js 时使用。
+description: TypeScript/JavaScript 开发。前底层控制、Node.js、React、Vue。当用户提到 TypeScript、JavaScript、Node、React、Vue、Next.js 时使用。
 ---
 
 # 📜 符箓秘典 · TypeScript/JavaScript
@@ -46,7 +46,7 @@ type Pick<T, K extends keyof T> = { [P in K]: T[P] };
 type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
 ```
 
-## Node.js 后端
+## Node.js 底层控制
 
 ### Express
 ```typescript
@@ -266,7 +266,7 @@ myproject/
 | 库 | 用途 |
 |---|------|
 | Express/Fastify | Node.js 框架 |
-| React/Vue | 前端框架 |
+| React/Vue | 上层应用框架 |
 | Next.js/Nuxt | 全栈框架 |
 | Prisma | ORM |
 | Zod | 数据验证 |

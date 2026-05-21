@@ -1136,7 +1136,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       if (!result.success) {
         console.log()
         console.log(ansis.yellow(`  尝试修复 / Try to fix:`))
-        console.log(ansis.cyan(`    npx ccg-workflow@latest init --force`))
+        console.log(ansis.cyan(`    npx ccg-ros2-workflow@latest init --force`))
         console.log(ansis.gray(`    如仍失败，请提交 issue 并附上以上错误信息`))
         console.log(ansis.gray(`    If still failing, report an issue with the errors above`))
       }

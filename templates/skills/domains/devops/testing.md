@@ -265,7 +265,7 @@ CI阶段: 自动化测试、覆盖率门禁、性能基准测试
   - 智能等待：waitForSelector/waitForResponse，禁止 waitForTimeout
 
 网络:
-  - Mock API：page.route() / cy.intercept() 隔离后端
+  - Mock API：page.route() / cy.intercept() 隔离底层控制
   - 等待响应：waitForResponse 确认数据加载
 
 可视化回归:

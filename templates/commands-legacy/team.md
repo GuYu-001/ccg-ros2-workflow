@@ -43,7 +43,7 @@ TaskUpdate({ taskId: "1", owner: "architect" })
 - 所有专业角色（Architect、Dev、QA、Reviewer）均为 **Agent Teams 真实 teammates**。
 - 必须通过 TeamCreate 创建 team，再通过 Agent(team_name=...) spawn teammates。
 - 通过 SendMessage 通信，通过 TaskList/TaskCreate/TaskUpdate 协调。
-- 后端/前端模型 多模型分析只在 Architecture 和 Review 阶段作为"外援参考"注入。
+- 底层控制/上层应用模型 多模型分析只在 Architecture 和 Review 阶段作为"外援参考"注入。
 
 **角色编制（7 角色）**
 
@@ -54,8 +54,8 @@ TaskUpdate({ taskId: "1", owner: "architect" })
 | 📜 Dev × N | Agent Teams teammates | `Agent(team_name=T, name="dev-1")` | Sonnet | 并行编码，文件隔离 |
 | 🧪 QA | Agent Teams teammate | `Agent(team_name=T, name="qa")` | Sonnet | 写测试、跑测试、lint、typecheck |
 | 🔬 Reviewer | Agent Teams teammate | `Agent(team_name=T, name="reviewer")` | Sonnet | 综合审查，分级判决 |
-| 🔥 {{BACKEND_PRIMARY}} | 外部模型（非 teammate） | Bash + codeagent-wrapper | {{BACKEND_PRIMARY}} | 后端分析/审查（Phase 2, 6） |
-| 🔮 {{FRONTEND_PRIMARY}} | 外部模型（非 teammate） | Bash + codeagent-wrapper | {{FRONTEND_PRIMARY}} | 前端分析/审查（Phase 2, 6） |
+| 🔥 {{BACKEND_PRIMARY}} | 外部模型（非 teammate） | Bash + codeagent-wrapper | {{BACKEND_PRIMARY}} | 底层控制分析/审查（Phase 2, 6） |
+| 🔮 {{FRONTEND_PRIMARY}} | 外部模型（非 teammate） | Bash + codeagent-wrapper | {{FRONTEND_PRIMARY}} | 上层应用分析/审查（Phase 2, 6） |
 
 **8 阶段流水线**
 
@@ -135,7 +135,7 @@ Phase 8: INTEGRATION   → Lead 全量验证 + 报告 + 清理
 
 ### Phase 2: ARCHITECTURE
 
-**执行者**：Lead 调用后端/前端模型 → Architect teammate 综合
+**执行者**：Lead 调用底层控制/上层应用模型 → Architect teammate 综合
 
 1. **Team 已在 Phase 0 创建**，直接使用已有的 team_name。
 
@@ -145,20 +145,20 @@ Phase 8: INTEGRATION   → Lead 全量验证 + 报告 + 清理
    **FIRST Bash call ({{BACKEND_PRIMARY}})**:
    ```
    Bash({
-     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/architect.md\n<TASK>\n需求：<PRD 内容>\n请分析后端架构：模块边界、API 设计、数据模型、依赖关系、实施建议。\n</TASK>\nEOF",
+     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/architect.md\n<TASK>\n需求：<PRD 内容>\n请分析底层控制架构：模块边界、API 设计、数据模型、依赖关系、实施建议。\n</TASK>\nEOF",
      run_in_background: true,
      timeout: 3600000,
-     description: "{{BACKEND_PRIMARY}} 后端架构分析"
+     description: "{{BACKEND_PRIMARY}} 底层控制架构分析"
    })
    ```
 
    **SECOND Bash call ({{FRONTEND_PRIMARY}}) - IN THE SAME MESSAGE**:
    ```
    Bash({
-     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/architect.md\n<TASK>\n需求：<PRD 内容>\n请分析前端架构：组件拆分、状态管理、路由设计、UI/UX 要点、实施建议。\n</TASK>\nEOF",
+     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/architect.md\n<TASK>\n需求：<PRD 内容>\n请分析上层应用架构：组件拆分、状态管理、路由设计、UI/UX 要点、实施建议。\n</TASK>\nEOF",
      run_in_background: true,
      timeout: 3600000,
-     description: "{{FRONTEND_PRIMARY}} 前端架构分析"
+     description: "{{FRONTEND_PRIMARY}} 上层应用架构分析"
    })
    ```
 
@@ -168,8 +168,8 @@ Phase 8: INTEGRATION   → Lead 全量验证 + 报告 + 清理
    TaskOutput({ task_id: "<gemini_task_id>", block: true, timeout: 600000 })
    ```
 
-   ⛔ **前端模型失败必须重试**：若前端模型调用失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
-   ⛔ **后端模型结果必须等待**：后端模型执行 5-15 分钟属正常，超时后继续轮询，禁止跳过。
+   ⛔ **上层应用模型失败必须重试**：若上层应用模型调用失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
+   ⛔ **底层控制模型结果必须等待**：底层控制模型执行 5-15 分钟属正常，超时后继续轮询，禁止跳过。
 
 3. **Spawn Architect teammate**
    - 先调用 TaskCreate 工具，subject 为 "架构蓝图设计"。
@@ -177,7 +177,7 @@ Phase 8: INTEGRATION   → Lead 全量验证 + 报告 + 清理
      * **team_name**: 设为 Phase 0 创建的 team name（如 `todo-crud-team`）
      * **name**: 设为 `"architect"`
      * **model**: 设为 `"opus"`
-     * **prompt**: 包含 PRD 内容、后端/前端模型 分析摘要（如有）、WORKDIR、以及指令（扫描代码库→设计蓝图→输出文件分配矩阵→写入 .claude/team-plan/→标记 completed）
+     * **prompt**: 包含 PRD 内容、底层控制/上层应用模型 分析摘要（如有）、WORKDIR、以及指令（扫描代码库→设计蓝图→输出文件分配矩阵→写入 .claude/team-plan/→标记 completed）
    - 调用 TaskUpdate 将任务 owner 设为 `"architect"`。
    - 等待 Architect 完成（它会自动发消息通知你）。
 
@@ -295,7 +295,7 @@ Phase 8: INTEGRATION   → Lead 全量验证 + 报告 + 清理
 
 ### Phase 6: REVIEW
 
-**执行者**：Lead 调用后端/前端模型 → Reviewer teammate 综合
+**执行者**：Lead 调用底层控制/上层应用模型 → Reviewer teammate 综合
 
 1. **运行 git diff 获取变更**
    - `Bash: git diff` 获取完整变更内容。
@@ -309,7 +309,7 @@ Phase 8: INTEGRATION   → Lead 全量验证 + 报告 + 清理
      command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/reviewer.md\n<TASK>\n审查以下变更：\n<git diff 输出或变更文件列表>\n</TASK>\nOUTPUT (JSON):\n{\n  \"findings\": [{\"severity\": \"Critical|Warning|Info\", \"dimension\": \"logic|security|performance|error_handling\", \"file\": \"path\", \"line\": N, \"description\": \"描述\", \"fix_suggestion\": \"修复建议\"}],\n  \"passed_checks\": [\"检查项\"],\n  \"summary\": \"总体评估\"\n}\nEOF",
      run_in_background: true,
      timeout: 3600000,
-     description: "{{BACKEND_PRIMARY}} 后端审查"
+     description: "{{BACKEND_PRIMARY}} 底层控制审查"
    })
    ```
 
@@ -319,12 +319,12 @@ Phase 8: INTEGRATION   → Lead 全量验证 + 报告 + 清理
      command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/reviewer.md\n<TASK>\n审查以下变更：\n<git diff 输出或变更文件列表>\n</TASK>\nOUTPUT (JSON):\n{\n  \"findings\": [{\"severity\": \"Critical|Warning|Info\", \"dimension\": \"patterns|maintainability|accessibility|ux|frontend_security\", \"file\": \"path\", \"line\": N, \"description\": \"描述\", \"fix_suggestion\": \"修复建议\"}],\n  \"passed_checks\": [\"检查项\"],\n  \"summary\": \"总体评估\"\n}\nEOF",
      run_in_background: true,
      timeout: 3600000,
-     description: "{{FRONTEND_PRIMARY}} 前端审查"
+     description: "{{FRONTEND_PRIMARY}} 上层应用审查"
    })
    ```
 
-   ⛔ **前端模型失败必须重试**：若失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
-   ⛔ **后端模型结果必须等待**：超时后继续轮询，禁止跳过。
+   ⛔ **上层应用模型失败必须重试**：若失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
+   ⛔ **底层控制模型结果必须等待**：超时后继续轮询，禁止跳过。
 
 3. **Spawn Reviewer teammate**
    - 调用 TaskCreate，subject 为 "Review: 综合代码审查"。
@@ -332,7 +332,7 @@ Phase 8: INTEGRATION   → Lead 全量验证 + 报告 + 清理
      * **team_name**: Phase 0 创建的 team name
      * **name**: `"reviewer"`
      * **model**: `"sonnet"`
-     * **prompt**: 包含 git diff、后端/前端模型 审查 JSON（如有）、QA 报告、WORKDIR、以及指令（独立审查→综合意见→分级→输出报告→标记 completed）
+     * **prompt**: 包含 git diff、底层控制/上层应用模型 审查 JSON（如有）、QA 报告、WORKDIR、以及指令（独立审查→综合意见→分级→输出报告→标记 completed）
    - 调用 TaskUpdate 设 owner 为 `"reviewer"`。
    - 等待 Reviewer 完成（它会自动发消息通知你）。
 

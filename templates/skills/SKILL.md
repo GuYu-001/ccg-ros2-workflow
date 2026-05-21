@@ -88,5 +88,5 @@ Provides:
 
 ## Installed by CCG
 
-These skills are automatically installed during `npx ccg-workflow` initialization.
-To update: run `npx ccg-workflow update` or `npx ccg-workflow` again.
+These skills are automatically installed during `npx ccg-ros2-workflow` initialization.
+To update: run `npx ccg-ros2-workflow update` or `npx ccg-ros2-workflow` again.

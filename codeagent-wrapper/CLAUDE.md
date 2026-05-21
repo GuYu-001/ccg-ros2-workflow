@@ -275,7 +275,7 @@ bash build-all.sh
 | `codeagent-wrapper/main.go` | `version = "5.10.0"` （`main.go:17`） | `5.10.0` |
 | `src/utils/installer.ts` | `EXPECTED_BINARY_VERSION = '5.10.0'` | `5.10.0` |
 
-两边不一致的后果：用户运行 `npx ccg-workflow update` 时无法触发 binary 重新下载，继续使用旧版 binary。
+两边不一致的后果：用户运行 `npx ccg-ros2-workflow update` 时无法触发 binary 重新下载，继续使用旧版 binary。
 
 ---
 

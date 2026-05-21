@@ -45,23 +45,23 @@
 
 | 命令文件 | slash command | 描述 |
 |----------|--------------|------|
-| `workflow.md` | `/ccg:workflow` | 多模型协作开发工作流（研究→构思→计划→执行→优化→评审），智能路由前端/后端 |
+| `workflow.md` | `/ccg:workflow` | 多模型协作开发工作流（研究→构思→计划→执行→优化→评审），智能路由上层应用/底层控制 |
 | `plan.md` | `/ccg:plan` | 多模型协作规划：上下文检索 + 双模型分析 → 生成 Step-by-step 实施计划 |
 | `execute.md` | `/ccg:execute` | 多模型协作执行：根据计划获取原型 → Claude 重构实施 → 多模型审计交付 |
-| `codex-exec.md` | `/ccg:codex-exec` | 后端模型全权执行计划：MCP 搜索 + 代码实现 + 测试，多模型审核 |
+| `codex-exec.md` | `/ccg:codex-exec` | 底层控制模型全权执行计划：MCP 搜索 + 代码实现 + 测试，多模型审核 |
 | `feat.md` | `/ccg:feat` | 智能功能开发：自动识别输入类型，规划/讨论/实施全流程 |
-| `frontend.md` | `/ccg:frontend` | 前端专项工作流（研究→构思→计划→执行→优化→评审），前端主模型主导 |
-| `backend.md` | `/ccg:backend` | 后端专项工作流（研究→构思→计划→执行→优化→评审），后端主模型主导 |
+| `frontend.md` | `/ccg:frontend` | 上层应用专项工作流（研究→构思→计划→执行→优化→评审），上层应用主模型主导 |
+| `backend.md` | `/ccg:backend` | 底层控制专项工作流（研究→构思→计划→执行→优化→评审），底层控制主模型主导 |
 | `enhance.md` | `/ccg:enhance` | 内置 Prompt 增强：将模糊需求转化为结构化任务描述 |
 
 ### 分析与优化（4 个）
 
 | 命令文件 | slash command | 描述 |
 |----------|--------------|------|
-| `analyze.md` | `/ccg:analyze` | 多模型技术分析（并行）：后端视角 + 前端视角，交叉验证综合见解 |
-| `debug.md` | `/ccg:debug` | 多模型调试：后端诊断 + 前端诊断，交叉验证定位问题 |
-| `optimize.md` | `/ccg:optimize` | 多模型性能优化：后端优化 + 前端优化 |
-| `test.md` | `/ccg:test` | 多模型测试生成：智能路由后端测试 / 前端测试 |
+| `analyze.md` | `/ccg:analyze` | 多模型技术分析（并行）：底层控制视角 + 上层应用视角，交叉验证综合见解 |
+| `debug.md` | `/ccg:debug` | 多模型调试：底层控制诊断 + 上层应用诊断，交叉验证定位问题 |
+| `optimize.md` | `/ccg:optimize` | 多模型性能优化：底层控制优化 + 上层应用优化 |
+| `test.md` | `/ccg:test` | 多模型测试生成：智能路由底层控制测试 / 上层应用测试 |
 
 ### 代码质量（2 个）
 
@@ -93,7 +93,7 @@
 |----------|--------------|------|
 | `team.md` | `/ccg:team` | **统一工作流（推荐）**：8 阶段全流程（需求→架构→规划→开发→测试→审查→修复→集成），7 角色自动编排 |
 | `team-research.md` | `/ccg:team-research` | 需求研究：并行探索代码库，产出约束集 + 可验证成功判据 |
-| `team-plan.md` | `/ccg:team-plan` | 规划：Lead 调用前端/后端模型并行分析，产出零决策并行实施计划 |
+| `team-plan.md` | `/ccg:team-plan` | 规划：Lead 调用上层应用/底层控制模型并行分析，产出零决策并行实施计划 |
 | `team-exec.md` | `/ccg:team-exec` | 并行实施：读取计划文件，spawn Builder teammates 并行写代码 |
 | `team-review.md` | `/ccg:team-review` | 双模型交叉审查：分级处理 Critical/Warning/Info |
 
@@ -116,7 +116,7 @@
 | 文件 | name | 描述 |
 |------|------|------|
 | `planner.md` | `planner` | 📋 任务规划师：使用 WBS 方法论分解功能需求为可执行任务 |
-| `ui-ux-designer.md` | `ui-ux-designer` | 🎨 UI/UX 设计师：为前端功能生成页面结构、组件拆分和交互流程设计 |
+| `ui-ux-designer.md` | `ui-ux-designer` | 🎨 UI/UX 设计师：为上层应用功能生成页面结构、组件拆分和交互流程设计 |
 | `init-architect.md` | `init-architect` | 🏗 自适应初始化：根级简明 + 模块级详尽，分阶段遍历并回报覆盖率 |
 | `get-current-datetime.md` | `get-current-datetime` | 🕐 执行日期命令并仅返回原始输出（无格式、无说明、无并行） |
 | `team-architect.md` | `team-architect` | 🏗 架构师：扫描代码库，综合多模型分析，输出架构蓝图和文件分配矩阵（v1.8.3+） |
@@ -144,24 +144,24 @@
 
 | 文件 | 角色 |
 |------|------|
-| `analyzer.md` | Codex 后端技术分析 |
-| `architect.md` | Codex 后端架构师 |
-| `debugger.md` | Codex 后端调试专家 |
-| `optimizer.md` | Codex 后端性能优化 |
-| `reviewer.md` | Codex 后端代码审查 |
-| `tester.md` | Codex 后端测试工程师 |
+| `analyzer.md` | Codex 底层控制技术分析 |
+| `architect.md` | Codex 底层控制架构师 |
+| `debugger.md` | Codex 底层控制调试专家 |
+| `optimizer.md` | Codex 底层控制性能优化 |
+| `reviewer.md` | Codex 底层控制代码审查 |
+| `tester.md` | Codex 底层控制测试工程师 |
 
 ### gemini/（7 个，比 claude/codex 多 `frontend.md`）
 
 | 文件 | 角色 |
 |------|------|
 | `analyzer.md` | Gemini 全栈技术分析 |
-| `architect.md` | Gemini 前端架构师 |
-| `debugger.md` | Gemini 前端调试专家 |
-| `frontend.md` | Gemini 前端开发专家（Gemini 专属） |
-| `optimizer.md` | Gemini 前端性能优化 |
-| `reviewer.md` | Gemini 前端代码审查 |
-| `tester.md` | Gemini 前端测试工程师 |
+| `architect.md` | Gemini 上层应用架构师 |
+| `debugger.md` | Gemini 上层应用调试专家 |
+| `frontend.md` | Gemini 上层应用开发专家（Gemini 专属） |
+| `optimizer.md` | Gemini 上层应用性能优化 |
+| `reviewer.md` | Gemini 上层应用代码审查 |
+| `tester.md` | Gemini 上层应用测试工程师 |
 
 ---
 
@@ -271,7 +271,7 @@
 | `harden/` | `harden` | 改善界面健壮性（错误处理/边界态） |
 | `normalize/` | `normalize` | 审计并对齐到设计系统规范 |
 | `onboard/` | `onboard` | 设计改善引导流程和空态 |
-| `optimize/` | `optimize` | 优化前端性能（加载/渲染/交互） |
+| `optimize/` | `optimize` | 优化上层应用性能（加载/渲染/交互） |
 | `overdrive/` | `overdrive` | 突破常规，将界面推向极致表达 |
 | `polish/` | `polish` | 最终质量打磨（对齐/间距/颜色一致性） |
 | `quieter/` | `quieter` | 降低视觉噪音，让主内容呼吸 |
@@ -322,10 +322,10 @@
 
 | 占位符 | 默认替换值 | 说明 |
 |--------|-----------|------|
-| `{{FRONTEND_PRIMARY}}` | `gemini` | 前端主模型，可配置为 `codex`/`claude` |
-| `{{BACKEND_PRIMARY}}` | `codex` | 后端主模型，可配置为 `gemini`/`claude` |
-| `{{FRONTEND_MODELS}}` | `["gemini"]` | 前端模型列表（JSON 数组） |
-| `{{BACKEND_MODELS}}` | `["codex"]` | 后端模型列表（JSON 数组） |
+| `{{FRONTEND_PRIMARY}}` | `gemini` | 上层应用主模型，可配置为 `codex`/`claude` |
+| `{{BACKEND_PRIMARY}}` | `codex` | 底层控制主模型，可配置为 `gemini`/`claude` |
+| `{{FRONTEND_MODELS}}` | `["gemini"]` | 上层应用模型列表（JSON 数组） |
+| `{{BACKEND_MODELS}}` | `["codex"]` | 底层控制模型列表（JSON 数组） |
 | `{{REVIEW_MODELS}}` | `["codex","gemini"]` | 审查模型列表（JSON 数组） |
 | `{{GEMINI_MODEL_FLAG}}` | `--gemini-model gemini-3.1-pro-preview ` | 使用 gemini 时传给 wrapper，否则为空字符串（v2.1.14 修复：安装时替换，不留到运行时） |
 | `{{LITE_MODE_FLAG}}` | `""` | 轻量模式时为 `--lite `，影响 codeagent-wrapper 行为 |

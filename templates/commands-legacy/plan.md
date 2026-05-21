@@ -1,8 +1,8 @@
 ---
-description: '多模型协作规划 - 上下文检索 + 双模型分析 → 生成 Step-by-step 实施计划'
+description: 'ROS2 多模型协作规划 - 上下文检索 + 双模型分析 → 生成 Step-by-step 实施计划'
 ---
 
-# Plan - 多模型协作规划
+# Plan - ROS2 多模型协作规划
 
 $ARGUMENTS
 
@@ -11,25 +11,21 @@ $ARGUMENTS
 ## 核心协议
 
 - **语言协议**：与工具/模型交互用**英语**，与用户交互用**中文**
-- **强制并行**：后端/前端模型调用必须使用 `run_in_background: true`（包含单模型调用，避免阻塞主线程）
+- **强制并行**：Codex/Gemini 调用必须使用 `run_in_background: true`（包含单模型调用，避免阻塞主线程）
 - **代码主权**：外部模型对文件系统**零写入权限**，所有修改由 Claude 执行
 - **止损机制**：当前阶段输出通过验证前，不进入下一阶段
 - **仅规划**：本命令允许读取上下文与写入 `.claude/plan/*` 计划文件，但**禁止修改产品代码**
+- **目标平台**：ROS2 Humble / 物理机器人
 
 ---
 
 ## 多模型调用规范
 
-**工作目录**：
-- `{{WORKDIR}}`：**必须通过 Bash 执行 `pwd`（Unix）或 `cd`（Windows CMD）获取当前工作目录的绝对路径**，禁止从 `$HOME` 或环境变量推断
-- 如果用户通过 `/add-dir` 添加了多个工作区，先用 Glob/Grep 确定任务相关的工作区
-- 如果无法确定，用 `AskUserQuestion` 询问用户选择目标工作区
-
 **调用语法**（并行用 `run_in_background: true`）：
 
 ```
 Bash({
-  command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend <{{BACKEND_PRIMARY}}|{{FRONTEND_PRIMARY}}> {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'
+  command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend <codex|gemini> - \"{{WORKDIR}}\" <<'EOF'
 ROLE_FILE: <角色提示词路径>
 <TASK>
 需求：<增强后的需求>
@@ -45,10 +41,19 @@ EOF",
 
 **角色提示词**：
 
-| 阶段 | 后端 | 前端 |
+| 阶段 | Codex | Gemini |
 |------|-------|--------|
-| 分析 | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/analyzer.md` | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md` |
-| 规划 | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/architect.md` | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/architect.md` |
+| 分析 | `~/.claude/.ccg/prompts/codex/analyzer.md` | `~/.claude/.ccg/prompts/gemini/analyzer.md` |
+| 规划 | `~/.claude/.ccg/prompts/codex/architect.md` | `~/.claude/.ccg/prompts/gemini/architect.md` |
+
+**工作目录**：
+- `{{WORKDIR}}`：替换为目标工作目录的**绝对路径**
+- 如果用户通过 `/add-dir` 添加了多个工作区，先用 Glob/Grep 确定任务相关的工作区
+- 如果无法确定，用 `AskUserQuestion` 询问用户选择目标工作区
+- 默认使用当前工作目录
+
+**模型参数说明**：
+- `{{GEMINI_MODEL_FLAG}}`：当使用 `--backend gemini` 时，替换为 `--gemini-model gemini-3.1-pro-preview `（注意末尾空格）；使用 codex 时替换为空字符串
 
 **会话复用**：每次调用返回 `SESSION_ID: xxx`（通常由 wrapper 输出），**必须保存**以供后续 `/ccg:execute` 使用。
 
@@ -62,8 +67,6 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 - 必须指定 `timeout: 600000`，否则默认只有 30 秒会导致提前超时
 - 若 10 分钟后仍未完成，继续用 `TaskOutput` 轮询，**绝对不要 Kill 进程**
 - 若因等待时间过长跳过了等待，**必须调用 `AskUserQuestion` 询问用户选择继续等待还是 Kill Task**
-- ⛔ **前端模型失败必须重试**：若前端模型调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才跳过前端模型结果并使用单模型结果继续。
-- ⛔ **后端模型结果必须等待**：后端模型执行时间较长（5-15 分钟）属于正常。TaskOutput 超时后必须继续用 TaskOutput 轮询，**绝对禁止在后端模型未返回结果时直接跳过或继续下一阶段**。已启动的后端任务若被跳过 = 浪费 token + 丢失结果。
 
 ---
 
@@ -77,7 +80,17 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 #### 1.1 Prompt 增强（必须首先执行）
 
-**Prompt 增强**（按 `/ccg:enhance` 的逻辑执行）：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（明确目标、技术约束、范围边界、验收标准），**用增强结果替代原始 $ARGUMENTS** 用于后续所有阶段。
+**⚠️ 必须调用 `mcp__ace-tool__enhance_prompt` 工具**：
+
+```
+mcp__ace-tool__enhance_prompt({
+  prompt: "$ARGUMENTS",
+  conversation_history: "<最近5-10轮对话历史>",
+  project_root_path: "{{WORKDIR}}"
+})
+```
+
+等待返回增强后的 prompt，**用增强结果替代原始 $ARGUMENTS** 用于后续所有阶段。
 
 #### 1.2 上下文检索
 
@@ -111,18 +124,18 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 #### 2.1 分发输入
 
-**并行调用** {{BACKEND_PRIMARY}} 和 {{FRONTEND_PRIMARY}}（`run_in_background: true`）：
+**并行调用** Codex 和 Gemini（`run_in_background: true`）：
 
 将**原始需求**（不带预设观点）分发给两个模型：
 
-1. **{{BACKEND_PRIMARY}} 后端分析**：
-   - ROLE_FILE: `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/analyzer.md`
-   - 关注：技术可行性、架构影响、性能考量、潜在风险
+1. **Codex 底层控制分析**：
+   - ROLE_FILE: `~/.claude/.ccg/prompts/codex/analyzer.md`
+   - 关注：技术可行性、节点架构、实时性考量、潜在风险
    - OUTPUT: 多角度解决方案 + 优劣势分析
 
-2. **{{FRONTEND_PRIMARY}} 前端分析**：
-   - ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md`
-   - 关注：UI/UX 影响、用户体验、视觉设计
+2. **Gemini 上层应用分析**：
+   - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/analyzer.md`
+   - 关注：Launch 结构、参数组织、RViz 可视化
    - OUTPUT: 多角度解决方案 + 优劣势分析
 
 用 `TaskOutput` 等待两个模型的完整结果。**📌 保存 SESSION_ID**（`CODEX_SESSION` 和 `GEMINI_SESSION`）。
@@ -133,20 +146,20 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 1. **识别一致观点**（强信号）
 2. **识别分歧点**（需权衡）
-3. **互补优势**：后端逻辑以 {{BACKEND_PRIMARY}} 为准，前端设计以 {{FRONTEND_PRIMARY}} 为准
+3. **互补优势**：底层控制逻辑以 Codex 为准，上层应用设计以 Gemini 为准
 4. **逻辑推演**：消除方案中的逻辑漏洞
 
 #### 2.3（可选但推荐）双模型产出“计划草案”
 
 为降低 Claude 合成计划的遗漏风险，可并行让两个模型输出“计划草案”（仍然**不允许**修改文件）：
 
-1. **{{BACKEND_PRIMARY}} 计划草案**（后端权威）：
-   - ROLE_FILE: `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/architect.md`
-   - OUTPUT: Step-by-step plan + pseudo-code（重点：数据流/边界条件/错误处理/测试策略）
+1. **Codex 计划草案**（底层控制权威）：
+   - ROLE_FILE: `~/.claude/.ccg/prompts/codex/architect.md`
+   - OUTPUT: Step-by-step plan + pseudo-code（重点：节点架构/消息 QoS/实时性/测试策略）
 
-2. **{{FRONTEND_PRIMARY}} 计划草案**（前端权威）：
-   - ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/architect.md`
-   - OUTPUT: Step-by-step plan + pseudo-code（重点：信息架构/交互/可访问性/视觉一致性）
+2. **Gemini 计划草案**（上层应用权威）：
+   - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/architect.md`
+   - OUTPUT: Step-by-step plan + pseudo-code（重点：Launch 结构/参数组织/RViz 配置/仿真适配）
 
 用 `TaskOutput` 等待两个模型的完整结果，并记录其建议的关键差异点。
 
@@ -158,12 +171,12 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 ## 📋 实施计划：<任务名称>
 
 ### 任务类型
-- [ ] 前端 (→ {{FRONTEND_PRIMARY}})
-- [ ] 后端 (→ {{BACKEND_PRIMARY}})
-- [ ] 全栈 (→ 并行)
+- [ ] 上层应用 (→ Gemini)：Launch/Python/RViz
+- [ ] 底层控制 (→ Codex)：C++/驱动/实时
+- [ ] 全栈 (→ 并行)：涉及上下层
 
 ### 技术方案
-<综合双模型分析的最优方案>
+<综合 Codex + Gemini 分析的最优方案>
 
 ### 实施步骤
 1. <步骤 1> - 预期产物
@@ -252,6 +265,6 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 1. **仅规划不实施** – 本命令不执行任何代码变更
 2. **不问 Y/N** – 只展示计划，让用户决定下一步
-3. **信任规则** – 后端以 {{BACKEND_PRIMARY}} 为准，前端以 {{FRONTEND_PRIMARY}} 为准
+3. **信任规则** – 底层控制以 Codex 为准，上层应用以 Gemini 为准
 4. 外部模型对文件系统**零写入权限**
 5. **SESSION_ID 交接** – 计划末尾必须包含 `CODEX_SESSION` / `GEMINI_SESSION`（供 `/ccg:execute resume <SESSION_ID>` 使用）

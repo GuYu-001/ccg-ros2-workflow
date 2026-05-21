@@ -15,7 +15,7 @@ disable-model-invocation: false
 | [python](python.md) | Python | Web框架、数据处理、自动化 |
 | [go](go.md) | Go | 高并发、微服务、云原生 |
 | [rust](rust.md) | Rust | 系统编程、内存安全、高性能 |
-| [typescript](typescript.md) | TS/JS | 前后端、Node.js、React/Vue |
+| [typescript](typescript.md) | TS/JS | 前底层控制、Node.js、React/Vue |
 | [java](java.md) | Java | 企业级、Spring、微服务 |
 | [cpp](cpp.md) | C/C++ | 系统底层、性能优化 |
 | [shell](shell.md) | Bash | 脚本自动化、系统管理 |
@@ -23,12 +23,12 @@ disable-model-invocation: false
 ## 语言选型指南
 
 ```yaml
-Web 后端:
+Web 底层控制:
   - 快速开发: Python (FastAPI/Django)
   - 高性能: Go (Gin/Echo)
   - 企业级: Java (Spring Boot)
 
-Web 前端:
+Web 上层应用:
   - SPA: TypeScript + React/Vue
   - SSR: Next.js/Nuxt.js
 

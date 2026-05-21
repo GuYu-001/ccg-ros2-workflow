@@ -8,7 +8,7 @@ When the user's request matches trigger keywords below, automatically READ the c
 
 > Security domain files contain red team/pentest reference content that may trigger antivirus false positives.
 > They are NOT installed by default. To enable, manually copy from the npm package:
-> `cp -r $(npm root -g)/ccg-workflow/templates/skills/domains/security/ ~/.claude/skills/ccg/domains/security/`
+> `cp -r $(npm root -g)/ccg-ros2-workflow/templates/skills/domains/security/ ~/.claude/skills/ccg/domains/security/`
 
 | Trigger Keywords | Skill File | Description |
 |------------------|-----------|-------------|
@@ -18,6 +18,19 @@ When the user's request matches trigger keywords below, automatically READ the c
 | code audit, dangerous function, taint analysis, sink, source | `~/.claude/skills/ccg/domains/security/code-audit.md` | Source code security audit |
 | binary, reversing, PWN, fuzzing, stack overflow, heap overflow, ROP | `~/.claude/skills/ccg/domains/security/vuln-research.md` | Vulnerability research & exploitation |
 | OSINT, threat intelligence, threat modeling, ATT&CK, threat hunting | `~/.claude/skills/ccg/domains/security/threat-intel.md` | Threat intelligence & OSINT |
+
+## ROS2 Domain (`domains/ros2-*/`) — Robotics Specialization
+
+> CCG-ROS2 specialized routing for ROS2 Humble robotics development.
+> Routes upper-layer tasks (Launch/Python/RViz) to Antigravity, low-level tasks (C++/drivers) to Codex.
+
+| Trigger Keywords | Skill File | Authority Model |
+|------------------|-----------|-----------------|
+| LiDAR, RPLidar, Velodyne, Ouster, Livox, point cloud, PointCloud2, PCL, voxel, RANSAC, camera calibration, RealSense, ZED, depth image, sensor fusion, TF2 sync | `~/.claude/skills/ccg/domains/ros2-perception/SKILL.md` | Codex (low-level driver) + Antigravity (config) |
+| PID controller, MPC, LQR, trajectory tracking, Pure Pursuit, Stanley, ros2_control, controller_manager, hardware_interface, motor driver, encoder, CAN motor, Modbus motor | `~/.claude/skills/ccg/domains/ros2-control/SKILL.md` | Codex (real-time control) |
+| Nav2, navigation_stack, SLAM, slam_toolbox, Cartographer, RTAB-Map, AMCL, costmap, planner, NavfnPlanner, SmacPlanner, DWB, RPP, MPPI, behavior tree | `~/.claude/skills/ccg/domains/ros2-navigation/SKILL.md` | Antigravity (config) + Codex (custom planner) |
+| MoveIt, MoveIt2, move_group, manipulator, arm, grasp, pick, place, IK, FK, kinematics, URDF, SRDF, xacro, OMPL, CHOMP, STOMP | `~/.claude/skills/ccg/domains/ros2-manipulation/SKILL.md` | Codex (kinematics) + Antigravity (config) |
+| serial, ttyUSB, ttyACM, RS232, RS485, CAN, SocketCAN, can0, candump, I2C, SPI, GPIO, udev rules, device permission, dialout group, modbus | `~/.claude/skills/ccg/domains/ros2-hardware/SKILL.md` | Codex (driver) |
 
 ## Architecture Domain (`domains/architecture/`)
 
@@ -64,7 +77,7 @@ When the user is working with a specific programming language, read the correspo
 | C / C++ | `~/.claude/skills/ccg/domains/development/cpp.md` |
 | Shell / Bash | `~/.claude/skills/ccg/domains/development/shell.md` |
 
-## Frontend Design Domain (`domains/frontend-design/`)
+## Upper-layer Application Design Domain (`domains/frontend-design/`)
 
 | Trigger Keywords | Skill File |
 |------------------|-----------|

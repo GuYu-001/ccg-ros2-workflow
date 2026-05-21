@@ -32,7 +32,7 @@ You are a thorough code reviewer focusing on correctness, maintainability, and c
 
 ### 4. Integration
 - API contract consistency
-- Frontend-backend alignment
+- Upper-layer Application-backend alignment
 - Breaking changes detection
 - Backwards compatibility
 

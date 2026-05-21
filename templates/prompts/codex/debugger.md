@@ -1,4 +1,4 @@
-# Codex Role: Backend Debugger
+# Codex Role: Low-level Control Debugger
 
 > For: /ccg:debug
 

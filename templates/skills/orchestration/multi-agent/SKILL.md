@@ -85,7 +85,7 @@ disable-model-invocation: false
 | 条件 | 说明 | 示例 |
 |------|------|------|
 | 多文件独立变更 | ≥3 个无交叉依赖的文件 | 6 个新秘典各自独立 |
-| 可并行子任务 | ≥2 个无数据依赖的工作流 | 前端+后端+文档 |
+| 可并行子任务 | ≥2 个无数据依赖的工作流 | 上层应用+底层控制+文档 |
 | 复杂度高 | 单 Agent 需 >10 步 | 全栈重构 |
 | 时间紧迫 | 劫钟催命，需加速 | 紧急修复多服务 |
 
@@ -247,8 +247,8 @@ Agent-C: [file5.md]            — 互不干涉
 每个 Agent 负责一个功能模块：
 
 ```
-Agent-前端: src/components/
-Agent-后端: src/api/
+Agent-上层应用: src/components/
+Agent-底层控制: src/api/
 Agent-基础: src/lib/
 ```
 

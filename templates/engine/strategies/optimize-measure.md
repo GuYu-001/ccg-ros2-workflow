@@ -63,8 +63,8 @@ Gate: 优化已应用 ✓
 
 1. 分析代码找出瓶颈
 2. 对于 M+ 复杂度，可选调用外部模型：
-   - backend 模型: optimizer 角色 — 服务端/算法优化建议
-   - frontend 模型: optimizer 角色 — 前端/加载优化建议
+   - backend 模型: optimizer 角色 — 底层控制/算法优化建议
+   - frontend 模型: optimizer 角色 — 上层应用/加载优化建议
 3. 按影响大小排序瓶颈：
    ```
    🔍 瓶颈分析

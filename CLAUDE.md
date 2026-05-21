@@ -245,10 +245,10 @@
 
 ```bash
 # 一键安装（推荐）
-npx ccg-workflow
+npx ccg-ros2-workflow
 
 # 交互式菜单
-npx ccg-workflow menu
+npx ccg-ros2-workflow menu
 ```
 
 ### CLI 入口点
@@ -281,10 +281,10 @@ npx ccg-workflow menu
 
 | 命令 | 用途 |
 |------|------|
-| `npx ccg-workflow` | 一键安装/菜单 |
-| `npx ccg-workflow menu` | 交互式菜单 |
-| `npx ccg-workflow update` | 更新到最新版本 |
-| `npx ccg-workflow diagnose-mcp` | 诊断 MCP 配置 |
+| `npx ccg-ros2-workflow` | 一键安装/菜单 |
+| `npx ccg-ros2-workflow menu` | 交互式菜单 |
+| `npx ccg-ros2-workflow update` | 更新到最新版本 |
+| `npx ccg-ros2-workflow diagnose-mcp` | 诊断 MCP 配置 |
 
 ### Slash Commands 接口（29 个）
 
@@ -552,7 +552,7 @@ bin/
 
 ```mermaid
 graph TD
-    User["用户"] --> CLI["npx ccg-workflow"]
+    User["用户"] --> CLI["npx ccg-ros2-workflow"]
     CLI --> Init["一键安装"]
 
     Init --> Commands["~/.claude/commands/ccg/<br/>29 个命令"]

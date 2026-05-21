@@ -14,6 +14,7 @@
 - [ ] `refactor` — Code refactoring (no behavior change)
 - [ ] `test` — Adding or updating tests
 - [ ] `chore` — Build, CI, dependency updates
+- [ ] `ros2` — ROS2-specific changes (skills, prompts, strategies)
 
 ## Changes
 
@@ -27,8 +28,8 @@
 
 <!-- How was this tested? -->
 
-- [ ] `pnpm test` passes (134+ tests)
-- [ ] `pnpm build` succeeds
+- [ ] `npm test` passes
+- [ ] `npm run build` succeeds
 - [ ] Manual testing: <!-- describe what you tested -->
 
 ## Checklist

@@ -1,44 +1,39 @@
 ---
-description: '多模型性能优化：{{BACKEND_PRIMARY}} 后端优化 + {{FRONTEND_PRIMARY}} 前端优化'
+description: 'ROS2 多模型性能优化：Codex 实时性优化 + Gemini 仿真优化'
 ---
 
-# Optimize - 多模型性能优化
+# Optimize - ROS2 多模型性能优化
 
-双模型并行分析性能瓶颈，按性价比排序优化建议。
+双模型并行分析 ROS2 性能瓶颈，按性价比排序优化建议。
 
 ## 使用方法
 
 ```bash
-/optimize <优化目标>
+/optimize <ROS2优化目标>
 ```
 
 ## 上下文
 
 - 优化目标：$ARGUMENTS
-- {{BACKEND_PRIMARY}} 专注后端性能（数据库、算法、缓存）
-- {{FRONTEND_PRIMARY}} 专注前端性能（渲染、加载、交互）
+- Codex 专注底层控制性能（实时性、QoS、控制频率）
+- Gemini 专注上层应用性能（Launch 效率、仿真性能、可视化）
 
 ## 你的角色
 
-你是**性能工程师**，编排多模型优化流程：
-- **{{BACKEND_PRIMARY}}** – 后端性能优化（**后端权威**）
-- **{{FRONTEND_PRIMARY}}** – 前端性能优化（**前端权威**）
+你是**ROS2 性能工程师**，编排多模型优化流程：
+- **Codex** – 底层控制性能优化：C++/实时性/QoS（**底层权威**）
+- **Gemini** – 上层应用性能优化：Launch/仿真/RViz（**上层权威**）
 - **Claude (自己)** – 综合优化、实施变更
 
 ---
 
 ## 多模型调用规范
 
-**工作目录**：
-- `{{WORKDIR}}`：**必须通过 Bash 执行 `pwd`（Unix）或 `cd`（Windows CMD）获取当前工作目录的绝对路径**，禁止从 `$HOME` 或环境变量推断
-- 如果用户通过 `/add-dir` 添加了多个工作区，先用 Glob/Grep 确定任务相关的工作区
-- 如果无法确定，用 `AskUserQuestion` 询问用户选择目标工作区
-
 **调用语法**（并行用 `run_in_background: true`）：
 
 ```
 Bash({
-  command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend <{{BACKEND_PRIMARY}}|{{FRONTEND_PRIMARY}}> {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'
+  command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend <codex|gemini> - \"{{WORKDIR}}\" <<'EOF'
 ROLE_FILE: <角色提示词路径>
 <TASK>
 需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
@@ -56,8 +51,17 @@ EOF",
 
 | 模型 | 提示词 |
 |------|--------|
-| 后端 | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/optimizer.md` |
-| 前端 | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/optimizer.md` |
+| Codex | `~/.claude/.ccg/prompts/codex/optimizer.md` |
+| Gemini | `~/.claude/.ccg/prompts/gemini/optimizer.md` |
+
+**工作目录**：
+- `{{WORKDIR}}`：替换为目标工作目录的**绝对路径**
+- 如果用户通过 `/add-dir` 添加了多个工作区，先用 Glob/Grep 确定任务相关的工作区
+- 如果无法确定，用 `AskUserQuestion` 询问用户选择目标工作区
+- 默认使用当前工作目录
+
+**模型参数说明**：
+- `{{GEMINI_MODEL_FLAG}}`：当使用 `--backend gemini` 时，替换为 `--gemini-model gemini-3.1-pro-preview `（注意末尾空格）；使用 codex 时替换为空字符串
 
 **并行调用**：使用 `run_in_background: true` 启动，用 `TaskOutput` 等待结果。**必须等所有模型返回后才能进入下一阶段**。
 
@@ -71,8 +75,6 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 - 必须指定 `timeout: 600000`，否则默认只有 30 秒会导致提前超时。
 如果 10 分钟后仍未完成，继续用 `TaskOutput` 轮询，**绝对不要 Kill 进程**。
 - 若因等待时间过长跳过了等待 TaskOutput 结果，则**必须调用 `AskUserQuestion` 工具询问用户选择继续等待还是 Kill Task。禁止直接 Kill Task。**
-- ⛔ **前端模型失败必须重试**：若前端模型调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才跳过前端模型结果并使用单模型结果继续。
-- ⛔ **后端模型结果必须等待**：后端模型执行时间较长（5-15 分钟）属于正常。TaskOutput 超时后必须继续用 TaskOutput 轮询，**绝对禁止在后端模型未返回结果时直接跳过或继续下一阶段**。已启动的后端任务若被跳过 = 浪费 token + 丢失结果。
 
 ---
 
@@ -88,7 +90,7 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 ### 🔍 阶段 0：Prompt 增强（可选）
 
-`[模式：准备]` - **Prompt 增强**（按 `/ccg:enhance` 的逻辑执行）：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（明确目标、技术约束、范围边界、验收标准），**用增强结果替代原始 $ARGUMENTS，后续调用后端/前端模型 时传入增强后的需求**
+`[模式：准备]` - 如 ace-tool MCP 可用，调用 `mcp__ace-tool__enhance_prompt`，**用增强结果替代原始 $ARGUMENTS，后续调用 Codex/Gemini 时传入增强后的需求**
 
 ### 🔍 阶段 1：性能基线
 
@@ -104,15 +106,15 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 **⚠️ 必须发起两个并行 Bash 调用**（参照上方调用规范）：
 
-1. **{{BACKEND_PRIMARY}} 后端分析**：`Bash({ command: "...--backend {{BACKEND_PRIMARY}}...", run_in_background: true })`
-   - ROLE_FILE: `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/optimizer.md`
-   - 需求：分析后端性能问题（$ARGUMENTS）
-   - OUTPUT：性能瓶颈列表、优化方案、预期收益
+1. **Codex 底层控制分析**：`Bash({ command: "...--backend codex...", run_in_background: true })`
+   - ROLE_FILE: `~/.claude/.ccg/prompts/codex/optimizer.md`
+   - 需求：分析底层控制性能问题（$ARGUMENTS）
+   - OUTPUT：实时性瓶颈、QoS 配置优化、控制频率建议
 
-2. **{{FRONTEND_PRIMARY}} 前端分析**：`Bash({ command: "...--backend {{FRONTEND_PRIMARY}}...", run_in_background: true })`
-   - ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/optimizer.md`
-   - 需求：分析前端性能问题（Core Web Vitals）
-   - OUTPUT：性能瓶颈列表、优化方案、预期收益
+2. **Gemini 上层应用分析**：`Bash({ command: "...--backend gemini...", run_in_background: true })`
+   - ROLE_FILE: `~/.claude/.ccg/prompts/gemini/optimizer.md`
+   - 需求：分析上层应用性能问题（Launch 效率、仿真性能）
+   - OUTPUT：启动时间优化、参数加载优化、RViz 性能建议
 
 用 `TaskOutput` 等待两个模型的完整结果。**必须等所有模型返回后才能进入下一阶段**。
 
@@ -144,17 +146,17 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 | 类型 | 指标 | 良好 | 需优化 |
 |------|------|------|--------|
-| 后端 | API 响应 | <100ms | >500ms |
-| 后端 | 数据库查询 | <50ms | >200ms |
-| 前端 | LCP | <2.5s | >4s |
-| 前端 | FID | <100ms | >300ms |
-| 前端 | CLS | <0.1 | >0.25 |
+| 底层控制 | 控制循环周期 | <1ms | >10ms |
+| 底层控制 | 消息延迟 | <5ms | >50ms |
+| 上层应用 | Launch 启动时间 | <5s | >15s |
+| 上层应用 | RViz 刷新率 | 30 FPS | <10 FPS |
+| 仿真 | Gazebo 实时因子 | >0.9 | <0.5 |
 
 ## 常见优化模式
 
-**后端**：N+1→批量加载、缺索引→复合索引、重复计算→缓存、同步→异步
+**底层控制**：QoS 配置优化、多线程执行器、零拷贝传输、实时内核配置
 
-**前端**：大 Bundle→代码分割、频繁重渲染→memo、大列表→虚拟滚动、未优化图片→WebP
+**上层应用**：Launch 懒加载、参数文件优化、RViz 显示简化、仿真物理引擎配置
 
 ---
 
@@ -163,4 +165,4 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 1. **先测量后优化** – 没有数据不盲目优化
 2. **性价比优先** – 高影响 + 低难度优先
 3. **不破坏功能** – 优化不能引入 bug
-4. **信任规则** – 后端以 {{BACKEND_PRIMARY}} 为准，前端以 {{FRONTEND_PRIMARY}} 为准
+4. **信任规则** – 底层控制以 Codex 为准，上层应用以 Gemini 为准

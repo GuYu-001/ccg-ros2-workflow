@@ -1,9 +1,132 @@
 ---
 name: cpp
-description: C/C++ 开发。系统编程、性能优化、内存管理。当用户提到 C、C++、CMake、内存、指针时使用。
+description: C/C++ 开发(含 ROS2 C++ 节点)。系统编程、性能优化、内存管理、ROS2 节点开发。当用户提到 C、C++、CMake、内存、指针、ROS2、rclcpp、生命周期节点时使用。
 ---
 
-# 📜 符箓秘典 · C/C++
+# 📜 符箓秘典 · C/C++(ROS2 增强版)
+
+## ROS2 C++ 开发上下文(底层控制核心)
+
+ROS2 项目中,C++ 节点承担**底层控制**职责:硬件驱动、实时控制算法、关键性能路径。
+
+### rclcpp 核心模式
+
+```cpp
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/laser_scan.hpp>
+#include <geometry_msgs/msg/twist.hpp>
+
+class MotorDriverNode : public rclcpp::Node {
+public:
+  MotorDriverNode() : Node("motor_driver") {
+    // QoS 策略:控制指令需要 Reliable
+    auto qos = rclcpp::QoS(10).reliable();
+
+    cmd_sub_ = this->create_subscription<geometry_msgs::msg::Twist>(
+      "cmd_vel", qos,
+      [this](const geometry_msgs::msg::Twist::SharedPtr msg) {
+        this->cmd_callback(msg);
+      });
+
+    odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("odom", qos);
+
+    // 高频控制循环 (100Hz)
+    timer_ = this->create_wall_timer(
+      std::chrono::milliseconds(10),
+      std::bind(&MotorDriverNode::control_loop, this));
+  }
+
+private:
+  rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_sub_;
+  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
+  rclcpp::TimerBase::SharedPtr timer_;
+};
+```
+
+### 生命周期节点 (Lifecycle Node)
+
+适用场景:硬件驱动、需要状态管理的关键节点。
+
+```cpp
+#include <rclcpp_lifecycle/lifecycle_node.hpp>
+
+class LidarDriver : public rclcpp_lifecycle::LifecycleNode {
+public:
+  CallbackReturn on_configure(const rclcpp_lifecycle::State&) {
+    // 初始化硬件连接
+    return CallbackReturn::SUCCESS;
+  }
+
+  CallbackReturn on_activate(const rclcpp_lifecycle::State&) {
+    // 启动数据采集
+    return CallbackReturn::SUCCESS;
+  }
+
+  CallbackReturn on_deactivate(const rclcpp_lifecycle::State&) {
+    // 停止数据采集,保留连接
+    return CallbackReturn::SUCCESS;
+  }
+};
+```
+
+### CMakeLists.txt 标准模板
+
+```cmake
+cmake_minimum_required(VERSION 3.8)
+project(my_robot_driver)
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic -O2)
+endif()
+
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+
+add_executable(motor_driver src/motor_driver.cpp)
+ament_target_dependencies(motor_driver
+  rclcpp sensor_msgs geometry_msgs)
+
+install(TARGETS motor_driver DESTINATION lib/${PROJECT_NAME})
+
+ament_package()
+```
+
+### ROS2 实时性约束
+
+| 场景 | 推荐策略 |
+|------|----------|
+| 控制循环 (>= 100Hz) | wall_timer + 独立 callback group + Reentrant |
+| 传感器数据 | Best Effort QoS,丢包优于阻塞 |
+| 关键控制指令 | Reliable QoS,深度 10 |
+| 配置参数 | Transient Local,新订阅者获取最新 |
+
+### 线程安全(多回调场景)
+
+```cpp
+// 使用 mutex 保护共享状态
+std::mutex state_mutex_;
+geometry_msgs::msg::Twist current_cmd_;
+
+void cmd_callback(const geometry_msgs::msg::Twist::SharedPtr msg) {
+  std::lock_guard<std::mutex> lock(state_mutex_);
+  current_cmd_ = *msg;
+}
+
+void control_loop() {
+  geometry_msgs::msg::Twist cmd;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    cmd = current_cmd_;
+  }
+  // 使用 cmd 计算控制量
+}
+```
+
+---
+
+## 通用 C++ 知识(以下保持原样)
 
 
 ## 现代 C++ (C++17/20)

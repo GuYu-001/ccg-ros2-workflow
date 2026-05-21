@@ -1,28 +1,29 @@
 ---
-description: '前端专项工作流（研究→构思→计划→执行→优化→评审），{{FRONTEND_PRIMARY}} 主导'
+description: 'ROS2 上层应用专项工作流（研究→构思→计划→执行→优化→评审），{{FRONTEND_PRIMARY}} 主导'
 ---
 
-# Frontend - 前端专项开发
+# Frontend - ROS2 上层应用专项开发
 
 ## 使用方法
 
 ```bash
-/frontend <UI任务描述>
+/frontend <上层应用任务描述>
 ```
 
 ## 上下文
 
-- 前端任务：$ARGUMENTS
+- 上层应用任务：$ARGUMENTS
 - {{FRONTEND_PRIMARY}} 主导，{{BACKEND_PRIMARY}} 辅助参考
-- 适用：组件设计、响应式布局、UI 动画、样式优化
+- 适用：Launch 文件、参数配置、RViz 可视化、Python 节点、仿真配置
+- 目标平台：ROS2 Humble
 
 ## 你的角色
 
-你是**前端编排者**，协调多模型完成 UI/UX 任务（研究 → 构思 → 计划 → 执行 → 优化 → 评审），用中文协助用户。
+你是**ROS2 上层应用编排者**，协调多模型完成 Launch/配置/可视化任务（研究 → 构思 → 计划 → 执行 → 优化 → 评审），用中文协助用户。
 
 **协作模型**：
-- **{{FRONTEND_PRIMARY}}** – 前端 UI/UX（**前端权威，可信赖**）
-- **{{BACKEND_PRIMARY}}** – 后端视角（**前端意见仅供参考**）
+- **{{FRONTEND_PRIMARY}}** – 上层应用：Launch、Python、RViz、仿真（**上层权威，可信赖**）
+- **{{BACKEND_PRIMARY}}** – 底层视角（**上层意见仅供参考**）
 - **Claude (自己)** – 编排、计划、执行、交付
 
 ---
@@ -44,6 +45,7 @@ ROLE_FILE: <角色提示词路径>
 <TASK>
 需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
 上下文：<前序阶段收集的项目上下文、分析结果等>
+ROS2上下文：<colcon工作空间、package.xml、现有launch文件、节点架构等>
 </TASK>
 OUTPUT: 期望输出格式
 EOF",
@@ -54,11 +56,12 @@ EOF",
 
 # 复用会话调用
 Bash({
-  command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}resume <GEMINI_SESSION> - \"{{WORKDIR}}\" <<'EOF'
+  command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}resume <FRONTEND_SESSION> - \"{{WORKDIR}}\" <<'EOF'
 ROLE_FILE: <角色提示词路径>
 <TASK>
 需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
 上下文：<前序阶段收集的项目上下文、分析结果等>
+ROS2上下文：<colcon工作空间、package.xml、现有launch文件、节点架构等>
 </TASK>
 OUTPUT: 期望输出格式
 EOF",
@@ -70,98 +73,141 @@ EOF",
 
 **角色提示词**：
 
-| 阶段 | 前端 |
-|------|--------|
+| 阶段 | 上层应用 |
+|------|----------|
 | 分析 | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md` |
 | 规划 | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/architect.md` |
 | 审查 | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/reviewer.md` |
 
-**会话复用**：每次调用返回 `SESSION_ID: xxx`，后续阶段用 `resume xxx` 复用上下文。阶段 2 保存 `GEMINI_SESSION`，阶段 3 和 5 使用 `resume` 复用。
-
-⛔ **前端模型失败必须重试**：若前端模型调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才报告错误并终止。
+**会话复用**：每次调用返回 `SESSION_ID: xxx`，后续阶段用 `resume xxx` 复用上下文。阶段 2 保存 `FRONTEND_SESSION`，阶段 3 和 5 使用 `resume` 复用。
 
 ---
 
-## 沟通守则
+## 执行工作流
 
-1. 响应以模式标签 `[模式：X]` 开始，初始为 `[模式：研究]`
-2. 严格按 `研究 → 构思 → 计划 → 执行 → 优化 → 评审` 顺序流转
-3. 在需要询问用户时，尽量使用 `AskUserQuestion` 工具进行交互，举例场景：请求用户确认/选择/批准
+**任务描述**：$ARGUMENTS
+
+### 🔍 阶段 1：研究与分析
+
+`[模式：研究]` - 理解上层应用需求并收集 ROS2 上下文：
+
+1. **ROS2 环境检测**：
+   - 检查 colcon 工作空间结构
+   - 扫描现有 launch 文件和配置文件
+   - 识别现有 Python 节点
+2. **上下文检索**：调用 `{{MCP_SEARCH_TOOL}}`，重点检索 launch 文件、参数配置、RViz 配置
+3. **需求完整性评分**（0-10 分）：
+   - 目标明确性（0-3）、预期结果（0-3）、边界范围（0-2）、约束条件（0-2）
+   - ≥7 分：继续 | <7 分：⛔ 停止，提出补充问题
+
+### 💡 阶段 2：方案构思
+
+`[模式：构思]` - 上层应用模型分析：
+
+调用上层应用模型，使用分析提示词，输出：
+- Launch 文件结构设计
+- 参数配置方案
+- RViz 可视化配置
+- Python 节点设计（如需）
+- 仿真环境配置（如需）
+
+**📌 保存 SESSION_ID**（`FRONTEND_SESSION`）。
+
+综合分析，输出方案对比（至少 2 个方案），等待用户选择。
+
+### 📋 阶段 3：详细规划
+
+`[模式：计划]` - 上层应用详细规划：
+
+调用上层应用模型（复用会话 `resume $FRONTEND_SESSION`），使用规划提示词，输出：
+- **Launch 文件清单**：每个 launch 文件的职责、启动的节点、参数传递
+- **参数配置清单**：YAML 文件结构、参数分组、默认值
+- **RViz 配置清单**：显示插件、坐标系、话题订阅
+- **Python 节点清单**（如需）：节点职责、订阅/发布的 Topic
+- **文件清单**：需要创建/修改的文件列表
+
+**⛔ HARD STOP**：展示计划，等待用户批准。未批准禁止进入执行阶段。
+
+### ⚙️ 阶段 4：代码执行
+
+`[模式：执行]` - Claude 主导实施：
+
+根据批准的计划，按以下顺序实施：
+
+1. **Launch 文件**：
+   - 创建 launch 文件（`launch/`）
+   - 配置节点启动、参数、重映射、命名空间
+   - 添加条件启动逻辑（如需）
+2. **参数配置**：
+   - 创建参数 YAML（`config/`）
+   - 组织参数层级结构
+   - 设置合理默认值
+3. **RViz 配置**：
+   - 创建 RViz 配置文件（`rviz/`）
+   - 配置显示插件（TF、LaserScan、PointCloud、Image 等）
+   - 设置坐标系和视角
+4. **Python 节点**（如需）：
+   - 创建 Python 节点（`scripts/` 或 `<package>/`）
+   - 实现 rclpy 逻辑
+   - 配置 setup.py
+5. **仿真配置**（如需）：
+   - Gazebo world 文件
+   - 机器人模型（URDF/SDF）
+   - 仿真参数
+
+每完成一个模块，验证语法正确性。
+
+### 🔧 阶段 5：优化审查
+
+`[模式：优化]` - 上层应用模型审查：
+
+调用上层应用模型（复用会话 `resume $FRONTEND_SESSION`），使用审查提示词，审查：
+- Launch 文件语法和逻辑
+- 参数配置完整性
+- RViz 配置合理性
+- Python 代码质量（如有）
+- 仿真配置正确性（如有）
+
+综合审查意见，Claude 整合修复：
+- **Critical 问题**：必须修复（语法错误、参数缺失、路径错误）
+- **Warning 问题**：建议修复（命名不规范、参数冗余、注释不足）
+- **Info 建议**：可选优化（代码风格、性能优化）
+
+### ✅ 阶段 6：最终评审
+
+`[模式：评审]` - 质量把关：
+
+1. **语法检查**：
+   - Launch 文件语法验证
+   - YAML 文件格式检查
+   - Python 代码静态检查（如有）
+2. **功能测试**：
+   ```bash
+   ros2 launch <package_name> <launch_file>
+   # 验证节点启动、参数加载、话题发布
+   ```
+3. **RViz 测试**（如有）：
+   - 加载 RViz 配置
+   - 验证可视化效果
+4. **文档完整性**：
+   - Launch 文件有注释
+   - 参数配置有说明
+   - README.md 包含使用说明
+
+输出评审报告，等待用户确认。
 
 ---
 
-## 核心工作流
+## 完成标准
 
-### 🔍 阶段 0：Prompt 增强（可选）
+所有 6 个阶段完成后，输出最终交付清单：
 
-`[模式：准备]` - **Prompt 增强**（按 `/ccg:enhance` 的逻辑执行）：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（明确目标、技术约束、范围边界、验收标准），**用增强结果替代原始 $ARGUMENTS，后续调用 {{FRONTEND_PRIMARY}} 时传入增强后的需求**
+- ✅ Launch 文件可用
+- ✅ 参数配置完整
+- ✅ RViz 配置正确（如有）
+- ✅ Python 节点实现完成（如有）
+- ✅ 仿真配置就绪（如有）
+- ✅ 功能测试通过
+- ✅ 文档完整
 
-### 🔍 阶段 1：研究
-
-`[模式：研究]` - 理解需求并收集上下文
-
-1. **代码检索**（如 ace-tool MCP 可用）：调用 `{{MCP_SEARCH_TOOL}}` 检索现有组件、样式、设计系统
-2. 需求完整性评分（0-10 分）：≥7 继续，<7 停止补充
-
-### 💡 阶段 2：构思
-
-`[模式：构思]` - {{FRONTEND_PRIMARY}} 主导分析
-
-**⚠️ 必须调用 {{FRONTEND_PRIMARY}}**（参照上方调用规范）：
-- ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md`
-- 需求：增强后的需求（如未增强则用 $ARGUMENTS）
-- 上下文：阶段 1 收集的项目上下文
-- OUTPUT: UI 可行性分析、推荐方案（至少 2 个）、用户体验评估
-
-**📌 保存 SESSION_ID**（`GEMINI_SESSION`）用于后续阶段复用。
-
-输出方案（至少 2 个），等待用户选择。
-
-### 📋 阶段 3：计划
-
-`[模式：计划]` - {{FRONTEND_PRIMARY}} 主导规划
-
-**⚠️ 必须调用 {{FRONTEND_PRIMARY}}**（使用 `resume <GEMINI_SESSION>` 复用会话）：
-- ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/architect.md`
-- 需求：用户选择的方案
-- 上下文：阶段 2 的分析结果
-- OUTPUT: 组件结构、UI 流程、样式方案
-
-Claude 综合规划，请求用户批准后存入 `.claude/plan/任务名.md`
-
-### ⚡ 阶段 4：执行
-
-`[模式：执行]` - 代码开发
-
-- 严格按批准的计划实施
-- 遵循项目现有设计系统和代码规范
-- 确保响应式、可访问性
-
-### 🚀 阶段 5：优化
-
-`[模式：优化]` - {{FRONTEND_PRIMARY}} 主导审查
-
-**⚠️ 必须调用 {{FRONTEND_PRIMARY}}**（参照上方调用规范）：
-- ROLE_FILE: `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/reviewer.md`
-- 需求：审查以下前端代码变更
-- 上下文：git diff 或代码内容
-- OUTPUT: 可访问性、响应式、性能、设计一致性问题列表
-
-整合审查意见，用户确认后执行优化。
-
-### ✅ 阶段 6：评审
-
-`[模式：评审]` - 最终评估
-
-- 对照计划检查完成情况
-- 验证响应式和可访问性
-- 报告问题与建议
-
----
-
-## 关键规则
-
-1. **{{FRONTEND_PRIMARY}} 前端意见可信赖**
-2. **{{BACKEND_PRIMARY}} 前端意见仅供参考**
-3. 外部模型对文件系统**零写入权限**
-4. Claude 负责所有代码写入和文件操作
+**🎉 ROS2 上层应用开发完成！**

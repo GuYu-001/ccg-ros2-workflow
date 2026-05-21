@@ -92,7 +92,7 @@ interface InstallContext {
 // Binary download
 // ═══════════════════════════════════════════════════════
 
-const GITHUB_REPO = 'fengshao1227/ccg-workflow'
+const GITHUB_REPO = 'fengshao1227/ccg-ros2-workflow'
 const RELEASE_TAG = 'preset'
 
 /** Download sources: R2 CDN first (China-friendly) → GitHub fallback (global) */
@@ -535,7 +535,7 @@ export async function installCodexMode(): Promise<{ success: boolean, message: s
 
     return {
       success: true,
-      message: `Codex mode installed:\n  ~/.codex/AGENTS.md\n  ~/.codex/config.toml\n  ~/.codex/hooks.json\n  ~/.codex/hooks/ccg-workflow.py\n  ~/.codex/agents/ccg-implement.toml\n  ~/.codex/agents/ccg-review.toml\n  ~/.codex/agents/ccg-research.toml`,
+      message: `Codex mode installed:\n  ~/.codex/AGENTS.md\n  ~/.codex/config.toml\n  ~/.codex/hooks.json\n  ~/.codex/hooks/ccg-ros2-workflow.py\n  ~/.codex/agents/ccg-implement.toml\n  ~/.codex/agents/ccg-review.toml\n  ~/.codex/agents/ccg-research.toml`,
     }
   }
   catch (error) {
@@ -556,7 +556,7 @@ export async function uninstallCodexMode(): Promise<{ success: boolean, removed:
     join(codexHome, 'agents', 'ccg-implement.toml'),
     join(codexHome, 'agents', 'ccg-review.toml'),
     join(codexHome, 'agents', 'ccg-research.toml'),
-    join(codexHome, 'hooks', 'ccg-workflow.py'),
+    join(codexHome, 'hooks', 'ccg-ros2-workflow.py'),
     join(codexHome, 'hooks.json'),
   ]
 
@@ -749,7 +749,7 @@ export function showBinaryDownloadWarning(binDir: string): void {
     console.log()
   }
   console.log(ansis.white(`    或重新安装 / Or re-install:`))
-  console.log(ansis.cyan(`       npx ccg-workflow@latest`))
+  console.log(ansis.cyan(`       npx ccg-ros2-workflow@latest`))
   console.log()
 }
 
@@ -1014,7 +1014,7 @@ export async function installWorkflows(
   if (!(await fs.pathExists(ctx.templateDir))) {
     const errorMsg = `Template directory not found: ${ctx.templateDir} (PACKAGE_ROOT=${PACKAGE_ROOT}). `
       + `This usually means the npm package is incomplete or the cache is corrupted. `
-      + `Try: npm cache clean --force && npx ccg-workflow@latest`
+      + `Try: npm cache clean --force && npx ccg-ros2-workflow@latest`
     ctx.result.errors.push(errorMsg)
     ctx.result.success = false
     return ctx.result

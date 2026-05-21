@@ -85,7 +85,7 @@ $ARGUMENTS
 从 `$ARGUMENTS` + 项目上下文推断：
 - **frontend** — UI, component, CSS, React, Vue, Angular, style, layout, 页面, 组件
 - **backend** — API, database, server, endpoint, auth, queue, 接口, 数据库
-- **fullstack** — 同时涉及前后端
+- **fullstack** — 同时涉及前底层控制
 - **security** — vulnerability, auth, injection, encryption, 漏洞, 认证
 - **devops** — CI/CD, Docker, deploy, infrastructure, 部署, 运维
 

@@ -9,7 +9,7 @@ description: '按规范执行 + 多模型协作 + 归档'
 - Minimize documentation—prefer self-explanatory code over comments.
 
 **Guardrails**
-- **NEVER** apply 后端/前端模型 prototypes directly—all outputs are reference only.
+- **NEVER** apply 底层控制/上层应用模型 prototypes directly—all outputs are reference only.
 - **MANDATORY**: Request `unified diff patch` format from external models; they have zero write permission.
 - Keep implementation strictly within `tasks.md` scope—no scope creep.
 - Refer to `openspec/config.yaml` for conventions.
@@ -106,8 +106,8 @@ description: '按规范执行 + 多模型协作 + 归档'
    TaskOutput({ task_id: "<gemini_task_id>", block: true, timeout: 600000 })
    ```
 
-   ⛔ **前端模型失败必须重试**：若前端模型调用失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
-   ⛔ **后端模型结果必须等待**：后端模型执行 5-15 分钟属正常，超时后继续轮询，禁止跳过。
+   ⛔ **上层应用模型失败必须重试**：若上层应用模型调用失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
+   ⛔ **底层控制模型结果必须等待**：底层控制模型执行 5-15 分钟属正常，超时后继续轮询，禁止跳过。
 
    Address any critical findings before proceeding.
 

@@ -179,8 +179,8 @@ async function askReconfigureRouting(currentRouting?: ModelRouting): Promise<Mod
  */
 async function checkIfGlobalInstall(): Promise<boolean> {
   try {
-    const { stdout } = await execAsync('npm list -g ccg-workflow --depth=0', { timeout: 5000 })
-    return stdout.includes('ccg-workflow@')
+    const { stdout } = await execAsync('npm list -g ccg-ros2-workflow --depth=0', { timeout: 5000 })
+    return stdout.includes('ccg-ros2-workflow@')
   }
   catch {
     return false
@@ -211,7 +211,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
     console.log()
     console.log(`${i18n.t('update:recommendNpm')}`)
     console.log()
-    console.log(ansis.cyan('  npm install -g ccg-workflow@latest'))
+    console.log(ansis.cyan('  npm install -g ccg-ros2-workflow@latest'))
     console.log()
     console.log(ansis.gray(i18n.t('update:willUpdateBoth')))
     console.log()
@@ -227,7 +227,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
       console.log()
       console.log(ansis.cyan(i18n.t('update:runInNewTerminal')))
       console.log()
-      console.log(ansis.cyan.bold('  npm install -g ccg-workflow@latest'))
+      console.log(ansis.cyan.bold('  npm install -g ccg-ros2-workflow@latest'))
       console.log()
       console.log(ansis.gray(`(${i18n.t('update:autoUpdateAfter')})`))
       console.log()
@@ -261,7 +261,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
     }
 
     spinner.text = i18n.t('update:downloading')
-    await execAsync(`npx --yes ccg-workflow@latest --version`, { timeout: 60000 })
+    await execAsync(`npx --yes ccg-ros2-workflow@latest --version`, { timeout: 60000 })
     spinner.succeed(i18n.t('update:downloadDone'))
   }
   catch (error) {
@@ -356,7 +356,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
 
   let installSuccess = false
   try {
-    await execAsync(`npx --yes ccg-workflow@latest init --force --skip-mcp --skip-prompt`, {
+    await execAsync(`npx --yes ccg-ros2-workflow@latest init --force --skip-mcp --skip-prompt`, {
       timeout: 300000, // 5min — binary download from GitHub Release may be slow (especially in China)
       env: {
         ...process.env,
@@ -445,7 +445,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
     }
     console.log()
     console.log(ansis.yellow(i18n.t('update:manualRetry')))
-    console.log(ansis.cyan('  npx ccg-workflow@latest'))
+    console.log(ansis.cyan('  npx ccg-ros2-workflow@latest'))
     return
   }
 

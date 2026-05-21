@@ -385,11 +385,11 @@ WHERE command LIKE '%powershell%' OR command LIKE '%cmd%'
 ### 核心工具
 | 工具 | 类型 | 特点 |
 |------|------|------|
-| HashiCorp Vault | 平台 | 动态密钥、AppRole、多后端 |
+| HashiCorp Vault | 平台 | 动态密钥、AppRole、多底层控制 |
 | AWS KMS | 云服务 | 托管密钥、信封加密、自动轮转 |
 | AWS Secrets Manager | 云服务 | 自动轮转、Lambda集成 |
 | Sealed Secrets | K8s | GitOps 友好、加密存储 |
-| External Secrets | K8s | 多后端同步（Vault/AWS/GCP） |
+| External Secrets | K8s | 多底层控制同步（Vault/AWS/GCP） |
 
 ### 密钥管理检查清单
 ```yaml

@@ -166,7 +166,7 @@ export async function showMainMenu(): Promise<void> {
         item('3', i18n.t('menu:options.configMcp'), isZh ? '代码检索 MCP 工具' : 'Code retrieval MCP tool'),
         item('4', i18n.t('menu:options.configApi'), isZh ? '自定义 API 端点' : 'Custom API endpoint'),
         item('5', i18n.t('menu:options.configStyle'), isZh ? '选择输出人格' : 'Choose output personality'),
-        item('6', i18n.t('menu:options.configModel'), isZh ? '前端/后端模型切换' : 'Switch frontend/backend models'),
+        item('6', i18n.t('menu:options.configModel'), isZh ? '上层应用/底层控制模型切换' : 'Switch frontend/backend models'),
 
         groupSep(isZh ? '其他工具' : 'Tools'),
         item('X', isZh ? 'Codex 模式' : 'Codex Mode', isZh ? '安装 Codex 主导的多模型编排' : 'Install Codex-led multi-model orchestration'),
@@ -553,7 +553,7 @@ async function configModelRouting(): Promise<void> {
   const spinner = ora(i18n.t('init:model.reinstalling')).start()
   try {
     const { execSync } = await import('node:child_process')
-    execSync('npx --yes ccg-workflow init --force --skip-prompt --skip-mcp', {
+    execSync('npx --yes ccg-ros2-workflow init --force --skip-prompt --skip-mcp', {
       timeout: 300000,
       stdio: 'pipe',
       env: { ...process.env, CCG_UPDATE_MODE: 'true' },
@@ -827,8 +827,8 @@ async function handleInstallClaude(): Promise<void> {
  */
 async function checkIfGlobalInstall(): Promise<boolean> {
   try {
-    const { stdout } = await execAsync('npm list -g ccg-workflow --depth=0', { timeout: 5000 })
-    return stdout.includes('ccg-workflow@')
+    const { stdout } = await execAsync('npm list -g ccg-ros2-workflow --depth=0', { timeout: 5000 })
+    return stdout.includes('ccg-ros2-workflow@')
   }
   catch {
     return false
@@ -908,7 +908,7 @@ async function uninstall(): Promise<void> {
       console.log()
       console.log(`  ${i18n.t('menu:uninstall.runInNewTerminal')}`)
       console.log()
-      console.log(ansis.cyan.bold('    npm uninstall -g ccg-workflow'))
+      console.log(ansis.cyan.bold('    npm uninstall -g ccg-ros2-workflow'))
       console.log()
       console.log(ansis.gray(`  (${i18n.t('menu:uninstall.afterDone')})`))
     }

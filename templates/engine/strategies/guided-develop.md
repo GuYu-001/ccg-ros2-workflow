@@ -81,23 +81,23 @@ Gate: 实施已完成 ✓
 
 2. **并行调用双模型**（`run_in_background: true`，两个同时启动）：
 
-Backend 模型：
+Low-level Control 模型：
 ```
 Bash({
   command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"$WORKDIR\" <<'CODEAGENT_EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/analyzer.md\n<TASK>\n需求：{增强后的需求}\n上下文：{Phase 2 收集的项目上下文、相关代码摘要}\n</TASK>\nOUTPUT: 技术分析报告（可行性、架构建议、风险评估、实施方案对比）\nCODEAGENT_EOF",
   run_in_background: true,
   timeout: 3600000,
-  description: "Backend 模型分析"
+  description: "Low-level Control 模型分析"
 })
 ```
 
-Frontend 模型（**必须同时启动，不是"如果是全栈才调"**）：
+Upper-layer Application 模型（**必须同时启动，不是"如果是全栈才调"**）：
 ```
 Bash({
   command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"$WORKDIR\" <<'CODEAGENT_EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md\n<TASK>\n需求：{增强后的需求}\n上下文：{Phase 2 收集的项目上下文}\n</TASK>\nOUTPUT: 从不同视角的分析报告（可行性、设计建议、风险评估）\nCODEAGENT_EOF",
   run_in_background: true,
   timeout: 3600000,
-  description: "Frontend 模型分析"
+  description: "Upper-layer Application 模型分析"
 })
 ```
 
@@ -222,7 +222,7 @@ Bash({
 **⛔ 双模型交叉审查（每轮 spawn 新调用，干净上下文）：**
 3. 并行调用双模型（`run_in_background: true`，使用 model-router.md 模板）：
    - backend 模型 + reviewer 角色 — 安全、性能、错误处理
-   - frontend 模型 + reviewer 角色 — 设计一致性（如涉及前端）
+   - frontend 模型 + reviewer 角色 — 设计一致性（如涉及上层应用）
 4. 综合审查意见
 
 **⛔ 质量关卡（必须逐个调用 Skill，不可跳过）：**

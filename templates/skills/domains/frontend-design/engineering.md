@@ -1,9 +1,9 @@
 ---
 name: frontend-engineering
-description: 前端工程化。性能优化（Web Vitals、懒加载、虚拟滚动）、测试（Vitest、Playwright、MSW）、构建工具（Vite、Webpack、esbuild）。当用户提到性能优化、前端测试、构建工具、代码分割时使用。
+description: 上层应用工程化。性能优化（Web Vitals、懒加载、虚拟滚动）、测试（Vitest、Playwright、MSW）、构建工具（Vite、Webpack、esbuild）。当用户提到性能优化、上层应用测试、构建工具、代码分割时使用。
 ---
 
-# 前端工程化 · Frontend Engineering
+# 上层应用工程化 · Frontend Engineering
 
 ## 一、性能优化
 

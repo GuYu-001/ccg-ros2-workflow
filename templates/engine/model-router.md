@@ -11,8 +11,8 @@ Read ~/.claude/.ccg/config.toml
 ```
 
 从 `[routing]` 区块提取：
-- `frontend.primary` — 前端模型（默认 `gemini`）
-- `backend.primary` — 后端模型（默认 `codex`）
+- `frontend.primary` — 上层应用模型（默认 `gemini`）
+- `backend.primary` — 底层控制模型（默认 `codex`）
 - `geminiModel` — Gemini 型号（默认 `gemini-3.1-pro-preview`）
 
 如果配置文件不存在或不可读，使用默认值直接继续。
@@ -22,8 +22,8 @@ Read ~/.claude/.ccg/config.toml
 ### 分析/研究阶段
 | 任务领域 | 推荐模型 | 角色提示词 |
 |---------|---------|-----------|
-| 后端/架构 | backend 模型 | `$BACKEND/analyzer.md` |
-| 前端/UI | frontend 模型 | `$FRONTEND/analyzer.md` |
+| 底层控制/架构 | backend 模型 | `$BACKEND/analyzer.md` |
+| 上层应用/UI | frontend 模型 | `$FRONTEND/analyzer.md` |
 | 全栈 | 双模型并行 | 各用对应 analyzer |
 | 安全 | backend 模型 | `$BACKEND/analyzer.md` |
 
@@ -31,7 +31,7 @@ Read ~/.claude/.ccg/config.toml
 | 任务领域 | 推荐模型 | 角色提示词 |
 |---------|---------|-----------|
 | 架构设计 | backend 模型 | `$BACKEND/architect.md` |
-| UI/UX 设计 | frontend 模型 | `$FRONTEND/architect.md` |
+| ROS2系统集成 设计 | frontend 模型 | `$FRONTEND/architect.md` |
 | 全栈 | 双模型并行 | 各用对应 architect |
 
 ### 审查阶段（始终双模型交叉验证）
@@ -41,8 +41,8 @@ Read ~/.claude/.ccg/config.toml
 ### 调试阶段
 | 任务领域 | 推荐模型 | 角色提示词 |
 |---------|---------|-----------|
-| 后端问题 | backend 模型优先 | `$BACKEND/debugger.md` |
-| 前端问题 | frontend 模型优先 | `$FRONTEND/debugger.md` |
+| 底层控制问题 | backend 模型优先 | `$BACKEND/debugger.md` |
+| 上层应用问题 | frontend 模型优先 | `$FRONTEND/debugger.md` |
 | 不确定 | 双模型并行 | 各用对应 debugger |
 
 ### 实施阶段

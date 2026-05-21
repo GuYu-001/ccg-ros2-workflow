@@ -7,7 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [3.1.0] - 2026-05-20
+## [3.0.0] - 2026-05-20
+
+### 🚀 ROS2 Edition - Major Release
+
+**CCG-ROS2-Workflow** — Fork from [fengshao1227/ccg-workflow](https://github.com/fengshao1227/ccg-workflow) v3.1.0, specialized for ROS2 Humble robotics development.
+
+### ✨ New Features
+
+- **ROS2-aware model routing** — Upper-layer tasks (Launch files, Python nodes, RViz, simulation) route to Antigravity (default) or Gemini (fallback). Low-level tasks (C++ nodes, hardware drivers, real-time control) route to Codex.
+- **7-phase workflow** — Extended from 6 phases with dedicated **hardware deployment phase**: deployment scripts generation, hardware dependency checks (serial/CAN/sensors), Gazebo simulation validation.
+- **ROS2 system integrator agent** — Replaces `ui-ux-designer` with `system-integrator` specialized in ROS2 node architecture, Topic/Service design, QoS configuration, and message flow design.
+- **ROS2 domain skills** — Perception (LiDAR/camera/point cloud processing), control (PID/trajectory tracking/motor drivers), navigation (Nav2/SLAM/path planning), manipulation (MoveIt/grasp planning), hardware integration (CAN/serial/sensor drivers).
+- **ROS2-aware strategies** — All 11 strategies (direct-fix, quick-implement, guided-develop, full-collaborate, debug-investigate, refactor-safely, deep-research, optimize-measure, review-audit, git-action) inject ROS2-specific context (colcon workspace, package.xml, launch files, QoS policies, lifecycle nodes).
+- **Codex Mode for ROS2** — Codex-led orchestration with ROS2 context injection in AGENTS.md (node boundaries, message selection, QoS decisions) and hooks (package.xml, CMakeLists.txt, launch files, colcon build status checks).
+- **ROS2 terminology** — Consistent terminology throughout: "上层应用/Upper-layer Application" (replaces "前端/Frontend"), "底层控制/Low-level Control" (replaces "后端/Backend").
+- **All v3.1.0 features inherited** — Hook engine, task persistence, Agent Teams parallel execution, quality gates, domain knowledge hooks, Antigravity as default frontend, Codex parallel sub-agent orchestration.
+
+### 🔄 Changes
+
+- **Package name** — `ccg-workflow` → `ccg-ros2-workflow`
+- **Binary command** — `ccg` → `ccg-ros2-workflow`
+- **Package manager** — pnpm → npm (align with existing ROS2 fork)
+- **Version baseline** — v3.0.0 (reflects major upgrade from v2.x ROS2 fork to v3.1.0 baseline)
+- **Repository** — https://github.com/GuYu-001/ccg-ros2-workflow
+- **Target platform** — Physical robots running ROS2 Humble Hawksbill (LTS)
+- **Fixed configuration** — Upper-layer model: Antigravity (default) / Gemini (fallback), Low-level model: Codex, Workflow phases: 7 (with hardware deployment)
+
+### 📝 Documentation
+
+- **README.md / README.zh-CN.md** — Complete rewrite for ROS2 context, v3.0.0 features, model routing table, 7-phase workflow, ROS2 example walkthrough.
+- **CLAUDE.md** — Project overview updated for ROS2 specialization, module responsibilities, sub-agents list, fixed configuration.
+- **CONTRIBUTING.md** — Contribution guidelines adapted for ROS2 development focus.
+
+### 🎯 Target Audience
+
+- ROS2 robotics developers working on physical robots
+- Teams building autonomous navigation, perception pipelines, manipulation systems
+- Projects requiring hardware integration (CAN bus, serial sensors, motor controllers)
+- Developers needing multi-model collaboration for complex ROS2 stacks
+
+---
+
+## [3.1.0] - 2026-05-20 (Upstream)
 
 ### ✨ New Features
 

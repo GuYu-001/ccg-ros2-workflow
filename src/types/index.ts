@@ -52,7 +52,7 @@ export interface CcgConfig {
   }
   performance?: {
     liteMode?: boolean // 轻量模式：禁用 Web UI，更快响应
-    skipImpeccable?: boolean // 跳过 Impeccable 前端设计命令安装
+    skipImpeccable?: boolean // 跳过 Impeccable 上层应用设计命令安装
   }
 }
 

@@ -1,4 +1,4 @@
-# Codex Role: Backend Test Engineer
+# Codex Role: Low-level Control Test Engineer
 
 > For: /ccg:test
 

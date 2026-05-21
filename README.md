@@ -1,254 +1,256 @@
-# CCG - Claude + Codex + Gemini Multi-Model Collaboration
+# CCG-ROS2 - Claude + Codex + Antigravity ROS2 Multi-Model Collaboration
 
 <div align="center">
 
-<img src="assets/logo/ccg-logo-cropped.png" alt="CCG Workflow" width="400">
+<img src="assets/logo/ccg-logo-cropped.png" alt="CCG-ROS2 Workflow" width="400">
 
-[![GitHub stars](https://img.shields.io/github/stars/fengshao1227/ccg-workflow?style=social)](https://github.com/fengshao1227/ccg-workflow)
-[![NPM Downloads](https://img.shields.io/npm/dt/ccg-workflow?style=flat-square&color=blue)](https://www.npmjs.com/package/ccg-workflow)
-[![npm version](https://img.shields.io/npm/v/ccg-workflow.svg)](https://www.npmjs.com/package/ccg-workflow)
+[![npm version](https://img.shields.io/npm/v/ccg-ros2-workflow.svg)](https://www.npmjs.com/package/ccg-ros2-workflow)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-green.svg)](https://claude.ai/code)
-[![Tests](https://img.shields.io/badge/Tests-139%20passed-brightgreen.svg)]()
-[![Follow on X](https://img.shields.io/badge/X-@CCG__Workflow-black?logo=x&logoColor=white)](https://x.com/CCG_Workflow)
-![star](https://atomgit.com/fengshao1227/ccg-workflow/star/badge.svg)
-[![Docs](https://img.shields.io/badge/Docs-ccg.fengshao1227.com-blue?style=for-the-badge&logo=readthedocs&logoColor=white)](https://ccg.fengshao1227.com/)
+[![ROS2](https://img.shields.io/badge/ROS2-Humble-blue.svg)](https://docs.ros.org/en/humble/)
 
-[简体中文](./README.zh-CN.md) | English | [**Documentation**](https://ccg.fengshao1227.com/)
+[简体中文](./README.zh-CN.md) | English
 
 </div>
 
-## ♥️ Sponsor
-
-[![302.AI](assets/sponsors/302.ai-en.jpg)](https://share.302.ai/oUDqQ6)
-
-[302.AI](https://share.302.ai/oUDqQ6) is a pay-as-you-go enterprise AI resource hub that offers the latest and most comprehensive AI models and APIs on the market, along with a variety of ready-to-use online AI applications.
-
 ---
 
-[**n1n.ai**](https://api.n1n.ai/register?channel=c_ivgzug0w) — Global LLM API Gateway. One API Key to access 500+ top AI models (GPT-5, Claude 4.5, Gemini 3 Pro, and more).
+CCG-ROS2 is a workflow engine for Claude Code that orchestrates multiple AI models (Codex for low-level control, Antigravity for upper-layer application, Claude for orchestration) with hook-based state tracking, automatic strategy selection, and Agent Teams parallel execution — specialized for ROS2 robotics development.
 
----
+> **Fork from** [fengshao1227/ccg-workflow](https://github.com/fengshao1227/ccg-workflow) v3.1.0, customized for ROS2 Humble robotics development.
 
-CCG is a workflow engine for Claude Code that orchestrates multiple AI models (Codex, Gemini, Claude) with hook-based state tracking, automatic strategy selection, and Agent Teams parallel execution.
+## What's new in v3.0.0 (ROS2 Edition)
 
-## What's new in v3.0
+v3.0.0 brings the powerful v3.1.0 engine to ROS2 development with domain-specific enhancements:
 
-v3.0 is a ground-up rewrite. One command replaces 29.
-
-- `/ccg:go` — Describe what you want in plain language. The engine analyzes your intent, picks the right strategy, and executes it.
-- **Hook engine** — Per-turn state injection keeps Claude on track even after context compaction. Session-start hooks inject full project context on every new session.
-- **Task persistence** — Medium+ complexity tasks create `.ccg/tasks/` with persistent state. Phase gates enforce HARD STOP checkpoints.
-- **Agent Teams** — Large tasks spawn parallel Builder teammates via TeamCreate. Each Builder gets isolated file ownership.
-- **Quality gates** — `verify-security`, `verify-quality`, `verify-change` run as Skill invocations inside strategy verification phases.
-- **Domain knowledge hooks** — When your message mentions security, caching, RAG, etc., the relevant knowledge file is auto-injected into context.
-- **Codex-Led Mode** — Use Codex CLI as the lead orchestrator. Codex writes code directly and dispatches analysis/review to Gemini + Claude via codeagent-wrapper. Install via menu option `X`.
+- **ROS2-aware routing** — Upper-layer tasks (Launch files, Python nodes, RViz, simulation) route to Antigravity. Low-level tasks (C++ nodes, hardware drivers, real-time control) route to Codex.
+- **7-phase workflow** — Extended from 6 phases with dedicated hardware deployment phase (deployment scripts, hardware dependency checks, Gazebo simulation validation).
+- **ROS2 system integrator** — Replaces UI/UX designer with `system-integrator` agent specialized in ROS2 node architecture, Topic/Service design, and QoS configuration.
+- **ROS2 domain skills** — Perception (LiDAR/camera/point cloud), control (PID/trajectory/motor drivers), navigation (Nav2/SLAM/path planning), manipulation (MoveIt/grasp planning), hardware integration (CAN/serial/sensor drivers).
+- **Codex Mode for ROS2** — Codex-led orchestration with ROS2 context (node boundaries, message selection, QoS decisions).
+- **All v3.1.0 features** — Hook engine, task persistence, Agent Teams, quality gates, domain knowledge hooks, Codex-Led Mode.
 
 ## Quick Start
 
 ```bash
-npx ccg-workflow
+npx ccg-ros2-workflow
 ```
 
-Requires Node.js 20+ and Claude Code CLI. Codex CLI and Gemini CLI are optional (enable multi-model features).
+**Requirements**: Node.js 20+, Claude Code CLI  
+**Optional**: Codex CLI (low-level control), Antigravity CLI (upper-layer application)
 
-The installer walks through 4 steps: API config, model routing, MCP tools, performance mode. New users get a streamlined 2-step flow with sensible defaults.
+The installer walks through 4 steps: API config, model routing, MCP tools, performance mode.
 
-## How it works
+## How it works (ROS2 Example)
 
 ```
-You: /ccg:go add JWT authentication to this API
+You: /ccg:go implement autonomous navigation for differential drive robot
 
-CCG Engine:
-  1. Reads project context (git status, tech stack, file structure)
-  2. Classifies: feature / L complexity / backend / high risk
+CCG-ROS2 Engine:
+  1. Reads ROS2 project context (package.xml, colcon workspace, launch files)
+  2. Classifies: feature / XL complexity / mixed (upper+lower) / high risk
   3. Selects strategy: full-collaborate
-  4. Creates .ccg/tasks/add-jwt-auth/task.json
-  5. Launches dual-model analysis (Codex + Gemini in parallel)
-  6. Produces plan → HARD STOP for your approval
+  4. Creates .ccg/tasks/autonomous-navigation/task.json
+  5. Launches dual-model analysis:
+     - Codex: motor driver, odometry, low-level control
+     - Antigravity: Nav2 config, launch files, RViz setup
+  6. Produces plan with node architecture + QoS design → HARD STOP for approval
   7. Spawns Agent Teams Builders for parallel implementation
-  8. Runs quality gates + dual-model cross-review
-  9. Reports results
+  8. Runs quality gates (verify ROS2 message definitions, QoS policies, lifecycle)
+  9. Hardware deployment phase: generates deployment scripts, checks CAN/serial, Gazebo sim
+  10. Reports results
 
 Every turn, a hook injects:
   <ccg-state>
-  Task: add-jwt-auth (in_progress)
+  Task: autonomous-navigation (in_progress)
   Strategy: full-collaborate
   Phase: 4-implementation
-  Next: Layer 1 Builders executing
+  ROS2 Context: colcon workspace, 3 packages, Nav2 stack
+  Next: Layer 1 Builders executing (motor_driver_node + nav2_config)
   </ccg-state>
 ```
 
-## Strategies
+## ROS2 Model Routing
 
-The engine picks a strategy based on task type and complexity:
+| Model | Role | Suitable for |
+|-------|------|--------------|
+| **Codex** | Low-level Control Authority | C++ nodes, hardware drivers, real-time control algorithms, message definitions |
+| **Antigravity** | Upper-layer Application Authority | Launch files, Python nodes, RViz configuration, simulation setup |
+| **Claude** | Orchestration + Delivery | Plan approval, code writing, quality control |
 
-| Strategy | When | External models | Teams |
-|----------|------|-----------------|-------|
-| direct-fix | Simple bug, single file | No | No |
-| quick-implement | Small feature, clear scope | No | No |
-| guided-develop | Medium feature, needs planning | Single model | No |
-| full-collaborate | Complex feature, multi-module | Dual model parallel | Yes |
-| debug-investigate | Complex bug, unknown cause | Dual model diagnosis | No |
-| refactor-safely | Code restructuring | Dual model review | No |
-| deep-research | Technical research, comparison | Dual model exploration | No |
-| optimize-measure | Performance optimization | Optional | No |
-| review-audit | Code review | Dual model cross-review | No |
-| git-action | commit, rollback, branches | No | No |
+## Strategies (ROS2-aware)
 
-Simple tasks run fast with no overhead. Complex tasks get the full engine.
+The engine picks a strategy based on task type and complexity, with ROS2-specific context:
+
+| Strategy | When | External models | Teams | ROS2 Context |
+|----------|------|-----------------|-------|--------------|
+| direct-fix | Simple bug, single file | No | No | Node crash, topic mismatch |
+| quick-implement | Small feature, clear scope | No | No | Add parameter, simple service |
+| guided-develop | Medium feature, needs planning | Single model | No | New node, message definition |
+| full-collaborate | Complex feature, multi-module | Dual model parallel | Yes | Navigation stack, perception pipeline |
+| debug-investigate | Complex bug, unknown cause | Dual model diagnosis | No | QoS mismatch, lifecycle issue |
+| refactor-safely | Code restructuring | Dual model review | No | Node splitting, message refactor |
+| deep-research | Technical research, comparison | Dual model exploration | No | SLAM algorithm, control strategy |
+| optimize-measure | Performance optimization | Optional | No | CPU/memory, QoS tuning |
+| review-audit | Code review | Dual model cross-review | No | QoS policies, lifecycle, safety |
+| git-action | commit, rollback, branches | No | No | Standard git operations |
+
+Simple tasks run fast with no overhead. Complex ROS2 tasks get the full engine with hardware deployment phase.
 
 ## Commands
 
-v3.0 default install: 13 commands. Legacy mode adds 18 more.
-
-### Core
+### Smart Entry Point
 
 | Command | Description |
 |---------|-------------|
-| `/ccg:go` | Smart entry — describe what you want, engine handles the rest |
+| `/ccg:go` | Describe what you want in plain language. The engine analyzes your intent, picks the right strategy, and executes it. |
 
-### Git
-
-| Command | Description |
-|---------|-------------|
-| `/ccg:commit` | Smart conventional commit |
-| `/ccg:rollback` | Interactive rollback |
-| `/ccg:clean-branches` | Clean merged branches |
-| `/ccg:worktree` | Worktree management |
-
-### Project
+### ROS2 Development Workflow (Legacy Commands)
 
 | Command | Description |
 |---------|-------------|
-| `/ccg:init` | Initialize project CLAUDE.md |
-| `/ccg:context` | Project context management |
+| `/ccg:workflow` | 7-phase complete workflow (with hardware deployment) |
+| `/ccg:plan` | Multi-model collaborative planning (Phase 1-2) |
+| `/ccg:execute` | Multi-model collaborative execution (Phase 3-5) |
+| `/ccg:frontend` | Upper-layer application focus (Antigravity-led: Launch/Python/RViz) |
+| `/ccg:backend` | Low-level control focus (Codex-led: C++/drivers/real-time) |
+| `/ccg:feat` | Smart feature development |
+| `/ccg:analyze` | Dual-model technical analysis |
+| `/ccg:debug` | Multi-model problem diagnosis |
+| `/ccg:optimize` | Multi-model performance optimization |
+| `/ccg:test` | Smart test generation |
+| `/ccg:review` | Dual-model code review |
+| `/ccg:enhance` | Prompt enhancement |
+| `/ccg:init` | Initialize CLAUDE.md |
 
-### OpenSpec
+### OpenSpec Specification-Driven
 
 | Command | Description |
 |---------|-------------|
 | `/ccg:spec-init` | Initialize OPSX environment |
-| `/ccg:spec-research` | Requirements → constraints |
-| `/ccg:spec-plan` | Constraints → zero-decision plan |
-| `/ccg:spec-impl` | Execute plan + archive |
+| `/ccg:spec-research` | Requirements → Constraint set |
+| `/ccg:spec-plan` | Constraints → Zero-decision plan |
+| `/ccg:spec-impl` | Execute by specification + archive |
 | `/ccg:spec-review` | Dual-model cross-review |
 
-## Hook Engine
+### Agent Teams Parallel Implementation
 
-CCG installs 4 hooks into `~/.claude/settings.json`:
+| Command | Description |
+|---------|-------------|
+| `/ccg:team` | **Unified workflow (recommended)** — 8-phase full process with 7-role auto-orchestration |
+| `/ccg:team-research` | Parallel constraint set research (Codex low-level + Antigravity upper-layer) |
+| `/ccg:team-plan` | Zero-decision parallel implementation plan |
+| `/ccg:team-exec` | Spawn Builder teammates for parallel coding |
+| `/ccg:team-review` | Dual-model cross-review implementation output |
 
-| Hook | Event | Purpose |
-|------|-------|---------|
-| workflow-state.js | UserPromptSubmit | Injects task state breadcrumb every turn |
-| session-start.js | SessionStart | Injects full project context on session start/clear/compact |
-| subagent-context.js | PreToolUse (Bash/Agent) | Injects spec + task context into codeagent-wrapper calls and Team member spawns |
-| skill-router.js | UserPromptSubmit | Auto-injects domain knowledge when keywords detected |
+### Git Tools
 
-Hooks are JavaScript, zero dependencies, silent on failure.
+| Command | Description |
+|---------|-------------|
+| `/ccg:commit` | Smart Git commit (conventional commit) |
+| `/ccg:rollback` | Interactive Git rollback |
+| `/ccg:clean-branches` | Clean merged branches |
+| `/ccg:worktree` | Worktree management |
 
-## Task System
+### Project Management
 
-Medium+ complexity tasks create a persistent task directory:
+| Command | Description |
+|---------|-------------|
+| `/ccg:context` | Project context management (.context initialization/log/compress/history) |
+| `/ccg:codex-exec` | Codex full execution plan (MCP + code + tests) |
 
-```
-.ccg/tasks/add-jwt-auth/
-├── task.json         # Status, strategy, current phase, gate
-├── requirements.md   # Enhanced requirements (full-collaborate)
-├── plan.md           # Approved implementation plan
-├── context.jsonl     # Spec files for sub-agent injection
-├── review.md         # Review results
-└── research/         # Persisted research findings
-```
-
-The workflow-state hook reads `task.json` every turn and injects the current state. If context gets compacted, session-start re-injects the full task context. No state is lost.
-
-## Spec System
-
-Project-level coding standards in `.ccg/spec/`:
+## 7-Phase ROS2 Workflow
 
 ```
-.ccg/spec/
-├── backend/index.md    # Backend conventions
-├── frontend/index.md   # Frontend conventions
-└── guides/index.md     # Cross-module guidelines
+Research → Ideation → Planning → Execution → Optimization → Review → Hardware Deployment
 ```
 
-The subagent-context hook reads `context.jsonl` and injects relevant spec files into every codeagent-wrapper call and Agent Team spawn. Sub-agents follow your project's standards without being told.
+- **Phase 1-2 (Research/Ideation)**: Codex + Antigravity parallel analysis, dual-perspective evaluation
+- **Phase 3 (Planning)**: Claude synthesizes solution, user approval then archive
+- **Phase 4 (Execution)**: Claude leads code implementation
+- **Phase 5 (Optimization)**: Codex + Antigravity parallel review, Claude integrates fixes
+- **Phase 6 (Review)**: Final quality control
+- **Phase 7 (Hardware Deployment)**: Generate deployment scripts, check hardware dependencies (serial/CAN/sensors), Gazebo simulation validation
 
-## Configuration
+## Architecture
 
 ```
-~/.claude/
-├── commands/ccg/          # Slash commands
-├── hooks/ccg/             # Hook scripts (4 files)
-├── .ccg/
-│   ├── config.toml        # Model routing, MCP, performance
-│   ├── engine/            # Strategy files + model router
-│   └── prompts/           # Expert prompts (codex/gemini/claude)
-├── skills/ccg/            # Quality gates + domain knowledge
-└── bin/codeagent-wrapper  # Multi-model execution bridge
+Claude (Orchestration + Final Code Writing)
+  ├── Codex      → Read-only, returns patch (Low-level: C++/drivers/real-time)
+  └── Antigravity → Read-only, returns patch (Upper-layer: Launch/Python/RViz)
 ```
 
-### Environment Variables
+External models have zero write permissions to the filesystem. All code is reviewed by Claude before landing.
 
-Set in `~/.claude/settings.json` under `"env"`:
+## Sub-Agents
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CODEX_TIMEOUT` | `7200` | Wrapper timeout (seconds) |
-| `CODEAGENT_POST_MESSAGE_DELAY` | `5` | Post-completion delay (seconds) |
-| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | unset | Set to `1` to enable Agent Teams parallel execution |
+| Agent | Purpose |
+|-------|---------|
+| `system-integrator` | ROS2 system integration designer (node architecture/Topic-Service/QoS design) |
+| `planner` | ROS2 task planner (WBS decomposition) |
+| `init-architect` | Project initialization architect |
+| `get-current-datetime` | Get current time |
+| `team-architect` | Team architect (v3.0+) |
+| `team-qa` | QA engineer (v3.0+) |
+| `team-reviewer` | Code reviewer (v3.0+) |
 
-## Update / Uninstall
+## Output Styles
 
-```bash
-npx ccg-workflow@latest     # Update
-npx ccg-workflow            # Select "Uninstall" from menu
-```
+After installation, choose AI output style via output-styles directory:
 
-## Credits
+- `engineer-professional` - SOLID/KISS/DRY professional engineer style
+- `nekomata-engineer` - Cat-girl engineer (UFO Meow)
+- `laowang-engineer` - Old Wang engineer
+- `abyss-cultivator` - Abyss cultivator
+- `ojousama-engineer` - Ojou-sama style
+- `abyss-concise` - Abyss concise report
+- `abyss-command` - Abyss iron command
+- `abyss-ritual` - Abyss ritual scroll
 
-- [cexll/myclaude](https://github.com/cexll/myclaude) — codeagent-wrapper inspiration
-- [UfoMiao/zcf](https://github.com/UfoMiao/zcf) — Git tools reference
-- [mindfold-ai/Trellis](https://github.com/mindfold-ai/Trellis) — Hook-based workflow state patterns
-- [ace-tool](https://linux.do/t/topic/1344562) — MCP code retrieval
+## Fixed Configuration
 
-## Contributors
+| Item | Value |
+|------|-------|
+| ROS2 Version | Humble Hawksbill (LTS) |
+| Target Platform | Physical Robot |
+| Upper-layer Application Model | Antigravity (default) / Gemini (fallback) |
+| Low-level Control Model | Codex |
+| Workflow Phases | 7 phases (with hardware deployment) |
 
-<!-- readme: contributors -start -->
-<table>
-<tr>
-    <td align="center"><a href="https://github.com/fengshao1227"><img src="https://avatars.githubusercontent.com/fengshao1227?v=4&s=100" width="100;" alt="fengshao1227"/><br /><sub><b>fengshao1227</b></sub></a></td>
-    <td align="center"><a href="https://github.com/SXP-Simon"><img src="https://avatars.githubusercontent.com/SXP-Simon?v=4&s=100" width="100;" alt="SXP-Simon"/><br /><sub><b>SXP-Simon</b></sub></a></td>
-    <td align="center"><a href="https://github.com/RebornQ"><img src="https://avatars.githubusercontent.com/RebornQ?v=4&s=100" width="100;" alt="RebornQ"/><br /><sub><b>RebornQ</b></sub></a></td>
-    <td align="center"><a href="https://github.com/Sakuranda"><img src="https://avatars.githubusercontent.com/Sakuranda?v=4&s=100" width="100;" alt="Sakuranda"/><br /><sub><b>Sakuranda</b></sub></a></td>
-    <td align="center"><a href="https://github.com/Mriris"><img src="https://avatars.githubusercontent.com/Mriris?v=4&s=100" width="100;" alt="Mriris"/><br /><sub><b>Mriris</b></sub></a></td>
-    <td align="center"><a href="https://github.com/23q3"><img src="https://avatars.githubusercontent.com/23q3?v=4&s=100" width="100;" alt="23q3"/><br /><sub><b>23q3</b></sub></a></td>
-    <td align="center"><a href="https://github.com/MrNine-666"><img src="https://avatars.githubusercontent.com/MrNine-666?v=4&s=100" width="100;" alt="MrNine-666"/><br /><sub><b>MrNine-666</b></sub></a></td>
-</tr>
-<tr>
-    <td align="center"><a href="https://github.com/GGzili"><img src="https://avatars.githubusercontent.com/GGzili?v=4&s=100" width="100;" alt="GGzili"/><br /><sub><b>GGzili</b></sub></a></td>
-</tr>
-</table>
-<!-- readme: contributors -end -->
+## Codex-Led Mode (Optional)
 
-## Contact
+Install via menu option `X. Codex Mode`. Codex CLI acts as lead orchestrator with ROS2 context:
 
-- **X (Twitter)**: [@CCG_Workflow](https://x.com/CCG_Workflow)
-- **Email**: [fengshao1227@gmail.com](mailto:fengshao1227@gmail.com)
-- **Issues**: [GitHub Issues](https://github.com/fengshao1227/ccg-workflow/issues)
-- **Community**: [Linux.do](https://linux.do)
+- `~/.codex/AGENTS.md` — Adaptive decision framework with ROS2 context (node boundaries, message selection, QoS decisions)
+- `~/.codex/hooks/ccg-workflow.py` — Intelligent guardrail hook with ROS2 checkpoints (package.xml, CMakeLists.txt, launch files, colcon build)
+- `~/.codex/config.toml` — Multi-agent v2 enabled
+- `~/.codex/agents/` — Native sub-agent definitions with ROS2 context
 
+## MCP Tools Integration
 
-## Star History
+Optional MCP tools for enhanced functionality:
 
-[![Star History Chart](https://api.star-history.com/svg?repos=fengshao1227/ccg-workflow&type=timeline&legend=top-left)](https://www.star-history.com/#fengshao1227/ccg-workflow&type=timeline&legend=top-left)
+- **fast-context** (recommended) — Windsurf Fast Context for code retrieval
+- **ace-tool** — Code search + prompt enhancement
+- **ContextWeaver** — Local-first semantic code search
+- **context7** (auto-installed) — Free library documentation query
+
+## Related Links
+
+- [npm package](https://www.npmjs.com/package/ccg-ros2-workflow)
+- [GitHub repository](https://github.com/GuYu-001/ccg-ros2-workflow)
+- [Official ccg-workflow](https://github.com/fengshao1227/ccg-workflow)
+- [ROS2 Humble Documentation](https://docs.ros.org/en/humble/)
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## License
 
-MIT
+MIT License - see [LICENSE](./LICENSE) for details.
 
 ---
 
-v3.0.4 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+**Version**: 3.0.0  
+**Last Updated**: 2026-05-20

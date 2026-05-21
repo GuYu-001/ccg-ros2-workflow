@@ -81,8 +81,8 @@ Gate: 优化审查已完成 ✓
 **Gate check**: 需求评分 ≥7
 
 **并行调用**（`run_in_background: true`）：
-- **backend 模型**：analyzer 角色 — 技术可行性、后端方案、风险评估
-- **frontend 模型**：analyzer 角色 — UI 可行性、前端方案、用户体验
+- **backend 模型**：analyzer 角色 — 技术可行性、底层控制方案、风险评估
+- **frontend 模型**：analyzer 角色 — UI 可行性、上层应用方案、用户体验
 
 使用 model-router.md 中的调用模板。
 
@@ -268,7 +268,7 @@ Bash({
 拆分原则：
 - Layer 1 子任务数量 = plan 中无依赖的文件组数（通常 2-4 个）
 - 每个子任务的文件范围**不可重叠**
-- 可混合 backend（后端任务用 codex，前端任务用 antigravity）— 在 `---TASK---` 中指定 `backend: antigravity`
+- 可混合 backend（底层控制任务用 codex，上层应用任务用 antigravity）— 在 `---TASK---` 中指定 `backend: antigravity`
 
 **Step 3**: 等待完成，读取汇总报告（wrapper 自动合并所有子任务结果）
 

@@ -10,7 +10,7 @@
 
 `src/` 是 CCG Workflow CLI 工具的全部 TypeScript 实现。负责：一键安装/更新 CCG 工作流到用户环境 (`~/.claude/`)，从 `templates/` 读取素材并经过模板变量替换后写入目标位置，管理 MCP 服务配置（Claude/Codex/Gemini 三端同步），提供中英双语交互界面，以及通过 Skill Registry 从 SKILL.md frontmatter 自动生成 slash commands。
 
-打包产物由 `unbuild` 输出到 `dist/`，由 `bin/ccg.mjs` 加载，通过 `npx ccg-workflow` 或 `npx ccg-workflow menu` 调用。
+打包产物由 `unbuild` 输出到 `dist/`，由 `bin/ccg.mjs` 加载，通过 `npx ccg-ros2-workflow` 或 `npx ccg-ros2-workflow menu` 调用。
 
 ---
 
@@ -24,7 +24,7 @@
 | `dist/` | `unbuild` 产物，`cli.mjs` + `index.mjs` 各一份 |
 | `bin/ccg.mjs` | npm bin 脚本，加载 `dist/cli.mjs` |
 
-**启动链**：`npx ccg-workflow` → `bin/ccg.mjs` → `dist/cli.mjs` → `cli.ts:main()` → `setupCommands()` → `cli.parse()`
+**启动链**：`npx ccg-ros2-workflow` → `bin/ccg.mjs` → `dist/cli.mjs` → `cli.ts:main()` → `setupCommands()` → `cli.parse()`
 
 ---
 
@@ -77,7 +77,7 @@ export { getCurrentVersion, checkForUpdates, compareVersions } from './utils/ver
 |------|----------|------|
 | `init.ts` | `init(options)` | 4 步安装向导（API 提供方→模型路由→MCP 工具→性能模式），orchestrate installWorkflows |
 | `menu.ts` | `showMainMenu()` | ASCII Art 主菜单，CJK 宽度感知对齐，6 功能选项循环 |
-| `update.ts` | `update()` | 检查 npm 版本，触发 `npx ccg-workflow@latest init --skip-prompt --skip-mcp` |
+| `update.ts` | `update()` | 检查 npm 版本，触发 `npx ccg-ros2-workflow@latest init --skip-prompt --skip-mcp` |
 | `config-mcp.ts` | `configMcp()` | 独立 MCP Token 配置交互 |
 | `diagnose-mcp.ts` | `diagnoseMcp()`, `fixMcp()` | 诊断 `~/.claude.json` MCP 配置，Windows 修复 |
 
@@ -200,7 +200,7 @@ readClaudeCodeConfig() → backupClaudeCodeConfig() → mergeMcpServers() → fi
 | 函数 | 说明 |
 |------|------|
 | `getCurrentVersion()` | 读取 `../../package.json`（相对 dist/src 路径），fallback PACKAGE_ROOT 和 `npm_package_version` |
-| `getLatestVersion(pkg)` | 执行 `npm view ccg-workflow version` 获取 npm 最新版 |
+| `getLatestVersion(pkg)` | 执行 `npm view ccg-ros2-workflow version` 获取 npm 最新版 |
 | `compareVersions(v1, v2)` | semver 比较，返回 1/-1/0 |
 | `checkForUpdates()` | 组合上两者，返回 `{ hasUpdate, currentVersion, latestVersion }` |
 

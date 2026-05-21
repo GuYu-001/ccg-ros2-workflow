@@ -110,8 +110,8 @@ TeamCreate 失败（Agent Teams 未启用）→ Claude 自己按计划顺序实�
 
 1. **提炼经验**：分析 `git diff` + review.md（如有），提取可复用的经验教训
 2. **分类归属**：判断经验属于哪个 Spec 域：
-   - 后端相关 → `.ccg/spec/backend/index.md`
-   - 前端相关 → `.ccg/spec/frontend/index.md`
+   - 底层控制相关 → `.ccg/spec/backend/index.md`
+   - 上层应用相关 → `.ccg/spec/frontend/index.md`
    - 跨模块/通用 → `.ccg/spec/guides/index.md`
 3. **草拟更新**：以追加方式写出建议新增的 Spec 条目（不覆盖现有内容）
 4. **展示给用户**：
@@ -199,7 +199,7 @@ Round N (N=1,2,...,MAX_ROUNDS):
 
 策展 context.jsonl 时，按角色标注 `roles` 字段：
 ```jsonl
-{"file": ".ccg/spec/backend/index.md", "reason": "后端规范", "roles": ["implement", "review"]}
+{"file": ".ccg/spec/backend/index.md", "reason": "底层控制规范", "roles": ["implement", "review"]}
 {"file": ".ccg/tasks/{name}/plan.md", "reason": "实施计划", "roles": ["implement"]}
 {"file": ".ccg/tasks/{name}/research/lib-comparison.md", "reason": "库选型", "roles": ["research", "implement"]}
 ```

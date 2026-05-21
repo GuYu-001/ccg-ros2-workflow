@@ -61,7 +61,7 @@ try {
     { keywords: ['codex测试', 'codex 测试', 'codex test', '用codex写测试'], model: 'codex', role: 'tester', action: '生成测试用例' },
     { keywords: ['gemini审查', 'gemini 审查', 'gemini review', '用gemini看', '让gemini检查'], model: 'gemini', role: 'reviewer', action: '审查当前代码变更（git diff）' },
     { keywords: ['gemini分析', 'gemini 分析', 'gemini analyze', '用gemini分析'], model: 'gemini', role: 'analyzer', action: '分析当前项目/代码' },
-    { keywords: ['gemini前端', 'gemini 前端', '用gemini做前端'], model: 'gemini', role: 'frontend', action: '前端开发分析' },
+    { keywords: ['gemini上层应用', 'gemini 上层应用', '用gemini做上层应用'], model: 'gemini', role: 'frontend', action: '上层应用开发分析' },
     { keywords: ['双模型审查', '双模型 审查', '两个模型审查', 'dual review'], model: 'both', role: 'reviewer', action: '双模型交叉审查代码变更' },
     { keywords: ['双模型分析', '双模型 分析', '两个模型分析', 'dual analyze'], model: 'both', role: 'analyzer', action: '双模型并行分析' },
   ];
@@ -79,13 +79,13 @@ try {
 1. 获取工作目录: WORKDIR=$(pwd)
 2. 并行调用两个模型 (run_in_background: true):
 
-   Backend (codex):
+   Low-level Control (codex):
    ${wrapperPath} --progress --backend codex - "$WORKDIR" <<'EOF'
    ROLE_FILE: ${path.join(homeDir, '.claude', '.ccg', 'prompts', 'codex', modelAction.role + '.md')}
    <TASK>${modelAction.action}</TASK>
    EOF
 
-   Frontend (gemini):
+   Upper-layer Application (gemini):
    ${wrapperPath} --progress --backend gemini - "$WORKDIR" <<'EOF'
    ROLE_FILE: ${path.join(homeDir, '.claude', '.ccg', 'prompts', 'gemini', modelAction.role + '.md')}
    <TASK>${modelAction.action}</TASK>

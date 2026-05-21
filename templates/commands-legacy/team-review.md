@@ -8,7 +8,7 @@ description: 'Agent Teams 审查 - 双模型交叉审查并行实施的产出，
 - 审查范围严格限于 team-exec 的变更，不扩大范围。
 
 **Guardrails**
-- **MANDATORY**: {{BACKEND_PRIMARY}} 和 {{FRONTEND_PRIMARY}} 必须都完成审查后才能综合。
+- **MANDATORY**: Codex 和 Gemini 必须都完成审查后才能综合。
 - 审查范围限于 `git diff` 的变更，不做范围蔓延。
 - Lead 可以直接修复 Critical 问题（审查阶段允许写代码）。
 
@@ -20,25 +20,25 @@ description: 'Agent Teams 审查 - 双模型交叉审查并行实施的产出，
 
 2. **多模型审查（PARALLEL）**
    - **CRITICAL**: 必须在一条消息中同时发起两个 Bash 调用。
-   - **工作目录**：`{{WORKDIR}}` **必须通过 Bash 执行 `pwd`（Unix）或 `cd`（Windows CMD）获取当前工作目录的绝对路径**，禁止从 `$HOME` 或环境变量推断。
+   - **工作目录**：`{{WORKDIR}}` 替换为目标工作目录的绝对路径。
 
-   **FIRST Bash call ({{BACKEND_PRIMARY}})**:
+   **FIRST Bash call (Codex - 底层控制审查)**:
    ```
    Bash({
-     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/reviewer.md\n<TASK>\n审查以下变更：\n<git diff 输出或变更文件列表>\n</TASK>\nOUTPUT (JSON):\n{\n  \"findings\": [\n    {\n      \"severity\": \"Critical|Warning|Info\",\n      \"dimension\": \"logic|security|performance|error_handling\",\n      \"file\": \"path/to/file\",\n      \"line\": 42,\n      \"description\": \"问题描述\",\n      \"fix_suggestion\": \"修复建议\"\n    }\n  ],\n  \"passed_checks\": [\"已验证的检查项\"],\n  \"summary\": \"总体评估\"\n}\nEOF",
+     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend codex - \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/codex/reviewer.md\n<TASK>\n审查以下变更（底层控制视角：C++/硬件驱动/实时性/控制算法）：\n<git diff 输出或变更文件列表>\n</TASK>\nOUTPUT (JSON):\n{\n  \"findings\": [\n    {\n      \"severity\": \"Critical|Warning|Info\",\n      \"dimension\": \"logic|realtime|safety|memory|ros2_conventions\",\n      \"file\": \"path/to/file\",\n      \"line\": 42,\n      \"description\": \"问题描述\",\n      \"fix_suggestion\": \"修复建议\"\n    }\n  ],\n  \"passed_checks\": [\"已验证的检查项\"],\n  \"summary\": \"总体评估\"\n}\nEOF",
      run_in_background: true,
      timeout: 3600000,
-     description: "{{BACKEND_PRIMARY}} 后端审查"
+     description: "Codex 底层控制审查"
    })
    ```
 
-   **SECOND Bash call ({{FRONTEND_PRIMARY}}) - IN THE SAME MESSAGE**:
+   **SECOND Bash call (Gemini - 上层应用审查) - IN THE SAME MESSAGE**:
    ```
    Bash({
-     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/reviewer.md\n<TASK>\n审查以下变更：\n<git diff 输出或变更文件列表>\n</TASK>\nOUTPUT (JSON):\n{\n  \"findings\": [\n    {\n      \"severity\": \"Critical|Warning|Info\",\n      \"dimension\": \"patterns|maintainability|accessibility|ux|frontend_security\",\n      \"file\": \"path/to/file\",\n      \"line\": 42,\n      \"description\": \"问题描述\",\n      \"fix_suggestion\": \"修复建议\"\n    }\n  ],\n  \"passed_checks\": [\"已验证的检查项\"],\n  \"summary\": \"总体评估\"\n}\nEOF",
+     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend gemini {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/gemini/reviewer.md\n<TASK>\n审查以下变更（上层应用视角：Launch文件/Python节点/RViz/系统集成）：\n<git diff 输出或变更文件列表>\n</TASK>\nOUTPUT (JSON):\n{\n  \"findings\": [\n    {\n      \"severity\": \"Critical|Warning|Info\",\n      \"dimension\": \"launch_config|topic_design|qos|visualization|integration\",\n      \"file\": \"path/to/file\",\n      \"line\": 42,\n      \"description\": \"问题描述\",\n      \"fix_suggestion\": \"修复建议\"\n    }\n  ],\n  \"passed_checks\": [\"已验证的检查项\"],\n  \"summary\": \"总体评估\"\n}\nEOF",
      run_in_background: true,
      timeout: 3600000,
-     description: "{{FRONTEND_PRIMARY}} 前端审查"
+     description: "Gemini 上层应用审查"
    })
    ```
 
@@ -48,40 +48,38 @@ description: 'Agent Teams 审查 - 双模型交叉审查并行实施的产出，
    TaskOutput({ task_id: "<gemini_task_id>", block: true, timeout: 600000 })
    ```
 
-   ⛔ **前端模型失败必须重试**：若前端模型调用失败，最多重试 2 次（间隔 5 秒）。3 次全败才跳过。
-   ⛔ **后端模型结果必须等待**：后端模型执行 5-15 分钟属正常，超时后继续轮询，禁止跳过。
-
 3. **综合发现**
    - 合并两个模型的发现。
    - 去重重叠问题。
    - 按严重性分级：
-     * **Critical**: 安全漏洞、逻辑错误、数据丢失风险 → 必须修复
-     * **Warning**: 模式偏离、可维护性问题 → 建议修复
-     * **Info**: 小改进建议 → 可选修复
+     * **Critical**: 安全漏洞、逻辑错误、实时性破坏、内存泄漏 → 必须修复
+     * **Warning**: ROS2 规范偏离、QoS 配置问题、可维护性问题 → 建议修复
+     * **Info**: 小改进建议、注释补充、命名规范 → 可选修复
 
 4. **输出审查报告**
    ```markdown
    ## 审查报告
 
    ### 🔴 Critical (X issues) - 必须修复
-   - [ ] [安全] file.ts:42 - 描述
-   - [ ] [逻辑] api.ts:15 - 描述
+   - [ ] [实时性] controller.cpp:42 - 描述
+   - [ ] [逻辑] driver.cpp:15 - 描述
 
    ### 🟡 Warning (Y issues) - 建议修复
-   - [ ] [模式] utils.ts:88 - 描述
+   - [ ] [QoS] topic_pub.cpp:88 - 描述
 
    ### 🔵 Info (Z issues) - 可选
-   - [ ] [维护] helper.ts:20 - 描述
+   - [ ] [规范] helper.py:20 - 描述
 
    ### ✅ 已通过检查
-   - ✅ 无 XSS 漏洞
-   - ✅ 错误处理完整
+   - ✅ 无内存泄漏
+   - ✅ Topic/Service 命名规范
+   - ✅ Launch 文件参数完整
    ```
 
 5. **决策门**
    - **Critical > 0**:
      * 展示发现，用 `AskUserQuestion` 询问："立即修复 / 跳过"
-     * 选择修复 → Lead 直接修复（后端问题参考 {{BACKEND_PRIMARY}} 建议，前端参考 {{FRONTEND_PRIMARY}} 建议）
+     * 选择修复 → Lead 直接修复（底层控制问题参考 Codex 建议，上层应用参考 Gemini 建议）
      * 修复后重新运行受影响的审查维度
      * 重复直到 Critical = 0
    - **Critical = 0**:
@@ -91,7 +89,7 @@ description: 'Agent Teams 审查 - 双模型交叉审查并行实施的产出，
    - 报告当前上下文使用量。
 
 **Exit Criteria**
-- [ ] {{BACKEND_PRIMARY}} + {{FRONTEND_PRIMARY}} 审查完成
+- [ ] Codex + Gemini 审查完成
 - [ ] 所有发现已综合分级
 - [ ] Critical = 0（已修复或用户确认跳过）
 - [ ] 审查报告已输出

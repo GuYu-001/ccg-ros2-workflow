@@ -1,16 +1,24 @@
 {
-  "name": "ccg-workflow",
-  "version": "3.1.0",
-  "description": "Claude + Codex + Gemini multi-model collaboration system - smart routing development workflow",
+  "name": "ccg-ros2-workflow",
+  "version": "3.0.0",
+  "description": "ROS2 Multi-Model Collaborative Development Workflow - Codex (Low-level Control) + Antigravity (Upper-layer Application) + Claude (Orchestration)",
   "type": "module",
-  "packageManager": "pnpm@10.17.1",
+  "packageManager": "npm@10.9.2",
   "author": {
     "name": "CCG Contributors"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GuYu-001/ccg-ros2-workflow.git"
+  },
   "keywords": [
+    "ros2",
+    "humble",
+    "robotics",
     "claude",
     "codex",
+    "antigravity",
     "gemini",
     "multi-model",
     "ai",
@@ -19,7 +27,7 @@
     "workflow"
   ],
   "bin": {
-    "ccg": "bin/ccg.mjs"
+    "ccg-ros2-workflow": "bin/ccg.mjs"
   },
   "main": "dist/index.mjs",
   "module": "dist/index.mjs",
@@ -52,7 +60,7 @@
     "build": "unbuild",
     "start": "node bin/ccg.mjs",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "pnpm build",
+    "prepublishOnly": "npm run build",
     "test": "vitest run",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
@@ -70,9 +78,6 @@
     "ora": "^9.0.0",
     "pathe": "^2.0.3",
     "smol-toml": "^1.4.2"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.4.1",

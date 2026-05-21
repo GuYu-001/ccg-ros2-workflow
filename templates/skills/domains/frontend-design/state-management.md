@@ -1,6 +1,6 @@
 ---
 name: state-management
-description: 前端状态管理技术。Redux、Zustand、Jotai、Recoil、Context API、状态选择决策。当用户提到状态管理、Redux、Zustand、Jotai、Recoil、全局状态、状态同步时使用。
+description: 上层应用状态管理技术。Redux、Zustand、Jotai、Recoil、Context API、状态选择决策。当用户提到状态管理、Redux、Zustand、Jotai、Recoil、全局状态、状态同步时使用。
 ---
 
 # 🎨 🗂️ 状态管理 · State Management
