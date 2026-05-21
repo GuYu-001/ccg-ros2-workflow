@@ -24,6 +24,38 @@ You are `ccg-review` — a sub-agent spawned by the main orchestrator to review 
 6. Run lint and type-check; fix failures (max 3 attempts).
 7. Run tests; report pass/fail.
 
+## ROS2 Review Checklist (apply when target is a ROS2 workspace)
+
+Detect ROS2 by presence of: `package.xml`, `colcon` workspace, `CMakeLists.txt` with `ament_cmake`, or `setup.py` with `console_scripts`.
+
+When ROS2 is detected, on top of the generic review, you MUST flag (and fix when trivial):
+
+**Critical (always fix or block)**:
+- QoS mismatch between publisher and subscriber on the same topic — same Reliability AND Durability, otherwise the subscription is silently dropped
+- Missing `<depend>` / `<exec_depend>` for any header / module imported by the new code
+- New executable not registered: missing `add_executable` + `install(TARGETS ...)` (C++) or missing `console_scripts` entry (Python)
+- New `.msg/.srv/.action` not exported via `rosidl_generate_interfaces` and `ament_export_dependencies(rosidl_default_runtime)`
+- Lifecycle node transitions that violate the spec (e.g. activating publishers in `on_configure`)
+- Hardcoded device paths (`/dev/ttyUSB0`, `can0`) instead of parameters
+- Blocking calls inside callbacks (file IO, network, sleep) without an executor / callback-group fix
+- `rclcpp::Node::shared_from_this()` called from constructor — undefined behavior
+- Subscriptions/publishers/services declared as raw pointers instead of `SharedPtr` (memory leak risk)
+- `tf_static` republished from a non-static publisher (breaks downstream consumers)
+
+**Warning (recommend fix)**:
+- Default-constructed QoS (relies on `rmw` default) for sensor or control topics — should be explicit
+- Parameters not declared via `declare_parameter` (will be rejected as undeclared)
+- Topic / frame names hardcoded instead of remapped via launch
+- Launch files using absolute paths instead of `FindPackageShare` / `PathJoinSubstitution`
+- C++ files missing `RCLCPP_*` log macros — use logging instead of `std::cout`
+- Python nodes missing `try/finally rclpy.shutdown()` in `main()`
+- Custom messages without semantic version fields when ABI matters
+
+**Info (note in report)**:
+- No launch_testing / unit tests for new public node behavior
+- Missing README sections for new nodes (parameters, topics, launch examples)
+- `colcon test` not exercised in CI
+
 ## Output
 
 ### Findings (fixed)
@@ -32,10 +64,15 @@ You are `ccg-review` — a sub-agent spawned by the main orchestrator to review 
 ### Findings (not fixed)
 - Only issues you could not self-fix. Explain why.
 
+### ROS2 Findings (if applicable)
+- Critical: [list with file:line]
+- Warning: [list with file:line]
+- Info: [list]
+
 ### Verification
 - Lint: pass/fail
-- TypeCheck: pass/fail
-- Tests: pass/fail
+- TypeCheck: pass/fail (or `colcon build` for ROS2 C++)
+- Tests: pass/fail (or `colcon test` for ROS2)
 """
 
 [features]

@@ -12,7 +12,7 @@
 
 - **29 个斜杠命令** + **7 个子智能体**（→ `~/.claude/commands/ccg/` + `~/.claude/agents/ccg/`）
 - **19 个专家提示词**（Claude / Codex / Gemini 三组，→ `~/.claude/.ccg/prompts/`）
-- **100+ 技能文件**（质量关卡 + 10 大域知识秘典 + impeccable + 工具，→ `~/.claude/skills/ccg/`）
+- **100+ 技能文件**（质量关卡 + 10 大域知识秘典 + 6 个 ROS2 专属域 + 工具，→ `~/.claude/skills/ccg/`）
 - **2 个全局规则**（→ `~/.claude/rules/`）
 - **8 种输出风格**（→ `~/.claude/output-styles/`，由菜单命令安装）
 
@@ -227,21 +227,6 @@
 
 `python.md` / `go.md` / `rust.md` / `typescript.md` / `java.md` / `cpp.md` / `shell.md`
 
-#### frontend-design/（多文件，含 4 种设计风格）
-
-**基础知识**：`ui-aesthetics.md` / `ux-principles.md` / `component-patterns.md` / `state-management.md` / `engineering.md`
-
-**参考资料**（`reference/`）：`typography.md` / `color-and-contrast.md` / `interaction-design.md` / `motion-design.md` / `spatial-design.md` / `responsive-design.md` / `ux-writing.md`
-
-**设计风格子技能**（各含 `SKILL.md` + `references/tokens.css`）：
-
-| 目录 | 风格 | 触发词 |
-|------|------|--------|
-| `claymorphism/` | 黏土态 | claymorphism |
-| `glassmorphism/` | 玻璃态 | glassmorphism |
-| `liquid-glass/` | 液态玻璃 | liquid glass |
-| `neubrutalism/` | 新野兽主义 | neubrutalism |
-
 #### 其他 4 大领域（含 SKILL.md 入口）
 
 | 目录 | 状态 |
@@ -251,32 +236,16 @@
 | `data-engineering/` | SKILL.md 入口（详细知识文件待填充） |
 | `orchestration/` | `multi-agent.md` + SKILL.md（多智能体协作规范） |
 
-### impeccable/（20 个 UI/UX 精打磨工具）
+#### ROS2 专属域（6 个，CCG-ROS2 v3.0.0+ 新增）
 
-每个工具均为独立子目录，含 `SKILL.md`（部分含 `reference/` 参考资料）。
-
-| 工具 | `/ccg:` 命令 | 定位 |
-|------|-------------|------|
-| `adapt/` | `adapt` | 跨屏幕尺寸适配 |
-| `animate/` | `animate` | 为功能增加有目的的动效 |
-| `arrange/` | `arrange` | 改善布局、间距和视觉节奏 |
-| `audit/` | `audit` | 可访问性、性能、技术质量全检 |
-| `bolder/` | `bolder` | 把保守/无聊的设计放大到引人注目 |
-| `clarify/` | `clarify` | 改善不清晰的 UX 文案和错误信息 |
-| `colorize/` | `colorize` | 为过于单调的功能增添战略性色彩 |
-| `critique/` | `critique` | 从 UX 视角评估设计，多维度打分 |
-| `delight/` | `delight` | 为交互增加惊喜感和个性时刻 |
-| `distill/` | `distill` | 剔除冗余，还原设计本质 |
-| `extract/` | `extract` | 提取并整合可复用组件/token/模式 |
-| `harden/` | `harden` | 改善界面健壮性（错误处理/边界态） |
-| `normalize/` | `normalize` | 审计并对齐到设计系统规范 |
-| `onboard/` | `onboard` | 设计改善引导流程和空态 |
-| `optimize/` | `optimize` | 优化上层应用性能（加载/渲染/交互） |
-| `overdrive/` | `overdrive` | 突破常规，将界面推向极致表达 |
-| `polish/` | `polish` | 最终质量打磨（对齐/间距/颜色一致性） |
-| `quieter/` | `quieter` | 降低视觉噪音，让主内容呼吸 |
-| `teach-impeccable/` | `teach-impeccable` | 一次性设置，收集设计上下文偏好 |
-| `typeset/` | `typeset` | 修复字体选择、大小、行高和层级 |
+| 目录 | 用途 |
+|------|------|
+| `ros2-upper-app/` | Launch 编排、参数 YAML、RViz 配置、Python 节点、Gazebo 仿真（5 个子技能） |
+| `ros2-perception/` | 激光雷达、相机、点云、PCL、传感器融合、SLAM 输入 |
+| `ros2-control/` | PID/MPC/LQR、ros2_control 框架、CAN/Modbus 电机驱动 |
+| `ros2-navigation/` | Nav2 栈、SLAM、AMCL、Costmap、规划器 |
+| `ros2-manipulation/` | MoveIt2、URDF、抓取规划、运动学 |
+| `ros2-hardware/` | 串口、CAN、I2C/SPI、udev 规则、硬件抽象 |
 
 ### scrapling/
 
@@ -356,7 +325,7 @@ templates/prompts/codex/           # 目录整体
 templates/prompts/gemini/*.md      # 7 个文件（逐一列出）
 templates/prompts/claude/          # 目录整体
 templates/output-styles/           # 目录整体
-templates/skills/                  # 目录整体（含所有域知识 + impeccable）
+templates/skills/                  # 目录整体（含所有域知识 + ROS2 专属域）
 templates/rules/                   # 目录整体
 ```
 
@@ -378,7 +347,7 @@ templates/rules/                   # 目录整体
 
 2. **Skill Registry frontmatter 驱动**（v2.0.0）：新增技能只需写 SKILL.md 并设 `user-invocable: true`，无需改 TypeScript 代码即可自动生成 slash command。`scripted` 技能（有 `scripts/*.js`）和 `knowledge` 技能（纯 Markdown）生成内容不同。
 
-3. **commands/ vs skills/impeccable/**：`commands/` 是核心开发工作流命令，手动维护在 `installer-data.ts` 注册表中。`impeccable/` 是 UI/UX 精打磨工具，通过 Skill Registry 自动注册，两套机制互补，避免冲突（`installSkillGeneratedCommands()` 跳过已在注册表中的命令名）。
+3. **commands/ vs Skill Registry 自动注册**：`commands/` 是核心开发工作流命令，手动维护在 `installer-data.ts` 注册表中。其他 `user-invocable: true` 的 SKILL.md 通过 Skill Registry 自动注册为 slash command，两套机制互补避免冲突（`installSkillGeneratedCommands()` 跳过已在注册表中的命令名）。
 
 4. **output-styles 独立安装路径**：与其他素材不同，output-styles 不经过主 `installWorkflows()` 管线，而是由菜单的 `installOutputStyle()` 按需安装到 `~/.claude/output-styles/`，允许用户按需切换风格而不重新全量安装。
 

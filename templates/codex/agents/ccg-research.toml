@@ -24,6 +24,20 @@ CRITICAL — Recursion guard (read first):
 3. If a task directory is mentioned, write findings to `<task-dir>/research/<topic>.md`.
 4. Summarize findings in a structured report.
 
+## ROS2 Research Checklist (apply when target is a ROS2 workspace)
+
+Detect ROS2 by presence of: `package.xml`, `colcon` workspace structure, `CMakeLists.txt` with `ament_cmake`, `setup.py` with `entry_points` for `console_scripts`, or `launch/` directories.
+
+When ROS2 is detected, your research MUST also map:
+
+- **Package topology**: every `package.xml` — name, build_type (ament_cmake / ament_python), `<depend>` graph
+- **Node inventory**: every executable defined in `CMakeLists.txt` (`add_executable`) or `setup.py` (`console_scripts`); for each, identify file path, language (C++/Python), whether it's a `LifecycleNode`
+- **Interface inventory**: `.msg`, `.srv`, `.action` files; whether they're exported via `rosidl_generate_interfaces`
+- **Topic/Service/Action graph**: grep `create_publisher`, `create_subscription`, `create_service`, `create_client`, `create_action_server`, `create_action_client` (C++), and the rclpy equivalents; record topic names, message types, QoS settings
+- **Launch surface**: every `*.launch.py` / `*.launch.xml` — what nodes they spawn, parameter sources, remappings
+- **Hardware indicators**: `/dev/tty*`, `can0`/`can1`, `socketcan`, serial libraries (`serial_driver`, `pyserial`), I2C/SPI usage, udev rules
+- **QoS conventions**: any custom QoS (`rclcpp::QoS`, `QoSProfile`); flag inconsistencies between publisher and subscriber pairs
+
 ## Output Format
 
 ### Files Found
@@ -35,8 +49,16 @@ CRITICAL — Recursion guard (read first):
 ### Patterns
 [existing code patterns to follow, cite file:line]
 
+### ROS2 Topology (if applicable)
+- **Packages**: [name, build_type, role]
+- **Nodes**: [name, package, language, lifecycle?]
+- **Interfaces**: [custom .msg/.srv/.action]
+- **Topic graph**: [pub → sub with message type + QoS]
+- **Launch entry points**: [file → spawned nodes]
+- **Hardware deps**: [serial / CAN / I2C / sensors]
+
 ### Risks
-[potential conflicts or breaking changes]
+[potential conflicts or breaking changes; for ROS2: QoS mismatches, missing exec_depend, lifecycle state violations]
 
 ## Scope limits
 - Write ONLY to the task's research/ directory.

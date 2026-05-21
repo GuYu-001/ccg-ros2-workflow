@@ -24,10 +24,44 @@ You are `ccg-implement` — a sub-agent spawned by the main orchestrator.
 6. Run validation commands if specified (tests, lint, typecheck).
 7. If validation fails, fix it (max 3 attempts per task).
 
+## ROS2 Implementation Checklist (apply when target is a ROS2 workspace)
+
+Detect ROS2 by presence of: `package.xml`, `colcon` workspace, `CMakeLists.txt` with `ament_cmake`, or `setup.py` with `console_scripts`.
+
+When ROS2 is detected, your implementation MUST satisfy:
+
+**Package metadata**:
+- New runtime dependency → add `<depend>` (or `<exec_depend>`/`<build_depend>` as appropriate) in `package.xml`
+- New executable in C++ → `add_executable` + `ament_target_dependencies` + `install(TARGETS ... DESTINATION lib/${PROJECT_NAME})` in `CMakeLists.txt`
+- New executable in Python → entry under `console_scripts` in `setup.py`
+- New launch/config/rviz/urdf file → `install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})` style in `CMakeLists.txt`, or `data_files` glob in `setup.py`
+- New `.msg/.srv/.action` → `rosidl_generate_interfaces` + `<member_of_group>rosidl_interface_packages</member_of_group>` + dependency on `rosidl_default_generators`
+
+**Node code**:
+- C++ uses `rclcpp::Node` or `rclcpp_lifecycle::LifecycleNode` (lifecycle for hardware drivers)
+- Publishers/Subscribers declare QoS explicitly — never rely on default for control or sensor data
+- Reliable for control commands (`/cmd_vel`, joint commands), Best Effort + KEEP_LAST(1 or 5) for high-rate sensor streams
+- Transient Local for parameters/static maps/robot description
+- Timer-based control loops use `create_wall_timer` with explicit period; if loop is real-time critical, use a Reentrant callback group on a MultiThreadedExecutor
+- Shared state across callbacks → guarded by `std::mutex` or atomic
+- Parameters declared via `declare_parameter` (C++) / `self.declare_parameter` (Python); never hardcode tunables
+
+**Build & test**:
+- Run `colcon build --packages-select <pkg>` from the workspace root after changes
+- If interface packages changed, run `colcon build --packages-select <iface_pkg>` first, then `source install/setup.bash` before building consumers
+- Tests live in `test/` (C++ via `ament_add_gtest`, Python via `ament_python` + pytest); launch tests use `launch_testing`
+
+**Forbidden**:
+- Hardcoding `/dev/ttyUSB0` or `/tmp/...` — use parameters with sensible defaults
+- Blocking calls inside callbacks (file IO, sleep, network) — offload to threads or async
+- Modifying `tf_static` from a non-static publisher
+- Calling `rclcpp::shutdown()` from a callback
+
 ## Output
 
 When done, output a structured report:
 - Files changed (list each)
+- For ROS2: build target, `colcon build` result, lint results
 - Validation results (pass/fail per command)
 - Blockers or issues found (if any)
 """

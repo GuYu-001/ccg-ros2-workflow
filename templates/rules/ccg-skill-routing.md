@@ -31,6 +31,11 @@ When the user's request matches trigger keywords below, automatically READ the c
 | Nav2, navigation_stack, SLAM, slam_toolbox, Cartographer, RTAB-Map, AMCL, costmap, planner, NavfnPlanner, SmacPlanner, DWB, RPP, MPPI, behavior tree | `~/.claude/skills/ccg/domains/ros2-navigation/SKILL.md` | Antigravity (config) + Codex (custom planner) |
 | MoveIt, MoveIt2, move_group, manipulator, arm, grasp, pick, place, IK, FK, kinematics, URDF, SRDF, xacro, OMPL, CHOMP, STOMP | `~/.claude/skills/ccg/domains/ros2-manipulation/SKILL.md` | Codex (kinematics) + Antigravity (config) |
 | serial, ttyUSB, ttyACM, RS232, RS485, CAN, SocketCAN, can0, candump, I2C, SPI, GPIO, udev rules, device permission, dialout group, modbus | `~/.claude/skills/ccg/domains/ros2-hardware/SKILL.md` | Codex (driver) |
+| launch file, launch.py, IncludeLaunchDescription, launch_arguments, FindPackageShare, PathJoinSubstitution, PushRosNamespace, GroupAction | `~/.claude/skills/ccg/domains/ros2-upper-app/launch-files.md` | Antigravity (orchestration) |
+| params.yaml, ros__parameters, declare_parameter, parameter override, ParameterDescriptor, on_set_parameters_callback | `~/.claude/skills/ccg/domains/ros2-upper-app/parameters.md` | Antigravity (config) |
+| rviz, rviz2, .rviz config, displays, TF tree, Fixed Frame, RobotModel display, costmap visualization | `~/.claude/skills/ccg/domains/ros2-upper-app/rviz-config.md` | Antigravity (config) |
+| rclpy, Python ROS2 node, MultiThreadedExecutor, callback group, ReentrantCallbackGroup, ActionClient, Lifecycle Python | `~/.claude/skills/ccg/domains/ros2-upper-app/python-nodes.md` | Antigravity (upper-layer) |
+| Gazebo, gz sim, Ignition, ros_gz_bridge, sdf world, robot_state_publisher, gz_ros2_control, simulation time, use_sim_time | `~/.claude/skills/ccg/domains/ros2-upper-app/simulation.md` | Antigravity (simulation config) |
 
 ## Architecture Domain (`domains/architecture/`)
 
@@ -76,20 +81,6 @@ When the user is working with a specific programming language, read the correspo
 | Java / Kotlin | `~/.claude/skills/ccg/domains/development/java.md` |
 | C / C++ | `~/.claude/skills/ccg/domains/development/cpp.md` |
 | Shell / Bash | `~/.claude/skills/ccg/domains/development/shell.md` |
-
-## Upper-layer Application Design Domain (`domains/frontend-design/`)
-
-| Trigger Keywords | Skill File |
-|------------------|-----------|
-| UI aesthetics, visual design, color theory, layout | `~/.claude/skills/ccg/domains/frontend-design/ui-aesthetics.md` |
-| UX principles, usability, user flow, information architecture | `~/.claude/skills/ccg/domains/frontend-design/ux-principles.md` |
-| component patterns, design system, atomic design | `~/.claude/skills/ccg/domains/frontend-design/component-patterns.md` |
-| state management, Redux, Zustand, Pinia, context | `~/.claude/skills/ccg/domains/frontend-design/state-management.md` |
-| frontend engineering, build tool, bundler, SSR, SSG | `~/.claude/skills/ccg/domains/frontend-design/engineering.md` |
-| claymorphism | `~/.claude/skills/ccg/domains/frontend-design/claymorphism/SKILL.md` |
-| glassmorphism | `~/.claude/skills/ccg/domains/frontend-design/glassmorphism/SKILL.md` |
-| liquid glass | `~/.claude/skills/ccg/domains/frontend-design/liquid-glass/SKILL.md` |
-| neubrutalism | `~/.claude/skills/ccg/domains/frontend-design/neubrutalism/SKILL.md` |
 
 ## Routing Rules
 
