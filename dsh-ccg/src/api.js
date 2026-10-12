@@ -18,6 +18,7 @@
 import { CROSSCHECK_TOOL, resolvePanel } from './crosscheck.js'
 import { rosterOf } from './memory.js'
 import { ROLES, ROLE_NAMES, TIERS, resolveRoles } from './roles.js'
+import { directChildActivity } from './subagent.js'
 
 /** Route the card reads and writes. */
 export const API_PATH = '/api/ccg/config'
@@ -310,10 +311,10 @@ export function buildTeamPayload(rows = [], status = {}) {
  * @returns childId → activity.
  */
 export async function liveActivity(subagents, parentId, rows = []) {
-  if (subagents?.listChildren === undefined || rows.length === 0) return {}
+  if (subagents === undefined || rows.length === 0) return {}
   try {
     const status = {}
-    for (const entry of await subagents.listChildren(parentId)) {
+    for (const entry of await directChildActivity(subagents, parentId)) {
       const id = String(entry?.id ?? '')
       if (id !== '' && entry?.activity) status[id] = String(entry.activity)
     }
@@ -416,14 +417,17 @@ function send(res, status, body) {
  * @returns the disposer removing the route.
  */
 export function registerConfigRoute(ctx, scope, snapshot, catalog = async () => []) {
+  const payload = async (state) => ({
+    ...buildConfigPayload(state.value, state.user, state.writable, await catalog()),
+    ...(state.revision === undefined ? {} : { revision: state.revision }),
+  })
   return ctx.webServer.register({
     kind: 'exact',
     path: API_PATH,
     handler: async (req, res) => {
       try {
         if (req.method === 'GET') {
-          const { value, user, writable } = snapshot()
-          send(res, 200, buildConfigPayload(value, user, writable, await catalog()))
+          send(res, 200, await payload(snapshot()))
           return
         }
         if (req.method === 'POST') {
@@ -431,17 +435,32 @@ export function registerConfigRoute(ctx, scope, snapshot, catalog = async () => 
             send(res, 403, { error: 'ccg: settings writes are accepted from this machine only' })
             return
           }
-          const patch = await readJsonBody(req)
-          const { user } = snapshot()
-          await scope.replace(nextUserSection(user, patch))
+          const body = await readJsonBody(req)
+          if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+            throw new TypeError('ccg: configuration update must be an object')
+          }
+          const { expectedRevision, ...patch } = body
+          if (expectedRevision !== undefined && (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0)) {
+            throw new TypeError('ccg: expectedRevision must be a non-negative integer')
+          }
+          const { user, writable, revision } = snapshot()
+          if (!writable) {
+            send(res, 403, { error: 'ccg: this profile is not writable' })
+            return
+          }
+          if (expectedRevision !== undefined && expectedRevision !== revision) {
+            send(res, 409, { error: 'ccg: configuration changed; reload before saving' })
+            return
+          }
+          await scope.replace(nextUserSection(user, patch), expectedRevision ?? revision)
           const after = snapshot()
-          send(res, 200, buildConfigPayload(after.value, after.user, after.writable, await catalog()))
+          send(res, 200, await payload(after))
           return
         }
         res.writeHead(405, { Allow: 'GET, POST' })
         res.end()
       } catch (error) {
-        send(res, 400, { error: String(error?.message ?? error) })
+        send(res, error?.code === 'SETTINGS_CONFLICT' ? 409 : 400, { error: String(error?.message ?? error) })
       }
     },
   })

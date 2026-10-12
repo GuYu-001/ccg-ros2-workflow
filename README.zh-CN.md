@@ -56,6 +56,8 @@ npx ccg-workflow dsh list       # 看哪些 profile 装了
 
 或者跑 `npx ccg-workflow` 选 **`D. DeepSeek Harness`**。
 
+支持 dsh `0.2.0-rc.2` 与 `0.2.1-alpha.2`。更新 CCG 后重新运行 `npx ccg-workflow@latest dsh install`，再重启 dsh。配置保存在各 profile 的 `cordis.patch.yml`，CCG 卡片位于「设置 → 内置插件」。
+
 七个角色委派工具，各自跑在自己的模型上、带着自己的专家人设 —— 外加两件 Claude Code 那边做不了这么干净的事：
 
 - **模型群。** 给一个角色挂多个模型，它们拿同一份简报各自独立作答，答案**在对话流里并排渲染**。不投票、不取平均 —— 分歧处才是结论。
@@ -342,4 +344,4 @@ MIT
 
 ---
 
-v3.6.7 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.6.8 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [Contributing](./CONTRIBUTING.md)

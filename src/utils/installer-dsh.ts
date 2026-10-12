@@ -17,7 +17,8 @@
  * written here, then the profile's own package manager is asked to link it.
  */
 
-import { execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
+import type { SpawnSyncOptions } from 'node:child_process'
 import { homedir } from 'node:os'
 import fs from 'fs-extra'
 import { join } from 'pathe'
@@ -160,7 +161,9 @@ async function stagePlugin(target: string): Promise<string> {
 async function wireProfile(dir: string, pluginDir: string): Promise<boolean> {
   const manifest = join(dir, 'package.json')
   const pkg = await fs.readJson(manifest)
-  const spec = `file:${pluginDir}`
+  // The source is our durable copy, not the npx cache. A live link also avoids
+  // pnpm retaining a stale content-addressed file: snapshot on upgrades.
+  const spec = `link:${pluginDir}`
   let changed = false
 
   pkg.dependencies ??= {}
@@ -189,27 +192,50 @@ async function wireProfile(dir: string, pluginDir: string): Promise<boolean> {
  *
  * `dsh --profile <name> plugin <args>` forwards to pnpm inside the profile
  * directory, which is how the harness itself does this — so it is used first
- * and pnpm/npm are only fallbacks for a machine where the launcher is not on
+ * and pnpm is the fallback for a machine where the launcher is not on
  * PATH.
  *
  * @param dir - the profile directory.
  * @param name - the profile name.
  * @returns an error message, or undefined on success.
  */
+export function profileLinkCommand(bin: string, args: string[], platform = process.platform) {
+  if (platform !== 'win32') return { file: bin, args, windowsVerbatimArguments: false }
+  if (![bin, ...args].every(value => /^[\p{L}\p{N}_. -]+$/u.test(value))) {
+    throw new Error('Unsupported Windows profile name: shell metacharacters are not allowed')
+  }
+  const command = [bin, ...args].map(value => `"${value}"`).join(' ')
+  return {
+    file: process.env.ComSpec || 'cmd.exe',
+    args: ['/d', '/s', '/c', `"${command}"`],
+    windowsVerbatimArguments: true,
+  }
+}
+
 function linkProfile(dir: string, name: string): string | undefined {
   const attempts: Array<[string, string[]]> = [
     ['dsh', ['plugin', '--profile', name, 'install']],
     ['pnpm', ['install']],
-    ['npm', ['install']],
   ]
   let last = 'no package manager found'
   for (const [bin, args] of attempts) {
     try {
-      execSync([bin, ...args].join(' '), { cwd: dir, stdio: 'pipe', timeout: 180_000 })
+      const command = profileLinkCommand(bin, args)
+      const options = {
+        cwd: dir,
+        env: { ...process.env, DSH_HOME: join(dir, '..', '..') },
+        stdio: 'pipe',
+        timeout: 180_000,
+        windowsVerbatimArguments: command.windowsVerbatimArguments,
+      } satisfies SpawnSyncOptions
+      execFileSync(command.file, command.args, options)
       return undefined
     }
     catch (error: any) {
       last = String(error?.stderr?.toString?.() || error?.message || error).trim().split('\n').slice(-3).join('\n')
+      // A launcher refusal includes its compatibility and profile checks. A
+      // raw package-manager success must not turn that refusal into success.
+      if (bin === 'dsh' && error?.code !== 'ENOENT') return last
     }
   }
   return last
@@ -257,11 +283,9 @@ export async function installDshPlugin(options: {
       try {
         await wireProfile(profile.dir, pluginDir)
         const failure = link(profile.dir, profile.name)
-        // The manifest is correct either way; only the link is missing, and the
-        // user can finish it with one command. Reporting it as a total failure
-        // would be worse than telling them exactly what is left.
         if (failure) {
           warnings.push(`${profile.name}: declared, but linking failed — run \`dsh plugin --profile ${profile.name} install\`\n${failure}`)
+          continue
         }
         wired.push(profile.name)
       }

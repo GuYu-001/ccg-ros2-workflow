@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.6.8] - 2026-10-12
+
+### 🐛 修复
+
+- **新版 dsh 无法导入 CCG（#163 / #165）**：删除已经移除的 `settingsNamespace` / `deepEqualJson` 导入。配置卡通过 Loader-owned volatile Config 和官方 SettingsForms 写入各 profile 的 `cordis.patch.yml`，支持实时更新、重启恢复和 revision 冲突拒绝。
+- **新版设置卡消失**：迁移到 `settings.plugins.tab` 与 `dsh-client-ui-renderer`；在「设置 → 内置插件 → CCG 角色矩阵」显示，保留模型群和队友条。冲突后刷新最新配置并保留用户实际修改。
+- **alpha 委派接口变更**：兼容 rc2 的 `start` / `startContinuable` 和 alpha 的 `startActivation`。模型群使用 caller 交付并检查 `stopReason`，成功、失败、取消都清理；队友使用 parent 完成通知，保持文件所有权和后续消息。
+- **队友状态**：从 `listDescendants` 读取直接子级活动，目录身份仍用于清理过期所有权。
+- **安装器**：包管理器接收目标 DSH_HOME 和独立参数，改为 `link:` 指向稳定源码副本，避免 pnpm 复用过期的 `file:` 内容快照；Windows 支持 cmd shim 并拒绝 shell 扩展字符。链接失败不再声称已安装成功。
+
+### 🔄 变更
+
+- `dsh-ccg` 升至 0.5.0，支持 dsh `0.2.0-rc.2` 与 `0.2.1-alpha.2`；不再支持旧 `0.1.x`。旧环境先升级 dsh，CCG 更新后重新运行 `npx ccg-workflow@latest dsh install` 并重启。
+- 修正插件 README 中未发布的独立 npm 安装命令和旧全局 settings 示例，补齐独立测试依赖与两代官方插槽运行时契约测试。
+- 新增两版官方 dsh 运行时的 CI 测试矩阵，npm 发布必须先通过该兼容检查。
+
+### 验证
+
+- 主包 210 项测试（完整复跑使用 `--testTimeout=15000`）、typecheck、build；插件两版官方运行时各 138 项测试及语法检查。
+- 两版实际安装与重装、源码一致性、内置浏览器卡片、配置保存/冲突/重启恢复、单角色/双模型群/队友及重启后同子级继续消息，均接本地模拟 provider 验证。旧 0.4.7 的 settings 配置已在隔离升级环境验证导入与原文件保留。
+- Windows 的 cmd 调用契约有单测，尚未在 Windows 实机验证；未调用付费厂商 API。
+
 ## [3.6.7] - 2026-09-15
 
 ### 🐛 修复

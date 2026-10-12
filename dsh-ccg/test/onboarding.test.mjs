@@ -42,7 +42,7 @@ test('a fresh install says out loud that it is only half itself', () => {
   // and little of the value.
   assert.match(bare, /a second\nopinion from the same model is not a second opinion/)
   // And where to fix it, for a user who never opens the card.
-  assert.match(bare, /Settings › Plugins › CCG/)
+  assert.match(bare, /Settings › Built-in plugins › CCG/)
 
   // One tier is enough to be routed; the nudge must then disappear.
   assert.ok(!renderRoutingPrompt(resolveRoles({ strong: { provider: 'gw', model: 'big' } }), []).includes('NOTE:'))

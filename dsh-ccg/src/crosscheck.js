@@ -21,6 +21,7 @@
 import { defineTool } from '@deepseek-ai/dsh-tools'
 
 import { ROLES } from './roles.js'
+import { collectSubagentResult } from './subagent.js'
 
 /** The standalone cross-check's tool name, named once for both halves. */
 export const CROSSCHECK_TOOL = 'ccg_crosscheck'
@@ -298,6 +299,7 @@ export function panelToolDefinition(spec) {
       if (subagents === undefined) throw new Error('ccg: the subagents service is not available')
       const parent = exec?.agent
       if (parent === undefined) throw new Error(`ccg: ${toolName} needs an agent session`)
+      exec?.signal?.throwIfAborted()
 
       const question = String(args.prompt ?? '').trim()
       if (question === '') throw new Error('ccg: prompt is required')
@@ -308,7 +310,7 @@ export function panelToolDefinition(spec) {
       const runs = members.map(async (member) => {
         const label = memberLabel(member)
         try {
-          const run = await subagents.start(provider, {
+          const result = await collectSubagentResult(subagents, provider, {
             label: `${String(args.description ?? toolName)} · ${label}`,
             prompt: [{ type: 'text', text: buildMemberPrompt(member, question, context, persona) }],
             parent,
@@ -320,9 +322,8 @@ export function panelToolDefinition(spec) {
             },
             ...(toolFilter ? { toolFilter } : {}),
           })
-          const result = await run.result
           const answer = contentText(result?.output).trim()
-          if (answer === '') {
+          if (result?.stopReason !== 'completed' || answer === '') {
             // The result seam carries no failure text, so say what the stop
             // reason usually means: a route that lists a model in its catalog
             // but does not actually serve it is the common cause.
@@ -331,9 +332,9 @@ export function panelToolDefinition(spec) {
               ...member,
               label,
               ok: false,
-              error: reason === 'error'
+              error: result?.diagnostic || (reason === 'error' && answer === ''
                 ? `the child ended with an error and produced nothing — check that ${member.provider} really serves ${member.model}`
-                : `no output (${reason})`,
+                : answer === '' ? `no output (${reason})` : `the child did not complete (${reason}): ${answer}`),
             }
           }
           return { ...member, label, ok: true, answer }
@@ -345,6 +346,8 @@ export function panelToolDefinition(spec) {
       })
 
       const settled = await Promise.all(runs)
+      // Every admitted child is cleaned up before a cancelled panel ends.
+      exec?.signal?.throwIfAborted()
       const answers = settled.map((entry) => ({
         label: entry.label,
         provider: entry.provider,

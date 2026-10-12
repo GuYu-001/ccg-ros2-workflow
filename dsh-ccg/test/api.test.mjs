@@ -6,8 +6,9 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { Readable } from 'node:stream'
 
-import { buildConfigPayload, isLoopback, nextUserSection } from '../src/api.js'
+import { buildConfigPayload, isLoopback, nextUserSection, registerConfigRoute, liveActivity } from '../src/api.js'
 import { ROLE_NAMES } from '../src/roles.js'
 
 test('the payload reports each tier, whether the user layer carries it, and the tools', () => {
@@ -168,4 +169,71 @@ test('the hiring switch stores a boolean, and null returns it to the layer below
     nextUserSection({ strong: { provider: 'gw', model: 'a' } }, { team: false }),
     { strong: { provider: 'gw', model: 'a' }, team: false },
   )
+})
+
+async function configRequest({ method = 'POST', body = {}, address = '127.0.0.1', state, replace }) {
+  let route
+  registerConfigRoute({ webServer: { register(value) { route = value; return () => {} } } },
+    { replace }, () => state)
+  const req = Readable.from([Buffer.from(JSON.stringify(body))])
+  req.method = method
+  req.socket = { remoteAddress: address }
+  const res = {
+    writeHead(status) { this.status = status },
+    end(body) { this.body = body === undefined ? undefined : JSON.parse(body) },
+  }
+  await route.handler(req, res)
+  return res
+}
+
+test('profile edits carry the current revision and preserve unrelated role options', async () => {
+  const state = { value: {}, user: { roles: { builder: { tier: 'strong', enabled: false } } }, writable: true, revision: 3 }
+  let saved
+  const response = await configRequest({ state,
+    body: { expectedRevision: 3, roles: { builder: { provider: 'gw', model: 'fast' } } },
+    replace: async (section, revision) => { saved = { section, revision } },
+  })
+  assert.equal(response.status, 200)
+  assert.equal(response.body.revision, 3)
+  assert.deepEqual(saved, { revision: 3, section: {
+    roles: { builder: { tier: 'strong', enabled: false, models: [{ provider: 'gw', model: 'fast' }] } },
+  } })
+})
+
+test('a stale browser, a readonly profile and a remote peer cannot write', async () => {
+  const state = { value: {}, user: {}, writable: true, revision: 4 }
+  let writes = 0
+  const replace = async () => { writes += 1 }
+  assert.equal((await configRequest({ state, replace, body: { expectedRevision: 3, team: false } })).status, 409)
+  assert.equal((await configRequest({ state: { ...state, writable: false }, replace })).status, 403)
+  assert.equal((await configRequest({ state, replace, address: '192.168.1.2' })).status, 403)
+  assert.equal(writes, 0)
+})
+
+test('a conflict between reading and persistence stays a conflict', async () => {
+  const response = await configRequest({ state: { value: {}, user: {}, writable: true, revision: 1 },
+    replace: async () => { throw Object.assign(new Error('revision changed'), { code: 'SETTINGS_CONFLICT' }) },
+  })
+  assert.equal(response.status, 409)
+  assert.match(response.body.error, /revision changed/)
+})
+
+test('malformed configuration bodies and revisions do not reach persistence', async () => {
+  let writes = 0
+  for (const body of [null, [], 'bad', { expectedRevision: -1 }, { expectedRevision: '3' }]) {
+    const response = await configRequest({ state: { value: {}, user: {}, writable: true, revision: 3 }, body,
+      replace: async () => { writes += 1 },
+    })
+    assert.equal(response.status, 400)
+  }
+  assert.equal(writes, 0)
+})
+
+test('the team strip reads direct child activity from the new recursive catalog', async () => {
+  const subagents = { listDescendants: async () => [
+    { kind: 'child', depth: 1, id: 'direct', activity: 'running' },
+    { kind: 'child', depth: 2, id: 'nested', activity: 'running' },
+    { kind: 'diagnostic', depth: 1, id: 'broken', activity: 'inactive' },
+  ] }
+  assert.deepEqual(await liveActivity(subagents, 'parent', [{ childId: 'direct' }]), { direct: 'running' })
 })

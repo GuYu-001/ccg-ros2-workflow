@@ -1,9 +1,9 @@
 /**
  * Browser half — two surfaces.
  *
- * 1. The CCG card in Settings › Plugins › Plugin configuration. The Plugins tab
- *    renders no form it was not given: a plugin that wants a card there ships
- *    this file and registers into the `settings.plugin.item` slot.
+ * 1. The CCG tab in Settings › Plugins. The Plugins section renders pages
+ *    contributed to `settings.plugins.tab`; each page supplies its own label
+ *    and editor.
  * 2. The panel view in the conversation. `tool.call.toolview` is keyed by wire
  *    tool name, so registering under `ccg_analyze` takes over how that tool's
  *    calls render — which is how a panel's answers come back side by side
@@ -52,17 +52,6 @@ window.__ModuleLoader__.load({
 
     /** Dictionary namespace owned by this plugin. */
     const NS = 'ccg'
-
-    /**
-     * The settings namespace this card edits — `SETTINGS_NAMESPACE` in
-     * src/index.js, repeated here because a browser module cannot import from
-     * the host half. `test/client-slots.test.mjs` pins the two together.
-     *
-     * It is what the plugin tab keys the card by, and it happens to be spelled
-     * the same as the locale namespace above; they are separate ideas and one
-     * changing does not change the other.
-     */
-    const SETTINGS_NS = 'ccg'
 
     /** Required browser services (cordis fiber inject). */
     const inject = ['slots', 'locale']
@@ -125,6 +114,7 @@ window.__ModuleLoader__.load({
       saving: 'Saving…',
       loading: 'Loading…',
       failed: 'The harness did not accept that change.',
+      conflict: 'Settings changed elsewhere. Your edits are preserved; check the refreshed configuration before saving again.',
       unreachable: 'Could not reach the plugin. Is it still installed?',
       noModels: 'No provider route is configured yet — add one under Settings › Models.',
       analyzer: 'Analyze',
@@ -181,6 +171,7 @@ window.__ModuleLoader__.load({
       saving: '保存中…',
       loading: '加载中…',
       failed: '本次修改未被 harness 接受。',
+      conflict: '设置已被其他操作修改。你的编辑已保留，请检查刷新后的配置再保存。',
       unreachable: '连不上插件，它还装着吗？',
       noModels: '还没有配置任何模型路由 —— 先到 设置 › 模型 里加一个。',
       analyzer: '分析',
@@ -527,7 +518,7 @@ window.__ModuleLoader__.load({
       const save = async () => {
         setBusy(true)
         setError(null)
-        const patch = {}
+        const patch = { expectedRevision: payload?.revision }
         for (const tier of TIERS) {
           if (current.tiers[tier] !== stored.tiers[tier]) patch[tier] = parseKey(current.tiers[tier])
         }
@@ -546,6 +537,28 @@ window.__ModuleLoader__.load({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(patch),
           })
+          if (response.status === 409) {
+            const rejection = await response.json().catch(() => ({}))
+            const detail = typeof rejection.error === 'string' ? rejection.error
+              : typeof rejection.message === 'string' ? rejection.message : ''
+            setError({ code: 'conflict', detail })
+            const body = await load().catch(() => null)
+            if (body !== null) {
+              // Rebase only fields the user edited. Keeping the entire old
+              // draft would turn another editor's new values into our next
+              // write and silently undo their changes.
+              const rebased = toSelection(body)
+              for (const tier of TIERS) {
+                if (tier in patch) rebased.tiers[tier] = current.tiers[tier]
+              }
+              for (const role of Object.keys(patch.roles ?? {})) rebased.roles[role] = current.roles[role]
+              if ('team' in patch) rebased.team = current.team
+              setPayload(body)
+              setDraft(rebased)
+              publishConfig(body)
+            }
+            return
+          }
           if (!response.ok) throw new Error(response.status)
           const body = await response.json()
           setPayload(body)
@@ -710,7 +723,9 @@ window.__ModuleLoader__.load({
       )
 
       const status = error
-        ? t(error === 'unreachable' ? 'unreachable' : 'failed')
+        ? error.code === 'conflict'
+          ? `${t('conflict')}${error.detail ? ` ${error.detail}` : ''}`
+          : t(error === 'unreachable' ? 'unreachable' : 'failed')
         : busy
           ? t('saving')
           : payload === null
@@ -853,14 +868,15 @@ window.__ModuleLoader__.load({
      * @returns the panel row.
      */
     function CcgPanelView(props) {
-      const { block, inspect, t } = props
+      const { block, phase, inspect, t } = props
       const roster = Array.isArray(props.roster) ? props.roster : []
       const [open, setOpen] = React.useState(false)
       const h = React.createElement
 
-      // A running call is a bare head with no `kind`; a settled one is the
-      // result node. Nothing else distinguishes them.
-      const settled = block !== null && typeof block === 'object' && 'kind' in block
+      // Current Tool views supply an explicit phase, including a preparation
+      // stage whose arguments may still be incomplete. Only a result carries
+      // the durable presentation metadata.
+      const settled = phase === 'result' || block?.kind === 'tool-result'
       const args = parseArgs(settled ? block.call?.argsRaw : block?.argsRaw)
       const brief = String(args.description ?? args.prompt ?? '').trim()
 
@@ -1219,7 +1235,7 @@ window.__ModuleLoader__.load({
     }
 
     /**
-     * Mount the card into the plugin-configuration tab.
+     * Mount the CCG editor as a labeled tab inside the Plugins section.
      *
      * @param ctx - the browser plugin context.
      */
@@ -1228,18 +1244,11 @@ window.__ModuleLoader__.load({
       ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ccg: card dictionaries')
       ctx.effect(() => mountStyles(), 'ccg: card styles')
 
-      // Both `key` and `id`, on purpose. The plugin tab redeclared this slot
-      // from a `list` (ordered by `id`) to a `keyed` one (dispatched by the
-      // settings namespace the card edits) — and a registration missing the
-      // option its slot's kind requires THROWS, which fails the whole loader
-      // entry and takes the panel view and the team strip down with the card.
-      // The two options are read by different kinds and ignored by the other,
-      // so carrying both is what makes one registration work on either.
-      ctx.slots.inject('settings.plugin.item', () => ctx.slots.register({
-        name: 'settings.plugin.item',
-        key: SETTINGS_NS,
+      ctx.slots.inject('settings.plugins.tab', () => ctx.slots.register({
+        name: 'settings.plugins.tab',
         id: 'ccg',
         order: 50,
+        label: () => t('title'),
         locale: NS,
         inject: () => ({ t }),
       }, CcgCard))

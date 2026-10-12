@@ -341,3 +341,22 @@ test('the roster reports what it retired, and reads live activity correctly', as
   assert.match(result.text, /their files are free again/)
   assert.match(result.text, /id alive · running · gw \/ fast/)
 })
+
+test('the new identity catalog preserves claims while recursive discovery supplies live status', async () => {
+  const table = stubTable([row('alive', ['src/a.js'], { hiredAt: 0 })])
+  const definition = rosterToolDefinition({
+    getTable: () => table, now: () => 1_000_000_000,
+    getSubagents: () => ({
+      listChildren: async () => [{ id: 'alive', mode: 'continuable', label: 'builder', createdAt: 0 }],
+      listDescendants: async () => [
+        { kind: 'child', id: 'alive', depth: 1, activity: 'running' },
+        { kind: 'child', id: 'alive', depth: 2, activity: 'inactive' },
+      ],
+    }),
+  })
+  const result = await definition.execute({ action: 'list' }, { agent: { id: 'coordinator-1' } })
+  assert.equal(result.count, 1)
+  assert.equal(result.pruned, undefined)
+  assert.match(result.text, /id alive · running · gw \/ fast/)
+  assert.deepEqual(table.get('alive').owns, ['src/a.js'])
+})

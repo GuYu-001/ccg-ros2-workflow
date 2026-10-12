@@ -56,6 +56,8 @@ npx ccg-workflow dsh list       # which profiles have it
 
 Or pick **`D. DeepSeek Harness`** from `npx ccg-workflow`.
 
+Requires dsh `0.2.0-rc.2` or `0.2.1-alpha.2`. After updating CCG, run `npx ccg-workflow@latest dsh install` again and restart dsh. Configuration now belongs to each profile's `cordis.patch.yml`; the CCG card is in Settings › Built-in plugins.
+
 Seven role-pinned delegation tools, each on its own model with its own expert persona — and two things the Claude Code side cannot do as cleanly:
 
 - **Model panels.** Give one role several models and they all answer the same brief independently, rendered **side by side in the conversation**. Nothing votes, nothing is averaged — disagreement is the finding.
@@ -342,4 +344,4 @@ MIT
 
 ---
 
-v3.6.7 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.6.8 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [Contributing](./CONTRIBUTING.md)

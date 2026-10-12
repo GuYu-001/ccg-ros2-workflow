@@ -819,8 +819,8 @@ async function handleDshPlugin(): Promise<void> {
     if (!uninstalling) {
       console.log()
       console.log(ansis.gray(isZh
-        ? '  重启 dsh 生效，然后在 设置 › 插件 › CCG 角色矩阵 里设好两个模型档位。'
-        : '  Restart dsh to load it, then set the two model tiers in Settings › Plugins › CCG.'))
+        ? '  重启 dsh 生效，然后在 设置 › 内置插件 › CCG 角色矩阵 里设好两个模型档位。'
+        : '  Restart dsh to load it, then set the two model tiers in Settings › Built-in plugins › CCG.'))
     }
   }
   else {

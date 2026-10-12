@@ -9,9 +9,10 @@
  * a one-shot child answers once and is gone, so nothing can be handed to it
  * afterwards and nothing can arrive from it unasked.
  *
- * The harness already owns every primitive this needs: `startContinuable`
- * keeps a child resident, `send_message` opens its next turn, `report` is its
- * channel home, `interrupt_agent` stops a turn that went wrong, `list_agents`
+ * The harness already owns every primitive this needs: continuable starts (rc)
+ * or activations (alpha) keep a child resident, `send_message` opens its next
+ * turn, reports or completion notifications carry its answer home,
+ * `interrupt_agent` stops a turn that went wrong, `list_agents`
  * shows who is alive. What was missing is a way to hire one of those children
  * AS A CCG ROLE — with that role's persona, that role's model, and the file
  * ownership that makes several of them safe to run at once. That is this file.
@@ -25,6 +26,7 @@
 import { defineTool } from '@deepseek-ai/dsh-tools'
 
 import { ROLES, ROLE_NAMES } from './roles.js'
+import { startTeammate, usesActivations } from './subagent.js'
 import {
   collisionsWith,
   describeCollisions,
@@ -109,8 +111,18 @@ export function buildTeammatePrompt(brief, context) {
  * @param owns - paths this teammate holds exclusively.
  * @returns the persona text shadowing the deployment persona for this child.
  */
-export function buildTeammatePersona(role, owns) {
-  return [role.persona, TEAM_FRAMING, ownershipRule(owns)].join('\n\n')
+export function buildTeammatePersona(role, owns, parentId) {
+  if (parentId === undefined) return [role.persona, TEAM_FRAMING, ownershipRule(owns)].join('\n\n')
+  const framing = TEAM_FRAMING.replace(
+    /- Nobody sees your work unless you `report` it\.[\s\S]*?partial one\./,
+    '- Your final answer is delivered to the coordinator automatically when your turn ends.\n'
+    + '  Finish every assignment with a self-contained account of what you changed and how to\n'
+    + '  verify it. Send EARLIER updates the moment you learn something that changes what\n'
+    + `  someone else should do, using send_message with agent_id "${parentId}".\n`
+    + '  Include shared contract changes, blockers and assumptions that turned out to be wrong.',
+  )
+  const ownership = ownershipRule(owns).replaceAll('`report`', 'send the coordinator a message about')
+  return [role.persona, framing, ownership].join('\n\n')
 }
 
 /**
@@ -424,7 +436,7 @@ export function teamToolDefinition(spec) {
     async execute(args, exec) {
       const subagents = getSubagents()
       if (subagents === undefined) throw new Error('ccg: the subagents service is not available')
-      if (subagents.startContinuable === undefined) {
+      if (!usesActivations(subagents) && typeof subagents.startContinuable !== 'function') {
         throw new Error(
           'ccg: this deployment\'s subagent service cannot keep children alive, so a team cannot '
           + 'be hired; use the one-shot role tools instead',
@@ -481,13 +493,13 @@ export function teamToolDefinition(spec) {
         return { hired: false, role: role.role, label, route: routeLabel(route), ...(owns.length > 0 ? { owns } : {}) }
       }
 
-      const { childId } = await subagents.startContinuable({
+      const { childId } = await startTeammate(subagents, {
         provider,
         label: `${role.role} · ${label}`,
         request: {
           prompt: [{ type: 'text', text: buildTeammatePrompt(brief, context) }],
           parent,
-          persona: buildTeammatePersona(role, owns),
+          persona: buildTeammatePersona(role, owns, usesActivations(subagents) ? String(parent.id) : undefined),
           ...(route ? { agentOptions: { ...route } } : {}),
           ...(typeof spec.maxDepth === 'number' ? { maxDepth: spec.maxDepth } : {}),
           ...(toolFilter ? { toolFilter } : {}),
@@ -541,16 +553,20 @@ export function teamToolDefinition(spec) {
  *
  * @param resolved - output of `resolveRoles`.
  * @param toolName - the registered hiring tool's name.
+ * @param activations - whether the harness delivers final answers automatically.
  * @returns the system-prompt section text, or '' when nothing can be hired.
  */
-export function renderTeamPrompt(resolved, toolName = TEAM_TOOL) {
+export function renderTeamPrompt(resolved, toolName = TEAM_TOOL, activations = false) {
   if (resolved.length === 0) return ''
   return [
     'CCG teams — several specialists working at once, kept alive between turns.',
     '',
     `\`${toolName}\` hires one; hire the few the job actually needs, all before waiting on any of`,
     'them. Each is a real colleague: it holds its own context across turns, you extend its work',
-    'with `send_message`, it answers on its own initiative through a report, `interrupt_agent`',
+    activations
+      ? 'with `send_message`, its final answer arrives automatically in a completion notification,'
+      : 'with `send_message`, it answers on its own initiative through a report, `interrupt_agent`',
+    ...(activations ? ['and earlier updates arrive through `send_message`. `interrupt_agent`'] : []),
     'stops a turn heading the wrong way, and `list_agents` shows who is alive.',
     '',
     'When a team earns its cost:',
@@ -582,7 +598,9 @@ export function renderTeamPrompt(resolved, toolName = TEAM_TOOL) {
     '  written into both briefs before either starts, or they will each invent a reasonable',
     '  version and neither will fit.',
     '',
-    'While they work: reports arrive as they finish, out of order and possibly minutes apart.',
+    activations
+      ? 'While they work: completion notifications arrive as they finish, possibly minutes apart.'
+      : 'While they work: reports arrive as they finish, out of order and possibly minutes apart.',
     'Read each as it lands, integrate it, and route what it implies for the others — a teammate',
     'reporting a changed contract is the signal to `send_message` whoever depends on it. When a',
     'report says something you did not expect, verify it yourself before building on it. The',
@@ -594,7 +612,9 @@ export function renderTeamPrompt(resolved, toolName = TEAM_TOOL) {
     'a misunderstanding costs the whole assignment if you let it finish. Interrupt, then',
     '`send_message` the correction. Interrupting is cheap; a wrong deliverable is not.',
     '',
-    'How to wait: do not. Never sleep, poll, or loop to pass the time — a report wakes you by',
+    activations
+      ? 'How to wait: do not. Never sleep, poll, or loop — a completion notification wakes you by'
+      : 'How to wait: do not. Never sleep, poll, or loop to pass the time — a report wakes you by',
     'itself, so finishing your turn IS how you wait, and it costs nothing. Say who is working on',
     'what and stop. You will be started again when the first one answers. Sleeping only burns the',
     'user\'s money to arrive at the same moment.',

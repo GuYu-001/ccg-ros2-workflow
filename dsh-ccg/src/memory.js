@@ -22,6 +22,7 @@
 import { defineDomain, domainTable } from '@deepseek-ai/dsh-storage-domain'
 import { z } from 'zod'
 import { defineTool } from '@deepseek-ai/dsh-tools'
+import { directChildActivity } from './subagent.js'
 
 /** Default name of the roster tool. */
 export const ROSTER_TOOL = 'ccg_roster'
@@ -471,13 +472,12 @@ export function rosterToolDefinition(spec) {
       )
 
       const rows = rosterOf(table, hiredBy)
-      // Live activity is the service's to know; a stored copy would only go
-      // stale. The entry field is `activity` (`running` | `inactive`) — reading
-      // a `status` that does not exist silently produced no status at all.
+      // The durable catalog used for pruning no longer includes activity.
+      // Recursive discovery supplies it; keep only direct child rows.
       const status = {}
       if (listChildren !== undefined && rows.length > 0) {
         try {
-          for (const entry of await listChildren(agent.id)) {
+          for (const entry of await directChildActivity(subagents, agent.id, exec?.signal)) {
             const id = String(entry?.id ?? '')
             if (id !== '' && entry?.activity) status[id] = String(entry.activity)
           }

@@ -2,7 +2,7 @@
 
 > [根目录](../CLAUDE.md) > **skills-v2**
 
-**Last Updated**: 2026-09-15 (v3.6.7)
+**Last Updated**: 2026-10-12 (v3.6.8)
 
 > ⚠ 本文档主体仍停留在 v2.1.16 架构描述（v3.0 引擎重构后未全量同步）。下方变更记录保留 v3.x 修复轨迹，完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -11,6 +11,12 @@
 ## 变更记录 (Changelog)
 
 > 完整变更历史请查看 [CHANGELOG.md](./CHANGELOG.md)
+
+### 2026-10-12 (v3.6.8)
+- 🐛 **dsh 0.2 插件适配（#163 / #165）**：删除失效的 settings 导出依赖，使用 Loader volatile Config 和 profile 表单读写；设置卡迁移到 `settings.plugins.tab`，browser inject 改为 `dsh-client-ui-renderer`。
+- 🐛 **两代委派接口兼容**：rc2 保留旧启动接口，alpha 使用 activation；模型群等待 caller 结果、检查完成状态并清理，队友通过 parent 完成通知交付。运行状态改读直接子级列表。
+- 🐛 **配置与安装结果**：修订号拒绝并发覆盖，非法矩阵在 Loader 提交前拒绝；安装器跟随目标 DSH_HOME 并链接稳定源码副本，链接失败不再报安装成功，Windows cmd shim 使用安全参数。
+- 🔄 **兼容范围**：dsh-ccg 0.5.0 支持 dsh 0.2.0-rc.2 / 0.2.1-alpha.2，不再支持旧 0.1.x；更新后重新运行 `ccg dsh install` 并重启 dsh。
 
 ### 2026-09-15 (v3.6.7)
 - 🐛 **npm 扫描 hold：** tarball 不再含 `templates/skills/domains/security/`（红队/渗透笔记）。3.6.5/3.6.6 的 PUT 成功但永不 GET。文件仍在 git。
@@ -350,7 +356,7 @@
 | TypeScript CLI 源码 | [src/CLAUDE.md](./src/CLAUDE.md) | CLI 主入口、命令实现、安装器、i18n、工具链 |
 | 模板文件 | [templates/CLAUDE.md](./templates/CLAUDE.md) | 斜杠命令、提示词、子智能体、技能、规则模板 |
 | codeagent-wrapper | [codeagent-wrapper/CLAUDE.md](./codeagent-wrapper/CLAUDE.md) | Go 二进制包装器，多模型调用桥接，v5.10.0 |
-| DSH 插件 | [dsh-ccg/CLAUDE.md](./dsh-ccg/CLAUDE.md) | CCG 角色矩阵的 DeepSeek Harness 形态，随主包发布，v0.4.6 |
+| DSH 插件 | [dsh-ccg/CLAUDE.md](./dsh-ccg/CLAUDE.md) | CCG 角色矩阵的 DeepSeek Harness 形态，随主包发布，v0.5.0 |
 
 ---
 

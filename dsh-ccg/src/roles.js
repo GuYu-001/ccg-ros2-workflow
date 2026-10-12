@@ -11,6 +11,15 @@
  * single role, or turns it off, through the plugin config.
  */
 
+import { isVolatile } from '@deepseek-ai/cosmokit'
+
+/** Read a configuration snapshot without leaking runtime references into tools. */
+export function readConfig(config = {}) {
+  return Object.fromEntries(Object.entries(config).map(([key, value]) => [
+    key, isVolatile(value) ? value.get() : value,
+  ]))
+}
+
 /** Model buckets a role can point at. */
 export const TIERS = ['strong', 'worker']
 
@@ -140,6 +149,7 @@ export const ROLE_NAMES = Object.keys(ROLES)
  * downgrade a child to the default model.
  */
 export function resolveRoles(config = {}) {
+  config = readConfig(config)
   const overrides = config.roles ?? {}
 
   for (const key of Object.keys(overrides)) {

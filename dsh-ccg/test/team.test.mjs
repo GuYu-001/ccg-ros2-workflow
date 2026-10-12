@@ -196,6 +196,54 @@ test('hiring starts a continuable child on the role\'s own model, wearing its pe
   })
 })
 
+test('alpha hiring returns the stable child id with parent delivery and automatic-report persona', async () => {
+  const calls = []
+  const rows = new Map()
+  const subagents = { async startActivation(spec) {
+    calls.push(spec)
+    return { childId: 'alpha-child', messageId: 'first-message', result: Promise.resolve({ stopReason: 'completed' }) }
+  } }
+  const { definition } = hiringTool(TIERS, subagents, {
+    confirm: false, getTable: () => ({ entries: () => rows.entries(), put: async (id, row) => { rows.set(id, row) } }),
+    maxDepth: 2, toolFilter: { deny: ['ccg_team'] },
+  })
+  const signal = new AbortController().signal
+  const result = await definition.execute({
+    role: 'builder', description: 'parser', prompt: 'Implement parser', owns: ['./src/parser.js'],
+  }, { agent: { id: 'parent-1', session: { header: { cwd: '/workspace' } } }, signal })
+  assert.equal(result.childId, 'alpha-child')
+  assert.equal(calls.length, 1)
+  const [spec] = calls
+  assert.equal(spec.delivery, 'parent')
+  assert.equal(spec.signal, signal)
+  assert.deepEqual(spec.request.agentOptions, { provider: 'gw', model: 'fast-model' })
+  assert.deepEqual(spec.request.toolFilter, { deny: ['ccg_team'] })
+  assert.equal(spec.request.maxDepth, 2)
+  assert.match(spec.request.persona, /final answer is delivered.*automatically/)
+  assert.match(spec.request.persona, /agent_id "parent-1"/)
+  assert.doesNotMatch(spec.request.persona, /`report`/)
+  assert.match(spec.request.persona, /src\/parser\.js/)
+  assert.equal(rows.get('alpha-child').hiredBy, 'parent-1')
+  assert.deepEqual(rows.get('alpha-child').owns, ['src/parser.js'])
+})
+
+test('an alpha activation failing to start creates no ghost owner', async () => {
+  const subagents = { async startActivation() { throw new Error('publication cancelled') } }
+  const { definition } = hiringTool(TIERS, subagents, {
+    confirm: false, getTable: () => ({ entries: () => [], async put() { assert.fail('ghost owner') } }),
+  })
+  await assert.rejects(definition.execute({ role: 'builder', description: 'parser', prompt: 'Implement parser', owns: ['src/parser.js'] }, {
+    agent: { id: 'parent-1' }, signal: new AbortController().signal,
+  }), /publication cancelled/)
+})
+
+test('the alpha team convention waits for completion notifications and accepts earlier messages', () => {
+  const prompt = renderTeamPrompt(resolveRoles(TIERS), 'ccg_team', true)
+  assert.match(prompt, /final answer arrives automatically in a completion notification/)
+  assert.match(prompt, /earlier updates arrive through `send_message`/)
+  assert.doesNotMatch(prompt, /through a report/)
+})
+
 test('a role holding a panel hires its first model, and the report says which', async () => {
   const { definition, subagents } = hiringTool({
     ...TIERS,

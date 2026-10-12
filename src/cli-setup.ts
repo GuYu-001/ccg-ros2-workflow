@@ -222,7 +222,7 @@ export async function setupCommands(cli: CAC): Promise<void> {
           const verb = action === 'install' ? 'installed into' : 'removed from'
           console.log(ansis.green(`✓ dsh-ccg ${verb}: ${result.profiles.join(', ') || '(no profile carried it)'}`))
           if (action === 'install') {
-            console.log(ansis.gray('  Restart dsh to load it, then set the two model tiers in Settings › Plugins › CCG.'))
+            console.log(ansis.gray('  Restart dsh to load it, then set the two model tiers in Settings › Built-in plugins › CCG.'))
           }
         }
         else {

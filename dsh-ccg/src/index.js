@@ -20,9 +20,9 @@
 
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { isDeepStrictEqual } from 'node:util'
 
 import Schema from '@deepseek-ai/schemastery'
-import { deepEqualJson, settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { delegationDepthOf } from '@deepseek-ai/dsh-subagent'
 import * as ToolSubagentNamespace from '@deepseek-ai/dsh-tool-subagent'
 import * as SkillFilesystemNamespace from '@deepseek-ai/dsh-skill-filesystem'
@@ -43,9 +43,9 @@ import {
   renderMemoryPrompt,
   workspaceOf,
 } from './knowledge.js'
-import { ROLES, ROLE_NAMES, TIERS, resolveRoles } from './roles.js'
+import { ROLES, ROLE_NAMES, TIERS, resolveRoles, readConfig } from './roles.js'
 
-export { resolveRoles }
+export { resolveRoles, readConfig }
 
 export const name = 'ccg'
 
@@ -59,12 +59,12 @@ const SkillFilesystem = { ...SkillFilesystemNamespace }
 /** The skill root shipped inside this package. */
 export const BUNDLED_SKILL_DIR = fileURLToPath(new URL('../skills/', import.meta.url))
 
-/** User-settings namespace: the `ccg:` section of the harness settings document. */
+/** Default profile entry id used by the settings form. */
 export const SETTINGS_NAMESPACE = 'ccg'
 
 const TierSchema = Schema.object({
   provider: Schema.string().description(
-    'Provider route name as declared under `llm-pi-ai.providers` in $DSH_HOME/settings.yaml.',
+    'Provider route name declared in the profile\'s llm-pi-ai configuration.',
   ),
   model: Schema.string().description('Model id served by that route.'),
   maxTokens: Schema.number()
@@ -223,6 +223,10 @@ export const Config = Schema.object({
     ),
 })
 
+for (const key of ['strong', 'worker', 'roles', 'team']) {
+  Config.dict[key] = Config.dict[key].volatile()
+}
+
 /**
  * Resolve the skill roots this plugin publishes: the bundled one unless it is
  * switched off, then any extra roots a deployment adds.
@@ -306,7 +310,7 @@ export function renderRoutingPrompt(resolved, panel = []) {
       'NOTE: no model routing is configured, so every role above runs on this deployment\'s',
       'default model. You have the expert instructions but not the point of them — a second',
       'opinion from the same model is not a second opinion. Say this once, the first time you',
-      'delegate, and point the user at Settings › Plugins › CCG to set the two tiers.',
+      'delegate, and point the user at Settings › Built-in plugins › CCG to set the two tiers.',
     )
   }
 
@@ -434,7 +438,9 @@ function mountMatrix(ctx, config, deps = {}) {
           toolName: entry.toolName,
           persona: entry.persona,
           maxDepth: config.maxDepth ?? 2,
-          backgroundMode: entry.backgroundMode ?? config.backgroundMode ?? 'one-shot',
+          ...(ToolSubagentNamespace.Config?.dict?.backgroundMode !== undefined
+            ? { backgroundMode: entry.backgroundMode ?? config.backgroundMode ?? 'one-shot' }
+            : {}),
           ...(entry.agentOptions ? { agentOptions: entry.agentOptions } : {}),
           ...(childTools ? { toolFilter: childTools } : {}),
         })
@@ -519,7 +525,9 @@ function mountMatrix(ctx, config, deps = {}) {
         // The team convention sits just below routing: it is the same roles,
         // used a different way, and only worth reading once you know they exist.
         if (team) {
-          const teamText = renderTeamPrompt(resolved, teamTool)
+          const teamText = renderTeamPrompt(
+            resolved, teamTool, ToolSubagentNamespace.Config?.dict?.backgroundMode === undefined,
+          )
           if (teamText !== '') {
             inner.effect(
               () => systemPrompt.context({
@@ -570,17 +578,23 @@ function mountMatrix(ctx, config, deps = {}) {
 }
 
 /**
- * Realise the matrix, then expose the same shape as a user-settings namespace
- * so it can be edited from the harness settings document — and from the
- * configuration surfaces reading it — instead of only the profile patch. The
- * profile patch stays the composition `base`, the user layer sits above it, and
- * a change re-applies live without a restart.
+ * Realise the matrix from Loader-owned Config references. Settings edits the
+ * volatile fields through the profile patch; the Loader owns their lifetime.
  *
  * @param ctx - plugin context.
  * @param config - validated {@link Config} from the loader.
  */
 export function apply(ctx, config = {}) {
-  let active = config
+  let active = readConfig(config)
+  ctx.on('internal/config', function (_raw, next) {
+    const raw = next()
+    if (this === ctx.fiber) {
+      const candidate = readConfig(Config(raw))
+      resolveRoles(candidate)
+      resolvePanel(candidate)
+    }
+    return raw
+  })
 
   // Ownership memory is opened ONCE, out here, not inside the matrix fiber: a
   // domain name may be open only once at a time, and the matrix is disposed and
@@ -593,14 +607,22 @@ export function apply(ctx, config = {}) {
 
   let fiber = mountMatrix(ctx, active, { getTable })
 
-  const reload = async (next) => {
-    if (deepEqualJson(next, active)) return
-    active = next
-    const previous = fiber
-    fiber = undefined
-    if (previous !== undefined) await previous.dispose()
-    fiber = mountMatrix(ctx, next, { getTable })
-  }
+  let disposed = false
+  let refreshing = Promise.resolve()
+  ctx.effect(() => () => { disposed = true }, 'ccg: configuration lifetime')
+  ctx.on('loader/volatile-update', () => {
+    refreshing = refreshing.then(async () => {
+      const next = readConfig(config)
+      if (disposed || isDeepStrictEqual(next, active)) return
+      const previous = fiber
+      fiber = undefined
+      if (previous !== undefined) await previous.dispose()
+      if (disposed) return
+      fiber = mountMatrix(ctx, next, { getTable })
+      active = next
+    }).catch((error) => ctx.logger?.warn?.(`ccg: could not apply configuration — ${error}`))
+    return refreshing
+  })
 
   // Optional: a deployment without the storage form still hires teammates, it
   // just cannot check or remember who owns what.
@@ -639,25 +661,26 @@ export function apply(ctx, config = {}) {
   // The settings seam is optional and arrives on its own schedule; the matrix
   // above is already serving by the time this resolves.
   ctx.inject(['settings'], (settingsCtx) => {
-    const scope = settingsCtx.settings.register(settingsNamespace(SETTINGS_NAMESPACE), Config, {
-      base: config,
-      applies: 'live',
-    })
-    settingsCtx.effect(() => scope.watch(reload), 'ccg: settings watch')
-    reload(scope.get()).catch((error) => {
-      settingsCtx.logger?.warn?.(`ccg: could not apply stored settings — ${error}`)
-    })
+    const namespace = ctx.fiber.entry?.options.id ?? SETTINGS_NAMESPACE
+    settingsCtx.effect(
+      () => settingsCtx.settings.configure({ auto: false }, ctx.fiber),
+      'ccg: settings presentation',
+    )
+    const scope = {
+      replace: (section, revision) => settingsCtx.settings.replace(namespace, section, revision),
+    }
 
     // The raw user layer lives on the provider's descriptor, not on the owner
     // scope — the card needs it to mark which tiers the user overrode.
     const snapshot = () => {
       const descriptor = settingsCtx.settings
         .describe()
-        .find((entry) => entry.ns === SETTINGS_NAMESPACE)
+        .find((entry) => entry.ns === namespace)
       return {
-        value: descriptor?.value ?? scope.get(),
+        value: readConfig(config),
         user: descriptor?.user,
-        writable: true,
+        writable: settingsCtx.settings.writable === true && descriptor !== undefined,
+        revision: descriptor?.revision,
       }
     }
 

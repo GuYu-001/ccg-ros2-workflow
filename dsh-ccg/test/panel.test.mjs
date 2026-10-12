@@ -24,6 +24,72 @@ const TIERS = {
   worker: { provider: 'gw', model: 'fast-model' },
 }
 
+test('alpha panels run all members concurrently and distinguish partial failure from success', async () => {
+  const calls = []
+  const pending = []
+  const disposed = []
+  const members = ['complete', 'truncated', 'broken'].map(model => ({ provider: 'gw', model }))
+  const signal = new AbortController().signal
+  const subagents = { async startActivation(spec) {
+    calls.push(spec)
+    return {
+      childId: spec.request.agentOptions.model,
+      result: new Promise(resolve => { pending.push(resolve) }),
+      async dispose() { disposed.push(spec.request.agentOptions.model) },
+    }
+  } }
+  const tool = panelToolDefinition({
+    toolName: 'ccg_crosscheck', description: 'crosscheck', members,
+    getSubagents: () => subagents, toolFilter: { deny: ['ccg_team'] },
+  })
+  const running = tool.execute({ prompt: 'Review', description: 'review' }, { agent: { id: 'p' }, signal })
+  // Every start is admitted before any result is available.
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(calls.length, 3)
+  for (const spec of calls) {
+    assert.equal(spec.delivery, 'caller')
+    assert.equal(spec.provider, 'spawn')
+    assert.equal(spec.signal, signal)
+    assert.deepEqual(spec.request.toolFilter, { deny: ['ccg_team'] })
+  }
+  pending[0]({ stopReason: 'completed', output: [{ type: 'text', text: 'Ship it' }] })
+  pending[1]({ stopReason: 'max-tokens', output: [{ type: 'text', text: 'Unfinished answer' }] })
+  pending[2]({ stopReason: 'error', diagnostic: 'model route unavailable', output: [] })
+  const result = await running
+  assert.equal(result.answered, 1)
+  assert.equal(result.answers[0].answer, 'Ship it')
+  assert.match(result.answers[1].error, /max-tokens.*Unfinished answer/)
+  assert.equal(result.answers[2].error, 'model route unavailable')
+  assert.deepEqual(disposed.sort(), ['broken', 'complete', 'truncated'])
+})
+
+test('a cancelled alpha panel disposes all members before rejecting the call', async () => {
+  const controller = new AbortController()
+  const disposed = []
+  const subagents = { async startActivation(spec) {
+    let finish
+    return {
+      result: new Promise(resolve => { finish = resolve }),
+      async dispose() {
+        disposed.push(spec.request.agentOptions.model)
+        finish({ stopReason: 'aborted', output: [] })
+      },
+    }
+  } }
+  const tool = panelToolDefinition({
+    toolName: 'ccg_crosscheck', description: 'crosscheck',
+    members: ['one', 'two'].map(model => ({ provider: 'gw', model })),
+    getSubagents: () => subagents,
+  })
+  const pending = tool.execute({ description: 'review', prompt: 'Review' }, {
+    agent: { id: 'parent' }, signal: controller.signal,
+  })
+  await new Promise(resolve => setImmediate(resolve))
+  controller.abort(new Error('cancel panel'))
+  await assert.rejects(pending, /cancel panel/)
+  assert.deepEqual(disposed.sort(), ['one', 'two'])
+})
+
 test('a role holding several models becomes a panel; one model stays a delegation', () => {
   const resolved = resolveRoles({
     ...TIERS,
