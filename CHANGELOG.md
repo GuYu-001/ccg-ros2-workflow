@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.7.1] - 2026-10-12
+
+### 🐛 修复
+
+- **全新 npm 安装的 JSON stdout**：兼容依赖范围中新版 i18next 默认打印 support notice；初始化显式关闭该提示，避免 `skills catalog/list --json`、`doctor --json` 与 `--version` 输出被赞助 banner 污染。修复使用官方初始化开关，保留原翻译和日志行为。
+
 ## [3.7.0] - 2026-10-12
 
 ### ✨ 新功能

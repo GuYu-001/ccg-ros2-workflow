@@ -1,4 +1,5 @@
 import type { SupportedLang } from '../types'
+import type { InitOptions } from 'i18next'
 import i18next from 'i18next'
 
 export const i18n = i18next
@@ -1035,7 +1036,9 @@ const en: typeof zhCN = {
 
 export async function initI18n(lang: SupportedLang = 'zh-CN'): Promise<void> {
   if (!i18n.isInitialized) {
-    await i18n.init({
+    // Newer compatible i18next releases must not add banners to CLI JSON output.
+    const options: InitOptions & { showSupportNotice?: boolean } = {
+      showSupportNotice: false,
       lng: lang,
       fallbackLng: 'en',
       resources: {
@@ -1045,7 +1048,8 @@ export async function initI18n(lang: SupportedLang = 'zh-CN'): Promise<void> {
       interpolation: {
         escapeValue: false,
       },
-    })
+    }
+    await i18n.init(options)
   }
   else if (i18n.language !== lang) {
     await i18n.changeLanguage(lang)
