@@ -45,6 +45,35 @@
 
 ---
 
+## 只安装需要的 Skills（v3.7.0）
+
+Skills 可以独立安装，也可以在 CCG 初始化向导里选择。每个选中的技能都有一个 `ccg-` 原生入口，脚本和参考资料保存在版本化源码缓存里。
+
+```bash
+npx ccg-workflow skills catalog
+npx ccg-workflow skills install verify-quality seo-page-builder
+npx ccg-workflow skills list --installed --json
+npx ccg-workflow skills update
+npx ccg-workflow skills remove seo-page-builder
+# 装入 Codex 原生 Skills
+npx ccg-workflow skills install verify-quality --target codex
+# 给完整框架保存按需选择
+npx ccg-workflow init --skills verify-quality,verify-security
+npx ccg-workflow doctor --json
+```
+
+Claude Code 使用 `/ccg-verify-quality`，Codex 使用 `$ccg-verify-quality`。管理器只暴露选中的入口，保留完整资源依赖，遇到归属冲突会拒绝覆盖，修改过的缓存也会保留。菜单新增 **S. Skills 管理**、**V. 环境诊断**。重装沿用最新选择；`--skills all` 选择完整目录，`--skills none` 为空选择。已有全量安装可继续使用兼容模式。
+
+`doctor --json` 输出带 schema 版本的检查报告，包括 check ID、状态、修复指引和失败/警告数量。它识别真实 Claude/Codex/Skills-only 模式，检查所选后端（包括审查路由）、Hook 注册和受管技能；失败退出码为 1。版本和文件检查验证配置状态，不调用模型，也不代表厂商 API 可用性验证。
+
+独立 Codex 模式检查自身 CLI、配置和已安装文件；共享 Claude 路由配置为可选，缺少外部模型委派工具时给出警告和安装指引。
+
+模型动作 Hook 跟随实际路由和具体型号，同一后端只调用一次；纯 Claude 配置使用原生 Agent。原生模式按需发现技能，兼容模式的知识片段有固定大小上限。
+
+### Claude 规划，OpenCode / DeepSeek 实施
+
+先在 OpenCode 用 `/connect` 配好 provider，再运行 `opencode models`（DeepSeek 可用 `opencode models deepseek`）查询实际型号。在 CCG 模型菜单选择 **OpenCode** 并填写对应的 `provider/model`。Claude Code 继续负责主控，worker 通过已有 wrapper 执行；改路由、重装和更新都会保留型号，CCG 不接管 provider 凭据。
+
 ## 🐳 CCG 的 DeepSeek Harness 形态 —— `dsh-ccg`
 
 同一套角色矩阵，原生跑在 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 里。它**随本包一起发**，不用装第二个东西，也没有第二个版本号要对。
@@ -257,6 +286,8 @@ claude plugin install ccg@ccg
 npx ccg-workflow                          # 交互式菜单
 npx ccg-workflow init                     # 4 步安装向导
 npx ccg-workflow doctor                   # 环境健康检查
+npx ccg-workflow doctor --json            # 机器可读的诊断报告
+npx ccg-workflow skills list              # 查看目录与原生选择
 npx ccg-workflow status                   # 安装概况
 npx ccg-workflow codex-mode install       # 安装 Codex 主导模式
 npx ccg-workflow codex-mode uninstall     # 卸载 Codex 主导模式
@@ -274,7 +305,9 @@ npx ccg-workflow diagnose-mcp             # 诊断 MCP 问题
 ~/.claude/
 ├── commands/ccg/          # 斜杠命令
 ├── hooks/ccg/             # Hook 脚本（5 个文件）
-├── skills/ccg/            # 质量关卡 + 100+ 域知识
+├── skills/ccg/            # 兼容模式的全量技能
+├── skills/ccg-<slug>      # 已选择的原生技能入口
+├── .ccg-skills/           # 原生选择清单与资源缓存
 ├── rules/                 # 自动触发规则
 ├── .ccg/
 │   ├── config.toml        # 模型路由、MCP、性能配置
@@ -303,7 +336,7 @@ npx ccg-workflow uninstall  # 彻底卸载
 
 ## 致谢
 
-- [cexll/myclaude](https://github.com/cexll/myclaude) — codeagent-wrapper 灵感来源
+- [stellarlinkco/myclaude](https://github.com/stellarlinkco/myclaude) — codeagent-wrapper 灵感来源
 - [UfoMiao/zcf](https://github.com/UfoMiao/zcf) — Git 工具参考
 - [mindfold-ai/Trellis](https://github.com/mindfold-ai/Trellis) — Hook 状态注入模式
 - [ace-tool](https://linux.do/t/topic/1344562) — MCP 代码检索
@@ -344,4 +377,4 @@ MIT
 
 ---
 
-v3.6.8 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.7.0 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [Contributing](./CONTRIBUTING.md)

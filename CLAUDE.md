@@ -2,7 +2,7 @@
 
 > [根目录](../CLAUDE.md) > **skills-v2**
 
-**Last Updated**: 2026-10-12 (v3.6.8)
+**Last Updated**: 2026-10-12 (v3.7.0)
 
 > ⚠ 本文档主体仍停留在 v2.1.16 架构描述（v3.0 引擎重构后未全量同步）。下方变更记录保留 v3.x 修复轨迹，完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -11,6 +11,13 @@
 ## 变更记录 (Changelog)
 
 > 完整变更历史请查看 [CHANGELOG.md](./CHANGELOG.md)
+
+### 2026-10-12 (v3.7.0)
+- ✨ **Skills 按需管理**：新增 `ccg skills catalog/list/install/update/remove` 与菜单 S；Claude/Codex 原生 `ccg-*` 入口，immutable source cache、归属清单、写锁、事务回滚；脚本与参考依赖保留，入口只暴露所选技能。
+- ✨ **原生选择持久化**：初始化支持兼容/核心六项/自定义及 `--skills all|none|names`；重装优先读取当前 manifest，显式 legacy 模式可持久切回。
+- ✨ **诊断 JSON**：`doctor --json` 输出稳定 schema/checks/remediation/计数，失败退出 1；按真实 Claude/Codex/Skills-only 模式检查所选路由、Hook 和技能。
+- 🐛 **工作流闭环**：Hooks 配置安全注入，跟随实际后端及具体模型，单后端去重、纯 Claude 用原生 Agent；native 不重复注入旧知识，legacy 片段有大小预算。ESM 项目中的 Hook/skill scripts 有 CommonJS 边界。
+- 🐛 **配置和更新**：OpenCode provider/model 在 init/menu/重装保留；模型菜单复用本地 init；任一安装错误返回失败，不再让更新误清旧备份。
 
 ### 2026-10-12 (v3.6.8)
 - 🐛 **dsh 0.2 插件适配（#163 / #165）**：删除失效的 settings 导出依赖，使用 Loader volatile Config 和 profile 表单读写；设置卡迁移到 `settings.plugins.tab`，browser inject 改为 `dsh-client-ui-renderer`。

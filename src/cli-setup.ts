@@ -9,6 +9,7 @@ import { doctor, status } from './commands/doctor'
 import { diagnoseMcp, fixMcp } from './commands/diagnose-mcp'
 import { init } from './commands/init'
 import { showMainMenu } from './commands/menu'
+import { registerSkillCommands } from './commands/skills'
 import { i18n, initI18n } from './i18n'
 import { readCcgConfig } from './utils/config'
 import { installCodexMode, uninstallCodexMode, uninstallWorkflows } from './utils/installer'
@@ -89,6 +90,8 @@ export async function setupCommands(cli: CAC): Promise<void> {
     await initI18n('zh-CN')
   }
 
+  registerSkillCommands(cli)
+
   // Default command - show menu
   cli
     .command('', i18n.t('cli:help.commandDescriptions.showMenu'))
@@ -112,6 +115,7 @@ export async function setupCommands(cli: CAC): Promise<void> {
     .option('--backend, -B <models>', i18n.t('cli:help.optionDescriptions.backendModels'))
     .option('--mode, -m <mode>', i18n.t('cli:help.optionDescriptions.collaborationMode'))
     .option('--workflows, -w <workflows>', i18n.t('cli:help.optionDescriptions.workflows'))
+    .option('--skills <names>', 'Native skills: comma-separated names, all, or none')
     .option('--install-dir, -d <path>', i18n.t('cli:help.optionDescriptions.installDir'))
     .action(async (options: CliOptions) => {
       if (options.lang) {
@@ -150,7 +154,8 @@ export async function setupCommands(cli: CAC): Promise<void> {
   // Doctor: environment health check
   cli
     .command('doctor', 'Check CCG installation health')
-    .action(async () => { await doctor() })
+    .option('--json', 'Print machine-readable diagnostic report')
+    .action(async (options) => { await doctor(options) })
 
   // Status: show current installation overview
   cli

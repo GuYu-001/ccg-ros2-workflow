@@ -49,3 +49,7 @@ export {
   checkForUpdates,
   compareVersions,
 } from './utils/version'
+
+// Native skill catalog and managed selection lifecycle.
+export { getSkillCatalog, listSkills, installedNames, installSkills, updateSkills, removeSkills, syncSkills, resolveSkillPaths } from './utils/skill-manager'
+export type { SkillManagerOptions, SkillTarget, SkillListEntry } from './utils/skill-manager'

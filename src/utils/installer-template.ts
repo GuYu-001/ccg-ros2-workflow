@@ -61,6 +61,24 @@ const MCP_PROVIDERS: Record<string, { tool: string, param: string }> = {
  * Supported MCP providers: 'ace-tool' (default), 'ace-tool-rs', 'contextweaver',
  * 'fast-context', 'skip' (fallback to Glob+Grep).
  */
+export function injectHookConfig(content: string, config: {
+  routing?: { frontend?: { primary?: string }, backend?: { primary?: string }, geminiModel?: string, grokModel?: string, kimiModel?: string, opencodeModel?: string }
+  liteMode?: boolean
+  skillsProfile?: string[]
+}, installDir: string): string {
+  const backends = ['codex', 'gemini', 'claude', 'antigravity', 'grok', 'kimi', 'opencode']
+  const routing = config.routing ?? {}
+  const snapshot = {
+    installDir,
+    frontend: backends.includes(routing.frontend?.primary ?? '') ? routing.frontend!.primary : 'antigravity',
+    backend: backends.includes(routing.backend?.primary ?? '') ? routing.backend!.primary : 'codex',
+    models: { gemini: routing.geminiModel, grok: routing.grokModel, kimi: routing.kimiModel, opencode: routing.opencodeModel },
+    liteMode: config.liteMode === true,
+    nativeSkills: config.skillsProfile !== undefined,
+  }
+  return content.replace(/"\{\{HOOK_CONFIG_JSON\}\}"/g, () => JSON.stringify(JSON.stringify(snapshot)))
+}
+
 export function injectConfigVariables(content: string, config: {
   routing?: {
     mode?: string

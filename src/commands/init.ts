@@ -10,6 +10,9 @@ import { createDefaultConfig, ensureCcgDir, getCcgDir, readCcgConfig, writeCcgCo
 import { configureGeminiCliApi, configureSponsorForCodex, getAllCommandIds, getCoreCommandIds, getSponsor, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, promptSponsorInit, showBinaryDownloadWarning, sponsorInquirerChoices, syncMcpToCodex, syncMcpToGemini, writeFastContextPrompt } from '../utils/installer'
 import { isWindows } from '../utils/platform'
 import { migrateToV1_4_0, needsMigration } from '../utils/migration'
+import { promptOpencodeModel } from '../utils/model-selection'
+import { PACKAGE_ROOT } from '../utils/installer-template'
+import { getSkillCatalog, installedNames, resolveSkillPaths, SKILL_MANIFEST_FILE } from '../utils/skill-manager'
 
 /**
  * Auto-approve codeagent-wrapper Bash commands in settings.json.
@@ -231,6 +234,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
   let geminiModel = 'gemini-3.1-pro-preview'
   let grokModel = 'grok-4.5'
   let kimiModel = ''
+  let opencodeModel = ''
   const mode: CollaborationMode = 'smart'
   let selectedWorkflows = getCoreCommandIds()
   let installMode: 'v3' | 'legacy' = 'v3'
@@ -244,6 +248,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       geminiModel = existingConfig.routing.geminiModel || 'gemini-3.1-pro-preview'
       grokModel = existingConfig.routing.grokModel || 'grok-4.5'
       kimiModel = existingConfig.routing.kimiModel || ''
+      opencodeModel = existingConfig.routing.opencodeModel || ''
     }
     // Preserve install mode: if existing install has legacy commands, keep them
     if (existingConfig?.workflows?.installed) {
@@ -260,6 +265,41 @@ export async function init(options: InitOptions = {}): Promise<void> {
   // Performance mode selection
   let liteMode = false
   let skipImpeccable = false
+  let skillsProfile: string[] | undefined
+  let selectedSkillsMode: 'legacy' | 'native' | undefined
+  const skillPaths = resolveSkillPaths({
+    target: 'claude',
+    templatesDir: join(PACKAGE_ROOT, 'templates', 'skills'),
+    ...(options.installDir ? { nativeDir: join(options.installDir, 'skills'), storeDir: join(options.installDir, '.ccg-skills') } : {}),
+  })
+  const skillCatalog = getSkillCatalog(skillPaths)
+  const coreSkills = ['gen-docs', 'verify-security', 'verify-quality', 'verify-change', 'verify-module', 'multi-agent']
+  const requestedSkills = options.skills === undefined
+    ? undefined
+    : options.skills.split(',').map(name => name.trim()).filter(Boolean)
+  if (requestedSkills !== undefined) {
+    const unknown = requestedSkills.filter(name => !['all', 'none'].includes(name) && !skillCatalog.some(skill => skill.name === name))
+    if (!requestedSkills.length || unknown.length || (requestedSkills.length > 1 && requestedSkills.some(name => ['all', 'none'].includes(name)))) {
+      throw new Error(`Invalid Skills selection: ${options.skills}. Use all, none, or catalog names.`)
+    }
+  }
+  const requestedProfile = requestedSkills?.[0] === 'all'
+    ? skillCatalog.map(skill => skill.name)
+    : requestedSkills?.[0] === 'none' ? [] : requestedSkills && [...new Set(requestedSkills)]
+  const savedSkillsConfig = await readCcgConfig()
+  selectedSkillsMode = savedSkillsConfig?.performance?.skillsMode
+  skillsProfile = selectedSkillsMode === 'legacy' ? undefined : savedSkillsConfig?.performance?.skillsProfile
+  if (selectedSkillsMode === undefined && skillsProfile !== undefined)
+    selectedSkillsMode = 'native'
+  if (requestedSkills === undefined && selectedSkillsMode !== 'legacy'
+    && await fs.pathExists(join(skillPaths.storeDir, SKILL_MANIFEST_FILE))) {
+    skillsProfile = await installedNames(skillPaths)
+    selectedSkillsMode = 'native'
+  }
+  if (requestedSkills !== undefined) {
+    skillsProfile = requestedProfile
+    selectedSkillsMode = 'native'
+  }
 
   // MCP Tool Selection
   let mcpProvider = 'fast-context'
@@ -332,6 +372,8 @@ export async function init(options: InitOptions = {}): Promise<void> {
         grokModel = existingConfig.routing.grokModel
       if (existingConfig.routing.kimiModel)
         kimiModel = existingConfig.routing.kimiModel
+      if (existingConfig.routing.opencodeModel)
+        opencodeModel = existingConfig.routing.opencodeModel
     }
     if (existingConfig?.performance?.liteMode !== undefined) {
       liteMode = existingConfig.performance.liteMode
@@ -491,6 +533,10 @@ export async function init(options: InitOptions = {}): Promise<void> {
 
       frontendModels = [selectedFrontend]
       backendModels = [selectedBackend]
+
+      if (selectedFrontend === 'opencode' || selectedBackend === 'opencode') {
+        opencodeModel = await promptOpencodeModel(opencodeModel, language === 'zh-CN')
+      }
 
       if (selectedFrontend === 'gemini' || selectedBackend === 'gemini') {
         const { selectedGeminiModel } = await inquirer.prompt([{
@@ -826,6 +872,40 @@ export async function init(options: InitOptions = {}): Promise<void> {
         selectedWorkflows = getCoreCommandIds()
         skipImpeccable = true
       }
+      if (requestedSkills === undefined) {
+        const { skillsMode } = await inquirer.prompt([{
+          type: 'list',
+          name: 'skillsMode',
+          message: language === 'zh-CN' ? '原生 Skills 安装方式' : 'Native Skills installation',
+          choices: [
+            { name: language === 'zh-CN' ? '保留兼容安装（原有 Skills 体系）' : 'Keep the legacy Skills installation', value: 'legacy' },
+            { name: language === 'zh-CN' ? '核心质量关卡 + 多 Agent（6 项）' : 'Core quality gates + multi-agent (6 skills)', value: 'core' },
+            { name: language === 'zh-CN' ? '按需选择（可全部取消）' : 'Choose individual skills (can leave empty)', value: 'custom' },
+          ],
+          default: skillsProfile === undefined ? 'legacy' : 'custom',
+        }])
+        if (skillsMode === 'legacy') {
+          skillsProfile = undefined
+        }
+        else if (skillsMode === 'core') {
+          skillsProfile = coreSkills.filter(name => skillCatalog.some(skill => skill.name === name))
+        }
+        else {
+          const { selectedSkills } = await inquirer.prompt([{
+            type: 'checkbox',
+            name: 'selectedSkills',
+            message: language === 'zh-CN' ? '选择原生 Skills' : 'Select native Skills',
+            choices: skillCatalog.map(skill => ({
+              name: `${skill.name} — ${skill.description}`,
+              value: skill.name,
+              checked: skillsProfile?.includes(skill.name) ?? false,
+            })),
+          }])
+          skillsProfile = selectedSkills
+        }
+        // Persist an explicit legacy choice so the next update keeps it.
+        selectedSkillsMode = skillsMode === 'legacy' ? 'legacy' : 'native'
+      }
       return 'next'
     }
 
@@ -855,6 +935,9 @@ export async function init(options: InitOptions = {}): Promise<void> {
       if ((frontendModels[0] === 'kimi' || backendModels[0] === 'kimi') && kimiModel) {
         console.log(`  ${ansis.cyan(i18n.t('init:summary.kimiModel'))}   ${ansis.gray(kimiModel)}`)
       }
+      if (frontendModels[0] === 'opencode' || backendModels[0] === 'opencode') {
+        console.log(`  ${ansis.cyan('OpenCode model:')} ${ansis.gray(opencodeModel || (language === 'zh-CN' ? 'OpenCode 默认' : 'OpenCode default'))}`)
+      }
       console.log(`  ${ansis.cyan(i18n.t('init:summary.commandCount'))}  ${ansis.yellow(workflowsCount.toString())}`)
       const mcpSummary = (() => {
         if (mcpProvider === 'fast-context')
@@ -867,6 +950,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       })()
       console.log(`  ${ansis.cyan(i18n.t('init:summary.mcpTool'))}      ${mcpSummary}`)
       console.log(`  ${ansis.cyan(i18n.t('init:summary.webUI'))}        ${liteMode ? ansis.gray(i18n.t('init:summary.disabled')) : ansis.green(i18n.t('init:summary.enabled'))}`)
+      console.log(`  ${ansis.cyan('Native Skills:')} ${skillsProfile === undefined ? (language === 'zh-CN' ? '兼容安装' : 'Legacy installation') : skillsProfile.join(', ') || (language === 'zh-CN' ? '无' : 'None')}`)
       if (wantGrokSearch) {
         console.log(`  ${ansis.cyan('grok-search')}    ${tavilyKey ? ansis.green('✓') : ansis.yellow(`(${i18n.t('init:summary.pendingConfig')})`)}`)
       }
@@ -979,6 +1063,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
     geminiModel,
     grokModel,
     kimiModel,
+    opencodeModel,
   }
 
   // Summary + confirmation handled by runSummaryStep() inside the state
@@ -1043,6 +1128,8 @@ export async function init(options: InitOptions = {}): Promise<void> {
       mcpProvider,
       liteMode,
       skipImpeccable,
+      skillsProfile,
+      skillsMode: selectedSkillsMode,
     })
 
     // Save config FIRST - ensure it's created even if installation fails
@@ -1055,7 +1142,16 @@ export async function init(options: InitOptions = {}): Promise<void> {
       liteMode,
       mcpProvider,
       skipImpeccable,
+      skillsProfile,
+      skillsMode: selectedSkillsMode,
     })
+
+    if (!result.success) {
+      spinner.fail(ansis.red(i18n.t('init:installFailed')))
+      result.errors.forEach(error => console.log(`    ${ansis.red('✗')} ${error}`))
+      process.exitCode = 1
+      return
+    }
 
     // Install selected MCP tools (multiple can be installed)
     spinner.succeed(ansis.green(i18n.t('init:installSuccess')))
@@ -1438,5 +1534,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
   catch (error) {
     spinner.fail(ansis.red(i18n.t('init:installFailed')))
     console.error(error)
+    process.exitCode = 1
   }
 }

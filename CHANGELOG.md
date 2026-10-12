@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.7.0] - 2026-10-12
+
+### ✨ 新功能
+
+- **Skills 按需安装与管理**：`ccg skills catalog/list/install/update/remove`，支持 Claude Code 和 Codex 原生入口及 JSON 清单；菜单新增 S. Skills 管理、V. 环境诊断。原生入口为 `ccg-<slug>`，只包含所选技能的 SKILL.md，完整脚本、参考文件和共享库保存在 immutable 缓存。
+- **安全的技能生命周期**：独占写锁、归属 manifest、内容 digest 和 atomic 更新；拒绝未知路径、外部链接/目录冲突和损坏归属信息。移除只关闭受管入口，缓存和用户私有技能保留。
+- **初始化的技能选择**：兼容全量、核心六项、自定义 checkbox；支持 `--skills all`、`none` 和逗号名单。更新与重装沿用 manifest 最新选择，删除后不会恢复旧配置中的技能；显式兼容模式可持久保持。
+- **`doctor --json`**：稳定 schemaVersion/checks/status/detail/remediation/计数和失败退出码 1；实际识别 Claude/Codex/双模式/Skills-only，包含审查模型路由，准确检查五个 Hook 与注册处理器及受管技能健康度。
+
+### 🐛 修复
+
+- **模型动作 Hook 原样安装路由占位符**：用安全 JSON 绑定配置和安装目录；双模型动作使用真实选定后端及具体模型参数，同一后端只调用一次，纯 Claude 配置使用原生 Agent。旧知识片段限制 8000 字符，native 模式按需加载而不重复注入。
+- **Standalone 技能切换未刷新 Hook/规则**：管理操作立即刷新新 Hook 的模式字段和受管规则 block，保留原主体与用户规则定制；旧或损坏内容保持并给重装指引。
+- **ESM 项目中的 CommonJS 脚本静默失败**：HookRoot 与原生资源缓存设立模块边界，脚本实际加载共享依赖。
+- **OpenCode/DeepSeek 指定模型重装丢失（关联 #164）**：初始化与模型菜单提供 provider/model 输入，更新和重装保留已配置型号。继续使用现有 OpenCode backend，不创建新直连 API agent 或接管认证。
+- **更新将安装失败当成功**：任何安装错误使初始化退出非零并停止后续配置，更新子进程可按失败恢复备份；模型菜单复用当前本地初始化实现。
+
+### 🔄 变更
+
+- 保持未选择 native 通路的老全量安装兼容；native 管理不擅自删除旧目录或用户定制。两类入口的调用名称分别为 `/ccg:<name>` 与 `/ccg-<name>`（Codex 用 `$ccg-<name>`）。
+- README 双语同步按需安装、诊断和 OpenCode/DeepSeek 接法；无需猜厂商模型 ID，先通过 OpenCode 查询实际配置目录。
+
 ## [3.6.8] - 2026-10-12
 
 ### 🐛 修复

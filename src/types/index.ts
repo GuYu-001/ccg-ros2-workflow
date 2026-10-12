@@ -56,6 +56,8 @@ export interface CcgConfig {
   performance?: {
     liteMode?: boolean // 轻量模式：禁用 Web UI，更快响应
     skipImpeccable?: boolean // 跳过 Impeccable 前端设计命令安装
+    skillsProfile?: string[] // undefined = 兼容旧全量安装，[] = 不安装可选原生 Skills
+    skillsMode?: 'legacy' | 'native' // 显式兼容模式不被旧的原生 manifest 覆盖
   }
 }
 
@@ -84,6 +86,7 @@ export interface InitOptions {
   mode?: CollaborationMode
   workflows?: string
   installDir?: string
+  skills?: string // all / none / 逗号分隔的原生 Skill 名称
 }
 
 // 安装结果

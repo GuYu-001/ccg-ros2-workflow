@@ -8,7 +8,8 @@
 try {
   const fs = require('fs');
   const path = require('path');
-  const { findProjectRoot, outputHook } = require('./task-utils.js');
+  const { outputHook } = require('./task-utils.js');
+  const routing = JSON.parse("{{HOOK_CONFIG_JSON}}");
 
   // Read hook input (contains user's message)
   let inputData = '';
@@ -68,44 +69,36 @@ try {
 
   const modelAction = MODEL_ACTIONS.find(a => a.keywords.some(kw => msgLower.includes(kw)));
   if (modelAction) {
-    const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-    const wrapperPath = path.join(homeDir, '.claude', 'bin', 'codeagent-wrapper');
-
+    const installDir = routing.installDir;
+    const wrapperPath = path.join(installDir, 'bin', process.platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper');
+    const quote = value => "'" + String(value).replace(/'/g, "'\\''") + "'";
+    const modelFlags = backend => {
+      const flag = { gemini: '--gemini-model', grok: '--grok-model', kimi: '--kimi-model', opencode: '--opencode-model' }[backend];
+      return flag && routing.models[backend] ? ' ' + flag + ' ' + quote(routing.models[backend]) : '';
+    };
+    const invocation = backend => `${quote(wrapperPath)} --progress${routing.liteMode ? ' --lite' : ''} --backend ${backend}${modelFlags(backend)} - "$WORKDIR" <<'EOF'
+ROLE_FILE: ${path.join(installDir, '.ccg', 'prompts', backend, modelAction.role + '.md')}
+<TASK>${modelAction.action}</TASK>
+EOF`;
+    const selected = modelAction.model === 'both'
+      ? [...new Set([routing.backend, routing.frontend])]
+      : [modelAction.model];
     let actionInstructions;
-    if (modelAction.model === 'both') {
+    if (selected.length === 1 && selected[0] === 'claude') {
       actionInstructions = `<ccg-model-action>
-用户请求双模型${modelAction.role === 'reviewer' ? '审查' : '分析'}。请立即执行：
-
-1. 获取工作目录: WORKDIR=$(pwd)
-2. 并行调用两个模型 (run_in_background: true):
-
-   Backend (codex):
-   ${wrapperPath} --progress --backend codex - "$WORKDIR" <<'EOF'
-   ROLE_FILE: ${path.join(homeDir, '.claude', '.ccg', 'prompts', 'codex', modelAction.role + '.md')}
-   <TASK>${modelAction.action}</TASK>
-   EOF
-
-   Frontend ({{FRONTEND_PRIMARY}}):
-   ${wrapperPath} --progress --backend {{FRONTEND_PRIMARY}} - "$WORKDIR" <<'EOF'
-   ROLE_FILE: ${path.join(homeDir, '.claude', '.ccg', 'prompts', '{{FRONTEND_PRIMARY}}', modelAction.role + '.md')}
-   <TASK>${modelAction.action}</TASK>
-   EOF
-
-3. 等待结果，综合输出
+使用 Claude Code 原生 Agent 执行${modelAction.action}，先读取 ${path.join(installDir, '.ccg', 'prompts', 'claude', modelAction.role + '.md')}。
+当前配置只有 Claude 模型；可使用独立角色意见，但不得声称双模型交叉验证，不启动递归 Claude CLI。
 </ccg-model-action>`;
     } else {
       actionInstructions = `<ccg-model-action>
-用户请求使用 ${modelAction.model} 执行${modelAction.action}。请立即执行：
+用户请求${modelAction.action}。按实际配置执行 ${selected.length} 个独立后端：${selected.join(', ')}。
 
 1. 获取工作目录: WORKDIR=$(pwd)
-2. 调用模型:
+2. ${selected.length > 1 ? '并行调用以下后端 (run_in_background: true)' : '调用以下后端'}：
 
-   ${wrapperPath} --progress --backend ${modelAction.model} - "$WORKDIR" <<'EOF'
-   ROLE_FILE: ${path.join(homeDir, '.claude', '.ccg', 'prompts', modelAction.model, modelAction.role + '.md')}
-   <TASK>${modelAction.action}</TASK>
-   EOF
+${selected.map(invocation).join('\n\n')}
 
-3. 等待结果并输出
+3. 等待结果并输出；相同后端只调用一次，不把单模型说成双模型。
 </ccg-model-action>`;
     }
 
@@ -114,15 +107,15 @@ try {
   }
 
   // ── Domain knowledge injection ──
+  if (routing.nativeSkills) process.exit(0);
   if (matched.length === 0) process.exit(0);
 
-  const cwd = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-  const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-  const skillsBase = path.join(homeDir, '.claude', 'skills', 'ccg');
+  const skillsBase = path.join(routing.installDir, 'skills', 'ccg');
 
   if (!fs.existsSync(skillsBase)) process.exit(0);
 
   const injections = [];
+  const maxContextChars = 8000;
   for (const match of matched.slice(0, 2)) {
     const skillPath = path.join(skillsBase, match.skill);
     if (!fs.existsSync(skillPath)) continue;
@@ -137,7 +130,8 @@ try {
 
   if (injections.length === 0) process.exit(0);
 
-  const context = `<ccg-domain-knowledge>\n${injections.join('\n\n---\n\n')}\n</ccg-domain-knowledge>`;
+  const body = injections.join('\n\n---\n\n').slice(0, maxContextChars);
+  const context = `<ccg-domain-knowledge>\n${body}\n</ccg-domain-knowledge>`;
   outputHook('UserPromptSubmit', context);
 } catch {
   process.exit(0);

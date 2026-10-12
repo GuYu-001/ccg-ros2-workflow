@@ -47,6 +47,8 @@ export function createDefaultConfig(options: {
   mcpProvider?: string
   liteMode?: boolean
   skipImpeccable?: boolean
+  skillsProfile?: string[]
+  skillsMode?: 'legacy' | 'native'
 }): CcgConfig {
   return {
     general: {
@@ -70,6 +72,8 @@ export function createDefaultConfig(options: {
     performance: {
       liteMode: options.liteMode || false,
       skipImpeccable: options.skipImpeccable || false,
+      ...(options.skillsProfile !== undefined ? { skillsProfile: [...options.skillsProfile] } : {}),
+      ...(options.skillsMode !== undefined ? { skillsMode: options.skillsMode } : {}),
     },
   }
 }

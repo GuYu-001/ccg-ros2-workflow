@@ -45,6 +45,35 @@ Thanks to [APIMart](https://go.apimart.ai/gh-ccg-workflow) for sponsoring this p
 
 ---
 
+## Choose the skills you use (v3.7.0)
+
+Install native skills independently, or select them during the CCG setup wizard. Each selected skill gets a `ccg-` entry; its scripts and references live in a versioned source cache.
+
+```bash
+npx ccg-workflow skills catalog
+npx ccg-workflow skills install verify-quality seo-page-builder
+npx ccg-workflow skills list --installed --json
+npx ccg-workflow skills update
+npx ccg-workflow skills remove seo-page-builder
+# Codex native skills
+npx ccg-workflow skills install verify-quality --target codex
+# Configure the framework with a saved selection
+npx ccg-workflow init --skills verify-quality,verify-security
+npx ccg-workflow doctor --json
+```
+
+Claude Code uses `/ccg-verify-quality`; Codex uses `$ccg-verify-quality`. The manager exposes only selected entries, keeps supporting resources together, refuses ownership conflicts and preserves edited caches. The menu has **S. Manage Skills** and **V. Doctor**. Reinstalling retains the latest selection; `--skills all` selects the catalog and `--skills none` selects none. Existing full installations remain available as compatibility mode.
+
+`doctor --json` returns a versioned report with check IDs, status, remediation, and failure/warning counts. It detects the actual Claude/Codex/Skills-only mode, validates the selected backends (including review routes), Hook registrations and managed skills. Failures exit with code 1. Version and filesystem checks establish configuration health; they do not call a model or prove vendor API access.
+
+Standalone Codex mode checks its own CLI, configuration and installed files. Missing shared Claude routing is optional; missing external delegation tools are reported as warnings with setup instructions.
+
+Model-action Hooks now follow the configured routes and concrete model IDs, avoid duplicate calls to one backend, and use native Agents for pure Claude setups. Native mode uses on-demand skill discovery; legacy knowledge excerpts have a fixed size limit.
+
+### Use an OpenCode worker, including DeepSeek
+
+Configure your provider in OpenCode with `/connect`, then query `opencode models` (or `opencode models deepseek`) for its actual model IDs. In CCG's model menu choose **OpenCode** and enter that `provider/model`. Keep Claude Code as the coordinator; the worker runs through the existing wrapper. CCG preserves the chosen model when changing routing, reinstalling or updating, and does not manage the provider credentials.
+
 ## 🐳 CCG on DeepSeek Harness — `dsh-ccg`
 
 The same role matrix, running natively inside [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). It ships **inside this package** — no second install, no second version to track.
@@ -257,6 +286,8 @@ Skills are invoked as `/ccg:<skill>`. No npx, no binary. The multi-model command
 npx ccg-workflow                          # Interactive menu
 npx ccg-workflow init                     # 4-step install wizard
 npx ccg-workflow doctor                   # Environment health check
+npx ccg-workflow doctor --json            # Machine-readable health report
+npx ccg-workflow skills list              # Catalog and native selection
 npx ccg-workflow status                   # Installation overview
 npx ccg-workflow codex-mode install       # Install Codex-Led mode
 npx ccg-workflow codex-mode uninstall     # Uninstall Codex-Led mode
@@ -274,7 +305,9 @@ npx ccg-workflow diagnose-mcp             # Diagnose MCP issues
 ~/.claude/
 ├── commands/ccg/          # Slash commands
 ├── hooks/ccg/             # Hook scripts (5 files)
-├── skills/ccg/            # Quality gates + 100+ domain knowledge
+├── skills/ccg/            # Legacy bundled skills
+├── skills/ccg-<slug>      # Selected native skill entries
+├── .ccg-skills/           # Native selection manifest and resource cache
 ├── rules/                 # Auto-trigger rules
 ├── .ccg/
 │   ├── config.toml        # Model routing, MCP, performance
@@ -303,7 +336,7 @@ npx ccg-workflow uninstall  # Clean uninstall
 
 ## Credits
 
-- [cexll/myclaude](https://github.com/cexll/myclaude) — codeagent-wrapper inspiration
+- [stellarlinkco/myclaude](https://github.com/stellarlinkco/myclaude) — codeagent-wrapper inspiration
 - [UfoMiao/zcf](https://github.com/UfoMiao/zcf) — Git tools reference
 - [mindfold-ai/Trellis](https://github.com/mindfold-ai/Trellis) — Hook-based workflow state patterns
 - [ace-tool](https://linux.do/t/topic/1344562) — MCP code retrieval
@@ -344,4 +377,4 @@ MIT
 
 ---
 
-v3.6.8 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.7.0 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [Contributing](./CONTRIBUTING.md)

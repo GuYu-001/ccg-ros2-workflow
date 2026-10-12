@@ -1,11 +1,30 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { afterAll, describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it, vi } from 'vitest'
 import fs from 'fs-extra'
 import { getAllCommandIds, installWorkflows } from '../installer'
 
 const ALL_IDS = getAllCommandIds()
+const fixturePaths = vi.hoisted(() => new Set<string>())
+vi.mock('node:child_process', async (original) => {
+  const actual = await original<typeof import('node:child_process')>()
+  if (process.platform !== 'win32') return actual
+  return { ...actual, execSync: vi.fn((command: string, options?: import('node:child_process').ExecSyncOptions) => {
+    const output = actual.execSync(command, options)
+    const path = command.match(/^"([^"]+)" --version$/)?.[1]
+    // Run the Node PE fixture for real; only normalize its wrapper identity.
+    return path && fixturePaths.has(path) ? Buffer.from('codeagent-wrapper version 5.15.0\n') : output
+  }) }
+})
+
+/** These cases verify MCP template injection, not release download availability. */
+async function prepareWrapper(directory: string): Promise<void> {
+  const binary = join(directory, 'bin', process.platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper')
+  await fs.ensureDir(join(directory, 'bin'))
+  if (process.platform === 'win32') { await fs.copyFile(process.execPath, binary); fixturePaths.add(binary) }
+  else await fs.writeFile(binary, '#!/usr/bin/env node\nconsole.log("codeagent-wrapper version 5.15.0")\n', { mode: 0o755 })
+}
 
 // Collect all .md files recursively
 function collectMdFiles(dir: string): string[] {
@@ -33,6 +52,7 @@ describe('installWorkflows E2E — mcpProvider="skip"', () => {
   })
 
   it('installs all workflows without errors', async () => {
+    await prepareWrapper(tmpDir)
     const result = await installWorkflows(ALL_IDS, tmpDir, true, {
       mcpProvider: 'skip',
     })
@@ -98,6 +118,7 @@ describe('installWorkflows E2E — mcpProvider="ace-tool" (control)', () => {
   })
 
   it('installs all workflows and injects ace-tool references', async () => {
+    await prepareWrapper(tmpDir)
     const result = await installWorkflows(ALL_IDS, tmpDir, true, {
       mcpProvider: 'ace-tool',
     })
