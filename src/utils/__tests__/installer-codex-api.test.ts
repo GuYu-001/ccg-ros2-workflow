@@ -68,7 +68,7 @@ describe('SPONSORS registry', () => {
     }
   })
 
-  it('locks the two current gateways to their documented bases', () => {
+  it('locks the current gateways to their documented bases', () => {
     const apimart = getSponsor('apimart')!
     expect(apimart.anthropicBaseUrl).toBe('https://api.apimart.ai')
     expect(apimart.codex.base_url).toBe('https://api.apimart.ai/v1')
@@ -79,6 +79,11 @@ describe('SPONSORS registry', () => {
     expect(packy.codex.base_url).toBe('https://cf.api.fan/v1')
     expect(packy.codex.env_key).toBe('PACKYCODE_API_KEY')
     expect(packy.signupUrl).toContain('aff=m21P')
+
+    const x6 = getSponsor('x6ai')!
+    expect(x6.anthropicBaseUrl).toBe('https://api.x6.ai')
+    expect(x6.codex.base_url).toBe('https://api.x6.ai/v1')
+    expect(x6.codex.env_key).toBe('X6AI_API_KEY')
   })
 })
 

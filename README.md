@@ -39,9 +39,11 @@ Thanks to [APIMart](https://go.apimart.ai/gh-ccg-workflow) for sponsoring this p
 
 ---
 
-[![Gamma Remover](assets/sponsors/gamma-remover.webp)](https://gammaremover.com/)
+[![x6.ai](assets/sponsors/x6ai.png)](https://x6.ai)
 
-[Gamma Remover](https://gammaremover.com/) — Free browser-local Gamma watermark remover for PDF & PPTX. No signup, instant results, 100% private. Your files never leave your device.
+[x6.ai](https://x6.ai): One API key for every major model. Official-key and proxy channels, up to 90% off, free credits on sign-up. Pay with Alipay, Google Pay, Apple Pay, Visa or Mastercard.
+
+> 💡 x6.ai also exposes an Anthropic-compatible endpoint, so it can serve as your API provider for Claude Code itself — run `npx ccg-workflow`, pick x6.ai at Step 1, and paste your key.
 
 ---
 
@@ -377,4 +379,4 @@ MIT
 
 ---
 
-v3.7.1 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.7.2 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [Contributing](./CONTRIBUTING.md)

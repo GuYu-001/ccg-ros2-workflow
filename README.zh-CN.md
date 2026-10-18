@@ -39,9 +39,11 @@
 
 ---
 
-[![Gamma Remover](assets/sponsors/gamma-remover.webp)](https://gammaremover.com/)
+[![x6.ai](assets/sponsors/x6ai.png)](https://x6.ai)
 
-[Gamma Remover](https://gammaremover.com/) — 免费浏览器本地 Gamma 水印去除工具。支持 PDF 和 PPTX，无需注册，即时出结果，100% 隐私，文件不离开你的设备。
+[x6.ai](https://x6.ai)：一个 Key 调用所有主流模型，官 Key 直连和反代双通道，最低 1 折，注册送免费额度。支持支付宝、Google Pay、Apple Pay、Visa、Mastercard。
+
+> 💡 x6.ai 同时提供 Anthropic 原生兼容端点，可直接作为 Claude Code 的 API 提供方 —— 运行 `npx ccg-workflow` 在 Step 1 选择 x6.ai，填入 Key 即可。
 
 ---
 
@@ -377,4 +379,4 @@ MIT
 
 ---
 
-v3.7.1 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.7.2 | [Issues](https://github.com/fengshao1227/ccg-workflow/issues) | [Contributing](./CONTRIBUTING.md)

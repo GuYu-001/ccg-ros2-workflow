@@ -68,6 +68,26 @@ export const SPONSORS: readonly SponsorGateway[] = [
       env_key: 'PACKYCODE_API_KEY',
     },
   },
+  {
+    id: 'x6ai',
+    name: 'x6.ai',
+    signupUrl: 'https://x6.ai',
+    anthropicBaseUrl: 'https://api.x6.ai',
+    tagline: {
+      'zh-CN': '一个 Key 调用所有主流模型，官 Key 直连 + 反代双通道，最低 1 折',
+      en: 'one key for every major model, official-key & proxy channels, up to 90% off',
+    },
+    getKeyNote: {
+      'zh-CN': '（注册送免费额度）',
+      en: ' (free credits on sign-up)',
+    },
+    codex: {
+      name: 'x6.ai',
+      base_url: 'https://api.x6.ai/v1',
+      wire_api: 'responses',
+      env_key: 'X6AI_API_KEY',
+    },
+  },
 ]
 
 const BY_ID = new Map(SPONSORS.map(s => [s.id, s]))
