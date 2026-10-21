@@ -42,7 +42,11 @@ describe('ROS2 go engine templates', () => {
     const guide = read('engine/phase-guide.md')
     for (const command of ['colcon build --packages-up-to', 'colcon test --packages-select', 'colcon test-result --verbose', 'launch_testing']) expect(guide).toContain(command)
     for (const signal of ['/dev/tty', 'can0', 'deploy.sh', 'Gazebo', 'skipped', 'blocked', 'not run']) expect(guide).toContain(signal)
-    expect(read('commands-legacy/workflow.md')).toContain('phase-guide.md § 12')
+    const legacy = read('commands-legacy/workflow.md')
+    const legacyValidation = legacy.slice(legacy.indexOf('### ✅ 阶段 6：'), legacy.indexOf('### 🚀 阶段 7：'))
+    expect(legacyValidation).toContain('phase-guide.md § 11')
+    expect(legacyValidation).not.toContain('colcon build')
+    expect(legacy).toContain('phase-guide.md § 12')
   })
 
   it('persists a skipped deployment outcome as archived without an active Hook breadcrumb', async () => {

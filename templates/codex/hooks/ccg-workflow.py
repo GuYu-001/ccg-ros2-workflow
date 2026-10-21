@@ -181,10 +181,16 @@ def build_guidance(task, progress, root):
         parts.append("")
         parts.append("Review phase. Call external models for review, write results to review.md.")
 
+    elif phase == "7-deploy":
+        parts.append("")
+        parts.append("Deployment preparation: follow phase-guide.md sections 11 and 12. Confirm recorded software validation and independent safety review; missing or failed evidence is blocked, not passed.")
+        parts.append("Use read-only hardware checks and dry-run/simulation defaults. Physical activation, CAN/serial writes, host permission changes and safety-limit changes need separate explicit user approval.")
+        parts.append("Record deployment completed/skipped/blocked. Non-ROS2 or user-skipped deployment still archives normally; unresolved checks remain blocked/not run. New code changes must return to verification/review, but an unchanged reviewed diff alone does not restart dual review.")
+
     # --- Cross-phase guardrails ---
 
     # Big changes without review
-    if progress["changed_lines"] > 30 and phase != "review":
+    if progress["changed_lines"] > 30 and phase not in ("review", "7-deploy"):
         parts.append("")
         parts.append(f"⚠️ {progress['changed_lines']} lines changed. When done coding, you MUST call BOTH the frontend model AND Claude for dual-model review. Not just one — both.")
 
@@ -198,8 +204,11 @@ def build_guidance(task, progress, root):
     task_intent = " ".join(str(task.get(key, "")) for key in ("title", "id"))
     if (progress["high_risk_files"] or task_risk or _has_high_risk(task_intent)) and phase not in ("review", "completed"):
         parts.append("")
-        parts.append("⚠️ High-risk change detected (auth/db/crypto or ROS2 hardware/safety). External model safety/security review is REQUIRED before delivery.")
-        parts.append("For ROS2, inspect motor/actuator control, emergency stops, real-time loops, CAN/serial writes and parameter safety limits. Physical activation, device writes and host permission changes need explicit user approval; never weaken an emergency stop.")
+        if phase == "7-deploy":
+            parts.append("High-risk deployment: confirm existing independent safety review evidence; missing evidence is blocked. Physical activation, CAN/serial writes and host permission changes require separate explicit user approval; never weaken an emergency stop.")
+        else:
+            parts.append("⚠️ High-risk change detected (auth/db/crypto or ROS2 hardware/safety). External model safety/security review is REQUIRED before delivery.")
+            parts.append("For ROS2, inspect motor/actuator control, emergency stops, real-time loops, CAN/serial writes and parameter safety limits. Physical activation, device writes and host permission changes need explicit user approval; never weaken an emergency stop.")
 
     # Has dirty files but hasn't run tests
     if progress["has_dirty_files"] and not progress["has_test_output"]:

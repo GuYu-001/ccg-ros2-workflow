@@ -19,7 +19,7 @@
 [phase-state:2-context]
 当前阶段：上下文检索
 Gate: 需求已增强 ✓
-📍 Next: 上下文收集完毕后判断是否需要外部模型分析
+📍 Next: 上下文收集完毕后执行双视角并行分析
 [/phase-state:2-context]
 
 [phase-state:3-analysis]

@@ -214,19 +214,11 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 `[模式：评审]` - 质量把关：
 
-1. **编译测试**：
-   ```bash
-   colcon build --packages-select <package_name>
-   colcon test --packages-select <package_name>
-   ```
-2. **静态检查**：
+1. **软件验证**：读取 `~/.claude/.ccg/engine/phase-guide.md`，执行 `phase-guide.md § 11` 唯一 ROS2 软件验证清单，记录命令、退出码、测试结果及 blocked/not run 项；不要在本命令维护另一份编译/测试清单。
+2. **补充静态检查**（按项目计划）：
    - C++: `cpplint` / `cppcheck`
    - Python: `flake8` / `pylint`
-3. **ROS2 规范检查**：
-   - package.xml 完整性
-   - CMakeLists.txt 正确性
-   - Launch 文件语法
-4. **文档完整性**：
+3. **文档完整性**：
    - README.md 包含使用说明
    - 代码注释充分
    - Launch 文件有说明

@@ -76,12 +76,12 @@ describe('Codex mode hook lifecycle', () => {
     expect(context).toContain(`.ccg/spec/${domain}/index.md`)
   })
 
-  async function runRiskHook(options: { file?: string, title?: string, content?: string, staged?: boolean, risk?: string, renameFrom?: string }) {
+  async function runRiskHook(options: { file?: string, title?: string, content?: string, staged?: boolean, risk?: string, renameFrom?: string, phase?: string }) {
     expect((await installCodexMode()).success).toBe(true)
     const project = join(testHome.path, 'robot')
     await fs.outputJson(join(project, '.ccg/tasks/test/task.json'), {
       title: options.title || 'Update robot package',
-      status: 'in_progress', complexity: 'S', currentPhase: 'implementation', risk: options.risk || 'low',
+      status: 'in_progress', complexity: 'S', currentPhase: options.phase || 'implementation', risk: options.risk || 'low',
     })
     execFileSync('git', ['init', '-q'], { cwd: project })
     if (options.content || options.renameFrom) {
@@ -137,6 +137,34 @@ describe('Codex mode hook lifecycle', () => {
     expect(await runRiskHook({ content: 'const double maxVelocity = 100.0;\n' })).toContain('High-risk')
     await fs.remove(join(testHome.path, 'robot'))
     expect(await runRiskHook({ content: 'const int scanCount = 1; // cancel pending scan\n' })).not.toContain('High-risk')
+  })
+
+  it('keeps deployment on its checklist instead of restarting dual review for an already reviewed diff', async () => {
+    const context = await runRiskHook({
+      phase: '7-deploy',
+      risk: 'high',
+      content: Array.from({ length: 40 }, (_, n) => `const int value${n} = ${n};`).join('\n'),
+    })
+    expect(context).toContain('phase-guide.md')
+    expect(context).toContain('deployment')
+    expect(context).toContain('explicit user approval')
+    expect(context).not.toContain('When done coding')
+    expect(context).not.toContain('call BOTH')
+    expect(context).not.toContain('Start coding')
+  })
+
+  it('warns about high-risk deployment files without restarting dual review', async () => {
+    const context = await runRiskHook({
+      phase: '7-deploy',
+      file: 'src/motor_driver.cpp',
+      content: Array.from({ length: 40 }, (_, n) => `const int value${n} = ${n};`).join('\n'),
+    })
+    expect(context).toContain('High-risk deployment')
+    expect(context).toContain('independent safety review evidence')
+    expect(context).toContain('missing evidence is blocked')
+    expect(context).toContain('separate explicit user approval')
+    expect(context).not.toContain('MUST call BOTH')
+    expect(context).not.toContain('review is REQUIRED')
   })
 
   it('retains auth risk detection without treating ordinary can prose as CAN writes', async () => {
