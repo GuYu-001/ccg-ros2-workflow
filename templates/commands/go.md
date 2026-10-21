@@ -40,8 +40,10 @@ $ARGUMENTS
 **先行动，再判断**。必须执行以下操作获取上下文：
 
 1. `git status` — 当前变更状态、分支信息
-2. 读取项目配置文件（`package.json` / `go.mod` / `pyproject.toml` / `Cargo.toml` 等，取存在的第一个）— 技术栈
+2. 读取项目配置文件（`package.json` / `go.mod` / `pyproject.toml` / `Cargo.toml` 等）— 技术栈；不能因为找到 package.json 就停止 ROS2 检测
 3. 快速浏览目录结构（`ls` 或 `find . -maxdepth 2 -type f | head -30`）— 项目规模
+4. **ROS2 上下文**：扫描目标目录及工作空间 `src/` 下的 `package.xml`；结合 `ament_cmake` / `ament_python`、`CMakeLists.txt` / `setup.py` 确认是否为 ROS2，不能仅凭有 `src/` 断言。识别 colcon workspace root、overlay、ROS 发行版；有 colcon 时用只读的 `colcon list` 建立包拓扑，没有则从 manifest 读取并注明未运行
+5. ROS2 项目继续读取相关 `*.launch.py` / `*.launch.xml` / `*.launch.yaml`、参数 YAML、`.msg/.srv/.action`，记录节点、Topic/Service/Action、QoS、LifecycleNode、executor/callback group、tf2 与 `/dev/tty*` / `can0` 硬件依赖。把包路径、launch 入口和依赖写入任务上下文，不读取生成的 build/install 目录代替源码
 
 ### 1.2 任务类型分类
 
@@ -78,11 +80,30 @@ $ARGUMENTS
 |------|---------|
 | **low** | 无生产影响，可逆，有测试覆盖 |
 | **medium** | 修改现有行为，需要测试验证 |
-| **high** | API 契约变更，数据库迁移，认证/加密逻辑 |
+| **high** | API 契约变更，数据库迁移，auth/login/password/token 认证/加密逻辑；ROS2 电机/执行器控制（motor/actuator）、急停/安全联锁（emergency stop/e-stop/watchdog）、实时循环（real-time/realtime loop）、CAN/串口写（SocketCAN/cansend/serial write）、参数安全上限（velocity/effort/torque/joint limits） |
+
+ROS2 风险依据需求、修改文件和具体变更共同判断；普通英文 can 不等于 CAN 总线。上述物理安全信号即使只改一行也标 high，要求独立安全审查和用户授权；不得通过“小修”或逃生舱绕过真机操作授权。
 
 ### 1.5 领域检测
 
 从 `$ARGUMENTS` + 项目上下文推断：
+
+ROS2 域优先按实际包/节点和意图匹配，可同时命中多个域：
+
+| ROS2 域 | 信号 | 技能 |
+|---------|------|------|
+| **perception** | 点云、相机、激光雷达、传感器融合、PCL、sensor_msgs | `ros2-perception` |
+| **control** | 电机、PID/MPC/LQR、轨迹跟踪、rclcpp、ros2_control、controller_manager | `ros2-control` |
+| **navigation** | Nav2、SLAM、定位、路径规划、costmap、导航行为树 | `ros2-navigation` |
+| **manipulation** | MoveIt、机械臂、抓取、规划组、URDF/SRDF、关节轨迹 | `ros2-manipulation` |
+| **hardware** | 串口、CAN 总线、SocketCAN、/dev/tty*、can0、I2C/SPI、udev、驱动 | `ros2-hardware` |
+| **upper-app** | rclpy、launch、参数配置、RViz、Gazebo、系统集成 | `ros2-upper-app` |
+
+**技能解析**：先检查当前 CCG Skills 模式。native 模式仅按 host discovery 加载已选择的 `ccg-ros2-*`，其支持文件跟随技能的 canonical resource directory；未安装则明确说明并使用项目源码继续，不强制读取 legacy 路径。legacy 模式读取 `~/.claude/skills/ccg/domains/{ros2-*}/SKILL.md` 及相关子文件。多域任务按需读取，不盲目注入全部内容。
+
+**模型分工**：backend 是底层控制（C++ rclcpp、驱动、实时控制、ros2_control），frontend 是上层应用（Python rclpy、launch、参数、RViz/Gazebo、Nav2/MoveIt 配置），不是模型品牌绑定；跨层时双视角分析。
+
+非 ROS2 部分仍支持通用领域：
 - **frontend** — UI, component, CSS, React, Vue, Angular, style, layout, 页面, 组件
 - **backend** — API, database, server, endpoint, auth, queue, 接口, 数据库
 - **fullstack** — 同时涉及上层应用与底层控制
@@ -137,6 +158,9 @@ mkdir -p .ccg/tasks/{task-name}
   "title": "{用户请求一句话摘要}",
   "status": "in_progress",
   "strategy": "{selected-strategy}",
+  "complexity": "{S/M/L/XL}",
+  "risk": "{low/medium/high}",
+  "domain": "{primary-domain}",
   "currentPhase": "1",
   "nextAction": "{策略第一阶段的描述}",
   "gate": null,
@@ -175,6 +199,7 @@ Read("~/.claude/.ccg/engine/strategies/{selected-strategy}.md")
 2. 标记为 `HARD STOP` 的 Gate **必须等待用户确认**
 3. 策略文件底部的 `## 铁律` 区块必须遵守
 4. 如需调用外部模型，先 `Read("~/.claude/.ccg/engine/model-router.md")` 获取调用模板
+5. 涉及代码变更时，ROS2 验证遵循 `phase-guide.md § 11`，部署遵循 `phase-guide.md § 12`；full/guided 的 Phase 7 必须记录 completed/skipped/blocked，非 ROS2 或用户跳过部署仍走正常归档，不把 skipped 写成任务 status
 
 ---
 
@@ -196,7 +221,7 @@ Read("~/.claude/.ccg/engine/strategies/{selected-strategy}.md")
 |------|---------|---------|
 | `direct-fix` | 简单修复，范围清晰 | 无 |
 | `quick-implement` | 小功能，单文件/组件 | 无 |
-| `guided-develop` | 中等功能，需要规划 | 可选单模型 |
+| `guided-develop` | 中等功能，需要规划 | 双视角并行 |
 | `full-collaborate` | 复杂功能，需要多模型协作 | 双模型并行 |
 | `debug-investigate` | 复杂调试，原因不明 | 双模型并行 |
 | `refactor-safely` | 代码重构，需要安全保障 | 可选 |

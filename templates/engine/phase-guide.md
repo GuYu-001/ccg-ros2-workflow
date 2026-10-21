@@ -205,3 +205,58 @@ Round N (N=1,2,...,MAX_ROUNDS):
 ```
 
 SubAgent-context Hook 自动按角色过滤：无 `roles` 字段 = 注入所有角色。
+
+## 11. ROS2 软件验证质量门
+
+**所有会改代码的策略在宣布完成前执行**；非 ROS2 目标沿用项目原测试，不运行 colcon。只读分析/审查角色提供命令，由获准写入的执行者运行。先记录 workspace root、ROS 发行版/RMW、overlay、受影响包及自定义接口的下游消费者。
+
+1. 检查 `package.xml` 依赖、CMake/setup 可执行项和资源安装、`.msg/.srv/.action` 导出；跨包接口变更必须覆盖消费者，不能只编译接口包。
+2. 在工作空间根目录，加载实际存在且信任的 ROS underlay；先确认设备隔离/仿真配置。按计划运行：
+   ```bash
+   colcon build --packages-up-to <affected_pkg>
+   # 构建全部受影响包及必要依赖；接口变更同时构建消费者
+   source install/setup.bash
+   colcon test --packages-select <affected_pkgs>
+   colcon test-result --verbose
+   ```
+   上述包名替换为真实包列表；检查每条命令退出码与测试汇总，`colcon test` 启动成功不等于测试通过。不信任的 launch/test 也可能连接设备，先审查其硬件隔离方式。
+3. 单元测试使用现有 ament/gtest/pytest；`launch_testing` 覆盖节点启动/退出、LifecycleNode、Topic/Service/Action 与 QoS 兼容性、参数边界、tf2 时间/坐标系以及 executor/callback group 并发。控制/驱动测试用 fake hardware、模拟传输或 Gazebo，不隐式激活真机。
+4. 记录命令、目标包、退出码、测试通过/失败/未运行与日志路径（任务存在时写入 `validation.md`）。失败须修复后重跑；缺 ROS/SDK/依赖或必需硬件时标 **blocked / not run**，说明复现命令与补验条件，不用语法检查冒充构建通过，不宣称“验证全绿”。
+5. 修改 actuator/motor、电机/执行器、急停/安全联锁、实时循环、CAN/串口写或参数安全上限时，必须独立安全审查：失联/过期命令进入安全态、watchdog、速度/力矩/关节限位及停止路径。普通 can 不是总线信号；按代码/硬件语义判断。
+
+## 12. ROS2 硬件部署协议（唯一清单）
+
+full-collaborate / guided-develop 的 **Phase 7: 硬件部署**、legacy workflow 阶段 7，以及其余实现策略末验证中的部署子流程都引用本节；不要在调用方复制另一份检查清单。
+
+### 适用与授权
+
+- 软件质量门 § 11 有失败或 blocked 必须先报告，禁止激活设备；软件验证状态和部署状态分开记录。
+- 非 ROS2 目标：`deployment.status = "skipped"`，原因 `not_ros2`；用户明确选择跳过部署：记录 `skipped` 及原因。**这两种情况直接进入正常归档，不等待硬件、不把 task.status 写成 skipped。**
+- ROS2 目标默认只准备方案/脚本与安全仿真，不自动上电。真机激活、电机动作、CAN/串口写、安装软件、改 udev/组权限或安全上限均为 **HARD STOP：用户明确授权**；计划审批不等于这些操作的授权。
+- 需要真机但设备/授权不可用时记录 `deployment.status = "blocked"`，列出未执行项；用户可保留任务待补验，或明确接受未验证范围后归档，但不得把 blocked 改成 completed 冒充验收。
+
+### 部署清单
+
+1. **硬件依赖检查**：列出参数化的 `/dev/ttyUSB*` / `/dev/ttyACM*`、`can0` / `can1`、相机/激光雷达、固件、驱动与 ROS 包。只读检查设备是否存在、CAN 状态、权限/udev 规则，写明缺失与命名映射；不自动 sudo、不尝试发送帧验证。
+2. **部署脚本**：在批准文件范围内生成或更新 `deploy.sh`（或现有部署入口），包含依赖预检、参数/设备选择、ROS 环境、launch 命令、日志/状态监控、停止与回滚。默认 dry-run 或仿真；真实模式需显式选项及用户授权。只生成不执行也须如实记录。
+3. **Gazebo 仿真验证**：有模型/环境时用现有 world、URDF/SDF 或 fake hardware 检验节点通信、QoS、tf2/use_sim_time、生命周期、故障与急停路径；优先复用，缺少资源才在批准范围生成。可选仿真未运行时标 `not run` 及原因，不能记作通过；仿真不证明真机安全。
+4. **交付清单**：硬件连接表、软件依赖/安装命令、launch/参数命令、风险/急停与限位说明、故障排查、回滚步骤；分列 software / simulation / real-hardware 的实际验证结果。
+
+任务存在时把证据写入 `deployment.md`，保存 `deployment: {status, reason, checks}`；completed 表示上述**部署准备**交付完成，不代表机器人已上线。用户确认记录后再按所属策略 Spec Evolution/归档流程收尾。
+
+### skipped 后归档
+
+合并到现有 task.json（保留其余字段），由执行者执行所属策略的归档步骤。`currentPhase` 是显示字段，终态由 `status` 决定；JS/Python Hook 均识别 `archived`，不会因 Phase 7 跳过而持续提示活动任务。
+
+<!-- ROS2_DEPLOY_SKIPPED -->
+```json
+{
+  "currentPhase": "7-deploy",
+  "deployment": { "status": "skipped", "reason": "not_ros2_or_user_requested" },
+  "status": "archived",
+  "gate": null,
+  "nextAction": "Deployment skipped; archive task"
+}
+```
+
+不创建 Task 的 S 级策略无需为了本节生成 task.json；在结果中记录部署 skipped/准备完成/blocked。不要因为部署 skipped 而跳过 § 11 所需的软件验证。

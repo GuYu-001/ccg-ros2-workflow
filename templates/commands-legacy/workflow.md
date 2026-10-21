@@ -235,34 +235,10 @@ TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
 
 ### 🚀 阶段 7：硬件部署
 
-`[模式：硬件部署]` - 生成部署方案：
+`[模式：硬件部署]` - 与 v3 /ccg:go 使用同一份清单：
 
-1. **硬件依赖检查**：
-   - 串口设备（`/dev/ttyUSB*`、`/dev/ttyACM*`）
-   - CAN 总线（`can0`、`can1`）
-   - 传感器设备（相机、激光雷达）
-   - 权限配置（udev rules）
-2. **部署脚本生成**：
-   ```bash
-   # deploy.sh
-   #!/bin/bash
-   # 检查硬件设备
-   # 配置 udev rules
-   # 启动 ROS2 节点
-   # 监控运行状态
-   ```
-3. **Gazebo 仿真验证**（可选）：
-   - 生成 Gazebo world 文件
-   - 配置机器人模型（URDF/SDF）
-   - 启动仿真环境
-   - 验证节点通信
-4. **部署清单**：
-   - 硬件连接检查表
-   - 软件依赖安装命令
-   - 启动命令
-   - 故障排查指南
-
-输出部署文档和脚本，等待用户确认。
+读取 `~/.claude/.ccg/engine/phase-guide.md`，执行 `phase-guide.md § 11` 软件验证后，执行 `phase-guide.md § 12` 唯一硬件部署协议（设备依赖、部署脚本、Gazebo 验证、交付/回滚）。
+非 ROS2/用户跳过记录 skipped 并按所属任务流程归档；缺 SDK/硬件记录 blocked/not run，不冒充验收。部署准备不等于真机上线；电机/CAN/串口写或权限修改必须单独用户授权。
 
 ---
 

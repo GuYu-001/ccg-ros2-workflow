@@ -48,6 +48,7 @@ Gate: 优化已应用 ✓
 
 1. 确定度量指标：
    - 响应时间？吞吐量？内存使用？包大小？加载时间？
+   - ROS2：sensor-to-command 延迟、实时循环 jitter/deadline miss、callback/executor 排队、CPU/内存；固定 RMW、bag/仿真时钟与硬件环境
 2. 运行基线测试：
    - `time` 命令 / benchmark / profiler
    - 记录具体数值
@@ -80,6 +81,8 @@ Gate: 优化已应用 ✓
 3. 如果涉及算法变更，确保正确性
 
 ### Phase 4: 优化后度量 [required]
+
+ROS2 修改先执行 `phase-guide.md § 11` 保证控制/接口正确性，再执行 `phase-guide.md § 12` 硬件部署子流程；不重编号。非 ROS2/用户跳过部署记录 skipped，缺 SDK/硬件记录 blocked/not run，不以仿真指标冒充真机结果。不得为了性能关闭急停、超时或安全上限。
 
 1. 使用与 Phase 1 **完全相同的方式**重新度量
 2. 对比基线：

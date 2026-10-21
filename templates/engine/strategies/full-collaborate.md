@@ -49,8 +49,14 @@ Gate: 实施已完成 ✓
 [phase-state:6-final]
 当前阶段：最终验收 [模式：评审]
 Gate: 优化审查已完成 ✓
-📍 Next: 验收通过后建议提交
+📍 Next: 软件验收通过后进入硬件部署准备
 [/phase-state:6-final]
+
+[phase-state:7-deploy]
+当前阶段：硬件部署 [模式：硬件部署]
+Gate: 软件验收已通过，或已明确记录阻塞范围 ✓
+📍 Next: 记录部署 completed/skipped/blocked 后按规则归档
+[/phase-state:7-deploy]
 
 ---
 
@@ -61,7 +67,7 @@ Gate: 优化审查已完成 ✓
 `[模式：研究]`
 
 1. **需求增强**：分析 $ARGUMENTS 的意图、缺失信息、隐含假设，补全为结构化需求（目标、约束、范围、验收标准）
-2. **上下文检索**：用 MCP 搜索工具收集项目上下文
+2. **上下文检索**：用 MCP 搜索工具收集项目上下文；ROS2 读取 package.xml 包拓扑、colcon workspace、launch/参数、接口与硬件依赖，沿用 /ccg:go 已收集的上下文
 3. **需求完整性评分**（0-10）：
    - 目标明确性（0-3）、预期结果（0-3）、边界范围（0-2）、约束条件（0-2）
    - ≥7：继续 | <7：停止，提出补充问题
@@ -82,7 +88,7 @@ Gate: 优化审查已完成 ✓
 
 **并行调用**（`run_in_background: true`）：
 - **backend 模型**：analyzer 角色 — 技术可行性、底层控制方案、风险评估
-- **frontend 模型**：analyzer 角色 — UI 可行性、上层应用方案、用户体验
+- **frontend 模型**：analyzer 角色 — rclpy/launch/参数、RViz/Gazebo 与 Nav2/MoveIt 集成可行性
 
 使用 model-router.md 中的调用模板。
 
@@ -296,7 +302,7 @@ Bash({
 
 **并行调用**（`run_in_background: true`）：
 - **backend 模型**：reviewer 角色 — 关注安全、性能、错误处理
-- **frontend 模型**：reviewer 角色 — 关注可访问性、设计一致性
+- **frontend 模型**：reviewer 角色 — 关注 launch/参数、QoS/tf2、生命周期启动顺序、仿真与集成一致性
 
 **5b. 质量关卡**
 
@@ -343,16 +349,28 @@ Bash({
 **Task 更新**：`currentPhase → "6-final"`, `nextAction → "最终验收"`
 
 1. 对照计划检查完成情况
-2. 运行测试验证功能
+2. 运行测试验证功能；ROS2 必须执行 `phase-guide.md § 11`（colcon build/test/test-result、launch_testing），记录未运行/阻塞项，不以普通 lint 替代
 3. `git diff` 全量变更摘要
 4. 输出结果：
    ```
-   ✅ 协作开发完成
+   软件评审结果
      变更: [N] 文件，[M] 行
      方案: [选定方案摘要]
      审查: [Critical: N, Warning: N, Info: N]
-     📍 Next: /ccg commit 提交，或查看 .ccg/tasks/{task-name}/ 中的完整记录
+     📍 Next: Phase 7 硬件部署准备（未授权不操作真机）
    ```
+
+### Phase 7: 硬件部署 [required · ROS2 条件执行]
+
+`[模式：硬件部署]`
+
+**Task 更新**：`currentPhase → "7-deploy"`, `nextAction → "执行共用部署协议或记录 skipped"`
+
+读取并执行 `phase-guide.md § 12` 的唯一部署清单（硬件依赖、deploy.sh、Gazebo 验证、交付/回滚）。
+非 ROS2 或用户明确跳过时记录 `deployment.status = "skipped"`，继续下面的 Spec Evolution 和归档；不将 skipped 用作 task.status。
+缺 SDK/硬件或授权时按 § 12 记录 blocked/not run 和用户处理决定，绝不自动激活真机，不提前宣称全验收。
+
+### 收尾与归档
 
 #### Spec Evolution（归档前必须执行）
 

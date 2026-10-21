@@ -40,13 +40,22 @@ Read ~/.claude/.ccg/config.toml
 
 判定为纯 CC 模式后，**跳过本文件第 3 节的 codeagent-wrapper 调用模板**，直接按上表用 Agent 工具执行。
 
+## 1c. ROS2 任务上下文
+
+模型品牌不决定 ROS2 分工；按当前调用的 backend/frontend 任务视角传递上下文：
+- backend：C++ rclcpp、驱动、实时控制、hardware_interface、ros2_control。
+- frontend：Python rclpy、launch、参数 YAML、RViz/Gazebo、Nav2/MoveIt 集成配置。
+- 共同输入：package.xml 包拓扑与 colcon workspace root、.msg/.srv/.action、Topic/Service/Action 与 QoS、LifecycleNode、executor/callback group、tf2/仿真时钟，以及 `/dev/tty*` / `can0` 依赖。
+- `$TASK_CONTENT` 必须注明当前视角、允许修改的文件和验收条件；沿用现有 `$MODEL/$ROLE.md` 和所有型号/会话变量，不把缺 SDK/硬件写成通过。
+- 分析/审查角色保持只读；Builder 的写权限只在用户批准范围内，绝不授权真机动作。验证与硬件部署分别遵循 `phase-guide.md § 11` / `§ 12`。
+
 ## 2. 按阶段选择模型
 
 ### 分析/研究阶段
 | 任务领域 | 推荐模型 | 角色提示词 |
 |---------|---------|-----------|
 | 底层控制/架构 | backend 模型 | `$BACKEND/analyzer.md` |
-| 上层应用/UI | frontend 模型 | `$FRONTEND/analyzer.md` |
+| 上层应用/launch/仿真 | frontend 模型 | `$FRONTEND/analyzer.md` |
 | 全栈 | 双模型并行 | 各用对应 analyzer |
 | 安全 | backend 模型 | `$BACKEND/analyzer.md` |
 

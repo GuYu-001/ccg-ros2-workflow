@@ -112,6 +112,8 @@ Step [N/M]: [描述] — ✅ 测试通过 / ❌ 测试失败
 
 ### Phase 5: 迭代审查 [Ralph Loop]
 
+ROS2 变更先执行 `phase-guide.md § 11`（与 Phase 2 同一基线环境的 colcon 与 launch_testing），再执行 `phase-guide.md § 12` 硬件部署子流程，之后才报告完成/归档；保持 5-verify 不重编号。非 ROS2/用户跳过部署记录 skipped，缺 SDK/硬件记录 blocked/not run，不隐式操作真机。
+
 1. 运行完整测试套件
 2. 对比基线：确保不引入新的失败
 
@@ -124,7 +126,7 @@ Step [N/M]: [描述] — ✅ 测试通过 / ❌ 测试失败
 3. 获取变更：`git diff` 全量输出
 4. 并行调用双模型审查（`run_in_background: true`）：
    - backend 模型 + reviewer 角色 — 关注安全、性能、错误处理、行为一致性
-   - frontend 模型 + reviewer 角色 — 关注可访问性、设计一致性（如涉及上层应用）
+   - frontend 模型 + reviewer 角色 — 关注 launch/参数、QoS/tf2、生命周期与系统集成行为一致性
 5. 等待双模型结果，综合审查意见
 
 **⛔ 质量关卡（必须逐个调用 Skill，不可跳过，不可用自己的判断替代）：**

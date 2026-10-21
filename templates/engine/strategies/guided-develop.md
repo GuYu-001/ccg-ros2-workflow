@@ -1,6 +1,6 @@
 # Strategy: Guided Develop — 引导式开发
 
-> 适用于中等复杂度的功能开发。可选调用外部模型进行领域分析。
+> 适用于中等复杂度的功能开发，使用配置的双视角并行分析。
 
 ## 适用条件
 - 复杂度 M（2-5 文件，单模块）
@@ -23,7 +23,7 @@ Gate: 需求已增强 ✓
 [/phase-state:2-context]
 
 [phase-state:3-analysis]
-当前阶段：领域分析（可选外部模型）
+当前阶段：领域分析（双视角并行）
 Gate: 上下文已收集 ✓
 📍 Next: 分析完成后进入规划阶段
 [/phase-state:3-analysis]
@@ -43,8 +43,14 @@ Gate: 用户已确认计划 ✓（HARD STOP）
 [phase-state:6-verify]
 当前阶段：验证
 Gate: 实施已完成 ✓
-📍 Next: 验证通过后报告结果
+📍 Next: 软件验证后进入硬件部署准备
 [/phase-state:6-verify]
+
+[phase-state:7-deploy]
+当前阶段：硬件部署
+Gate: 软件验证结果已记录 ✓
+📍 Next: 记录部署 completed/skipped/blocked 后按规则归档
+[/phase-state:7-deploy]
 
 ---
 
@@ -66,6 +72,7 @@ Gate: 实施已完成 ✓
 2. 读取目标模块的核心文件
 3. 识别依赖关系和可能的影响范围
 4. 了解现有的测试覆盖情况
+5. ROS2 项目沿用 /ccg:go 的 package.xml / colcon workspace / launch 上下文，补充包依赖、接口消费者、QoS/lifecycle/tf2 和硬件隔离方案
 
 ### Phase 3: 多模型分析 [required]
 
@@ -212,8 +219,10 @@ Bash({
 
 ### Phase 6: 迭代审查 [Ralph Loop]
 
+**Task 更新**：`currentPhase → "6-verify"`, `nextAction → "软件验证与独立审查"`
+
 1. `git diff` 展示所有变更
-2. 运行测试（如果有）
+2. 运行测试；ROS2 必须执行 `phase-guide.md § 11` 的 colcon build/test/test-result 和 launch_testing 质量门，记录 blocked/not run，不伪报通过
 
 参考 `phase-guide.md § 10 Ralph Loop` 执行迭代审查（变更 >30 行时，最多 3 轮）。
 
@@ -222,12 +231,12 @@ Bash({
 **⛔ 双模型交叉审查（每轮 spawn 新调用，干净上下文）：**
 3. 并行调用双模型（`run_in_background: true`，使用 model-router.md 模板）：
    - backend 模型 + reviewer 角色 — 安全、性能、错误处理
-   - frontend 模型 + reviewer 角色 — 设计一致性（如涉及上层应用）
+   - frontend 模型 + reviewer 角色 — launch/参数、QoS/tf2、生命周期、仿真集成一致性
 4. 综合审查意见
 
 **⛔ 质量关卡（必须逐个调用 Skill，不可跳过）：**
 5. 调用 Skill `verify-quality` — 等待报告
-6. 调用 Skill `verify-security` — 等待报告（涉及 auth/input/crypto 时）
+6. 调用 Skill `verify-security` — 等待报告（涉及 auth/input/crypto 或 ROS2 电机/执行器、急停安全、实时循环、CAN/串口写、参数安全上限时）；物理安全另按 § 11 独立审查，扫描不替代硬件安全验证
 7. 调用 Skill `verify-change` — 等待报告
 
 **用户决定（⛔ 必须等待）：**
@@ -241,13 +250,23 @@ Bash({
 8. 检查是否满足验收标准
 9. 输出结果：
    ```
-   ✅ 开发完成
+   软件验证结果
      变更: [N] 文件，[M] 行
      实现: [摘要]
      测试: [通过/跳过/失败情况]
      审查: [N] 轮，[Critical: N, Warning: N, Info: N]
-     📍 Next: 可以用 /ccg:commit 提交
+     📍 Next: Phase 7 硬件部署准备
    ```
+
+### Phase 7: 硬件部署 [required · ROS2 条件执行]
+
+**Task 更新**：`currentPhase → "7-deploy"`, `nextAction → "执行共用部署协议或记录 skipped"`
+
+读取并执行 `phase-guide.md § 12` 的唯一部署清单，包含硬件预检、deploy.sh、Gazebo 与交付/回滚。
+非 ROS2 或用户明确跳过时记录 `deployment.status = "skipped"` 并继续归档，不把 task.status 设为 skipped。
+缺 SDK/硬件或授权按 § 12 记录 blocked/not run；不隐式运行真机或放宽安全上限。
+
+### 收尾与归档
 
 #### Spec Evolution（归档前必须执行）
 
