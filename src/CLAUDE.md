@@ -122,25 +122,24 @@ v1.7.83 将原 1878 行单文件拆分为 5 个聚焦模块，各自边界清晰
 → installSkillFiles()        # templates/skills/ → ~/.claude/skills/ccg/（递归拷贝 + 路径替换）
 → installSkillGeneratedCommands()  # Skill Registry → 生成额外 slash commands
 → installRuleFiles()         # templates/rules/*.md → ~/.claude/rules/
-→ installBinaryFile()        # 下载 codeagent-wrapper（双源）
+→ installBinaryFile()        # 仅从 fork preset Release 下载 codeagent-wrapper
 → 后置校验: installedCommands.length > 0
 ```
 
 #### Binary 管理（`src/utils/installer.ts:61`）
 
 ```typescript
-const EXPECTED_BINARY_VERSION = '5.10.0'  // 必须与 codeagent-wrapper/main.go 中 version 常量保持一致
+const EXPECTED_BINARY_VERSION = '5.15.0'  // 必须与 codeagent-wrapper/main.go 中 version 常量保持一致
 
-// 双源下载策略（优先国内 CDN）：
+// 仅从 fork 的 preset Release 下载；curl/fetch 回退不切换来源：
 const BINARY_SOURCES = [
-  { name: 'Cloudflare CDN', url: 'https://github.20031227.xyz/preset', timeoutMs: 30_000 },
-  { name: 'GitHub Release',  url: 'https://github.com/.../releases/download/preset', timeoutMs: 120_000 },
+  { name: 'GitHub Release', url: 'https://github.com/GuYu-001/ccg-ros2-workflow/releases/download/preset', timeoutMs: 120_000 },
 ]
 ```
 
 - 下载前检查：`binary --version` 输出与 `EXPECTED_BINARY_VERSION` 对比，版本一致则跳过下载
 - 优先用 `curl`（自动读取系统代理 `HTTPS_PROXY`），失败后降级 Node.js `fetch`
-- 下载失败显示红框警告 + 手动修复指引，**不阻塞**安装流程（非致命错误）
+- 下载失败显示红框警告 + fork Release 手动修复指引，安装结果返回失败
 
 ⚠️ **版本同步铁律**：修改 Go 代码时必须同步更新 `EXPECTED_BINARY_VERSION` 和 `codeagent-wrapper/main.go` 中的 `version`，两值必须一致，否则 `update` 不会触发 binary 重新下载。
 
@@ -340,7 +339,7 @@ defineBuildConfig({
 
 2. **Skill Registry frontmatter 驱动**（v2.0.0）：新增技能不需要改 TypeScript 代码，只需写 SKILL.md 并设 `user-invocable: true`。降低贡献门槛，保持命令生成逻辑集中在一处。
 
-3. **binary 不打入 npm 包**（v1.7.77）：npm 包从 16.3MB 降至 161KB，CI 交叉编译后上传 GitHub Release，安装时按需下载。双源（Cloudflare CDN 优先）解决中国用户网络问题。
+3. **binary 不打入 npm 包**（v1.7.77）：CI 交叉编译后上传 fork 的 GitHub preset Release，安装时按需下载。curl 使用系统代理，失败后 fetch 回退仍请求同一 fork 来源，不再使用上游 CDN。
 
 4. **permissions.allow 替代 Hook**（v1.7.89+）：早期用 PreToolUse Hook + jq 实现 codeagent-wrapper 自动授权，依赖 jq 可用性。改为 `permissions.allow: ["Bash(*codeagent-wrapper*)"]` 后跨平台统一，无外部依赖，且可幂等写入。
 

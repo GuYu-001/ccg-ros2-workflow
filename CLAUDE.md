@@ -798,7 +798,7 @@ npm 网页的 README 有服务端渲染缓存，发布后要等一会儿才更�
   - [ ] `codeagent-wrapper/main.go` → `version = "x.y.z"`
   - [ ] `src/utils/installer.ts` → `EXPECTED_BINARY_VERSION = 'x.y.z'`
   - 两边版本必须一致，否则用户 update 时无法触发 binary 重新下载
-  - **⛔ 禁止手动 `gh release upload`！** 推送 Go 代码后 CI（`.github/workflows/build-binaries.yml`）会自动编译 + 上传 GitHub Release + 同步 Cloudflare R2 镜像。手动上传会覆盖 CI 产物且 R2 不会同步
+  - **⛔ 禁止未经确认手动 `gh release upload`！** 推送 wrapper 变更后 CI（`.github/workflows/build-binaries.yml`）会自动编译并重建 fork 的 preset GitHub Release，不再同步上游 Cloudflare R2。手动上传会覆盖 CI 产物
 - [ ] `pnpm typecheck` 通过（tsc --noEmit，不可跳过）
 - [ ] `pnpm build` 通过
 - [ ] `pnpm test` 通过

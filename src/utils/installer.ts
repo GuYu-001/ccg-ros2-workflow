@@ -131,9 +131,8 @@ interface InstallContext {
 const GITHUB_REPO = 'GuYu-001/ccg-ros2-workflow'
 const RELEASE_TAG = 'preset'
 
-/** Download sources: R2 CDN first (China-friendly) → GitHub fallback (global) */
+/** Download binaries only from this fork's preset release. */
 const BINARY_SOURCES = [
-  { name: 'Cloudflare CDN', url: 'https://github.20031227.xyz/preset', timeoutMs: 30_000 },
   { name: 'GitHub Release', url: `https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}`, timeoutMs: 120_000 },
 ]
 
@@ -197,8 +196,8 @@ async function downloadFromUrl(url: string, destPath: string, timeoutMs: number,
 }
 
 /**
- * Download codeagent-wrapper binary with dual-source fallback.
- * Strategy: R2 mirror (60s) → GitHub Release (120s). Uses curl for proxy support.
+ * Download codeagent-wrapper from the fork's GitHub Release.
+ * Retries and the curl/fetch fallback stay on the same release origin.
  */
 async function downloadBinaryFromRelease(binaryName: string, destPath: string): Promise<boolean> {
   for (const source of BINARY_SOURCES) {
@@ -920,7 +919,7 @@ async function installBinaryFile(ctx: InstallContext): Promise<void> {
       }
     }
     else {
-      ctx.result.errors.push(`Failed to download binary: ${binaryName} from GitHub Release (after 3 attempts). Check network or visit https://github.com/${GITHUB_REPO}/releases/tag/${RELEASE_TAG}`)
+      ctx.result.errors.push(`Failed to download binary: ${binaryName} from GitHub Release (after 2 attempts). Check network or visit https://github.com/${GITHUB_REPO}/releases/tag/${RELEASE_TAG}`)
     }
   }
   catch (error) {

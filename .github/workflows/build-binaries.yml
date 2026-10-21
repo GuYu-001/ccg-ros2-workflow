@@ -69,25 +69,6 @@ jobs:
             | `codeagent-wrapper-windows-arm64.exe` | Windows | ARM64 |
 
             > This release is automatically updated when `codeagent-wrapper/` source changes.
-            > Mirror: Cloudflare R2 (auto-synced)
           files: artifacts/*
           prerelease: true
           make_latest: false
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install wrangler
-        run: npm i -g wrangler@latest
-
-      - name: Sync binaries to Cloudflare R2 mirror
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          for bin in artifacts/codeagent-wrapper-*; do
-            name=$(basename "$bin")
-            echo "Uploading $name → R2..."
-            wrangler r2 object put "github/preset/$name" --file="$bin" --content-type=application/octet-stream --remote
-          done

@@ -45,6 +45,13 @@ describe('plugin manifests — native marketplace install', () => {
     expect(marketplace.metadata.version).toBe(pkg.version)
     expect(marketplace.plugins[0].version).toBe(pkg.version)
   })
+
+  it('publishes fork support links and plugin ownership', () => {
+    expect(pkg.homepage).toBe('https://github.com/GuYu-001/ccg-ros2-workflow#readme')
+    expect(pkg.bugs.url).toBe('https://github.com/GuYu-001/ccg-ros2-workflow/issues')
+    expect(plugin.author).toEqual({ name: 'GuYu-001', url: 'https://github.com/GuYu-001' })
+    expect(marketplace.owner).toEqual({ name: 'GuYu-001', url: 'https://github.com/GuYu-001' })
+  })
 })
 
 describe('npm tarball does not ship red-team notes', () => {

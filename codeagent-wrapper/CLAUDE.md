@@ -283,11 +283,10 @@ bash build-all.sh
 ### CI 自动构建
 
 推送包含 `codeagent-wrapper/` 变更的 commit 后，`.github/workflows/build-binaries.yml` 自动：
-1. 交叉编译 6 个平台二进制
-2. 上传到 GitHub Release
-3. 同步至 Cloudflare R2 镜像（国内加速）
+1. 交叉编译 6 个平台二进制（`CGO_ENABLED=0`、`-ldflags="-s -w"`）
+2. 删除旧 preset 并重建 fork 的 GitHub Release，上传六个资产；不再同步上游 R2
 
-**⛔ 禁止手动 `gh release upload`**——手动上传会覆盖 CI 产物且 R2 不同步。
+**⛔ 禁止未经确认手动 `gh release upload`**——手动上传会覆盖 CI 产物。推送 main 的 wrapper 变更后，上述 workflow 会自动重建 preset Release。
 
 ---
 

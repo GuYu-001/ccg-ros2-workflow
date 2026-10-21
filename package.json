@@ -12,9 +12,9 @@
     "type": "git",
     "url": "https://github.com/GuYu-001/ccg-ros2-workflow.git"
   },
-  "homepage": "https://ccg.fengshao1227.com",
+  "homepage": "https://github.com/GuYu-001/ccg-ros2-workflow#readme",
   "bugs": {
-    "url": "https://github.com/fengshao1227/ccg-workflow/issues"
+    "url": "https://github.com/GuYu-001/ccg-ros2-workflow/issues"
   },
   "engines": {
     "node": ">=20"

@@ -5,7 +5,12 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import fs from 'fs-extra'
 import { getAllCommandIds, getWorkflowById, getWorkflowConfigs, injectConfigVariables, installWorkflows, uninstallWorkflows, verifyBinaryVersion } from '../installer'
 
-const fixture = vi.hoisted(() => ({ asset: '', downloads: [] as { url: string, destination: string }[] }))
+const fixture = vi.hoisted(() => ({
+  asset: '',
+  downloads: [] as { url: string, destination: string }[],
+  simulatedPlatform: false,
+  failDownloads: false,
+}))
 vi.mock('node:child_process', async (original) => {
   const actual = await original<typeof import('node:child_process')>()
   return { ...actual, execSync: vi.fn((command: string, options?: import('node:child_process').ExecSyncOptions) => {
@@ -13,8 +18,12 @@ vi.mock('node:child_process', async (original) => {
       const match = command.match(/ -o "([^"]+)" "(https:\/\/[^"\s]+)"$/)
       if (!match || !fixture.asset) throw new Error('Unexpected fixture download request')
       fixture.downloads.push({ destination: match[1], url: match[2] })
+      if (fixture.failDownloads) throw new Error('Fixture release download unavailable')
       copyFileSync(fixture.asset, match[1])
       return Buffer.alloc(0)
+    }
+    if (fixture.simulatedPlatform && /^"[^"]+[/\\]bin[/\\]codeagent-wrapper(?:\.exe)?" --version$/.test(command)) {
+      return Buffer.from('codeagent-wrapper version 5.15.0\n')
     }
     const output = actual.execSync(command, options)
     // Windows uses a runnable Node PE fixture. Verify execution for real, then
@@ -350,9 +359,61 @@ describe('installWorkflows — binary installation', () => {
     expect(await fs.readFile(installed)).toEqual(await fs.readFile(fixture.asset))
     expect(fixture.downloads.slice(before)).toHaveLength(1)
     expect(fixture.downloads.at(-1)?.destination).toBe(installed)
-    expect(fixture.downloads.at(-1)?.url).toMatch(/\/codeagent-wrapper-(darwin|linux|windows)-(amd64|arm64)(?:\.exe)?$/)
+    expect(fixture.downloads.at(-1)?.url).toMatch(/^https:\/\/github\.com\/GuYu-001\/ccg-ros2-workflow\/releases\/download\/preset\/codeagent-wrapper-(darwin|linux|windows)-(amd64|arm64)(?:\.exe)?$/)
     if (process.platform !== 'win32') expect((await fs.stat(installed)).mode & 0o777).toBe(0o755)
     expect(await verifyBinaryVersion(tmpDir)).toBe(true)
+  })
+
+  it.each([
+    ['darwin', 'x64', 'codeagent-wrapper-darwin-amd64', 'codeagent-wrapper'],
+    ['darwin', 'arm64', 'codeagent-wrapper-darwin-arm64', 'codeagent-wrapper'],
+    ['linux', 'x64', 'codeagent-wrapper-linux-amd64', 'codeagent-wrapper'],
+    ['linux', 'arm64', 'codeagent-wrapper-linux-arm64', 'codeagent-wrapper'],
+    ['win32', 'x64', 'codeagent-wrapper-windows-amd64.exe', 'codeagent-wrapper.exe'],
+    ['win32', 'arm64', 'codeagent-wrapper-windows-arm64.exe', 'codeagent-wrapper.exe'],
+  ])('downloads the fork asset for %s/%s', async (platform, arch, asset, executable) => {
+    const platformDescriptor = Object.getOwnPropertyDescriptor(process, 'platform')!
+    const archDescriptor = Object.getOwnPropertyDescriptor(process, 'arch')!
+    const directory = join(tmpDir, `${platform}-${arch}`)
+    const before = fixture.downloads.length
+    try {
+      Object.defineProperty(process, 'platform', { value: platform })
+      Object.defineProperty(process, 'arch', { value: arch })
+      fixture.simulatedPlatform = true
+      const result = await installWorkflows(['go'], directory, true, { mcpProvider: 'skip' })
+      expect(result.binInstalled).toBe(true)
+      expect(await fs.readFile(join(directory, 'bin', executable))).toEqual(await fs.readFile(fixture.asset))
+      expect(fixture.downloads.slice(before)).toEqual([{
+        url: `https://github.com/GuYu-001/ccg-ros2-workflow/releases/download/preset/${asset}`,
+        destination: join(directory, 'bin', executable),
+      }])
+    }
+    finally {
+      fixture.simulatedPlatform = false
+      Object.defineProperty(process, 'platform', platformDescriptor)
+      Object.defineProperty(process, 'arch', archDescriptor)
+    }
+  })
+
+  it('keeps curl retries and fetch fallback on the fork when downloads fail', async () => {
+    const before = fixture.downloads.length
+    vi.mocked(fetch).mockClear()
+    fixture.failDownloads = true
+    try {
+      const result = await installWorkflows(['go'], join(tmpDir, 'unavailable'), true, { mcpProvider: 'skip' })
+      expect(result.success).toBe(false)
+      expect(result.binInstalled).not.toBe(true)
+      const urls = fixture.downloads.slice(before).map(download => download.url)
+      expect(urls).toHaveLength(2)
+      for (const url of [...urls, ...vi.mocked(fetch).mock.calls.map(call => String(call[0]))]) {
+        expect(url).toMatch(/^https:\/\/github\.com\/GuYu-001\/ccg-ros2-workflow\/releases\/download\/preset\//)
+      }
+      expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2)
+      expect(result.errors.join('\n')).toContain('https://github.com/GuYu-001/ccg-ros2-workflow/releases/tag/preset')
+    }
+    finally {
+      fixture.failDownloads = false
+    }
   })
 })
 
