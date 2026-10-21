@@ -50,6 +50,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 
+## [3.6.0] - 2026-08-28
+
+### ✨ 新功能
+
+- **codex / gemini 子代理免 MCP 冷启动**：wrapper 默认给 codex 注入 `-c mcp_servers={}`、给 gemini 注入 `--allowed-mcp-server-names __ccg_none__`（gemini 无干净的禁用开关，且 PolicyEngine 拒绝空 allowlist 项，故用无人使用的哨兵名——名单之外的 server 全部不启动）。子代理用不上 MCP——Claude 才是持有 MCP 的编排者，但 CCG 的 MCP 同步会把服务器镜像进 `~/.codex/config.toml` 与 `~/.gemini/settings.json`，此前每次子代理调用都在付全量连接开销（v3.3.0 同型实测：9 server ≈ 25s；本机 3 server 实测 codex "hi" 9.2s → 7.5s）。`--with-mcp` 恢复旧行为，与 grok/kimi 影子 HOME 同一开关，new / resume / parallel 全模式生效。
+
+### 🔄 变更
+
+- **Binary `5.14.0` → `5.15.0`**
+
+---
+
+## [3.5.1] - 2026-08-27
+
+### ✨ Features
+
+- **原生 Claude Code 插件市场**：新增 `.claude-plugin/marketplace.json` + `plugin.json`，CCG 现可被 `claude plugin marketplace add fengshao1227/ccg-workflow` 一键接入、`claude plugin install ccg@ccg` 装入全部技能（namespaced 为 `/ccg:<skill>`）。plugin 只暴露纯静态 skills（`skills` 字段指向 `templates/skills`，不声明 commands —— 带 `{{FRONTEND_PRIMARY}}` 占位符的命令模板依赖 npx 安装器注入，进不了原生 plugin）。完整多模型编排（命令 + hooks + binary）仍走 `npx ccg-workflow`。已过 `claude plugin validate --strict`。
+- **三个实战建站独立技能**（脱敏后随包发布，Skill Registry 自动生成 `/ccg:` 命令）：
+  - `/ccg:bt-panel` — 通过宝塔 / aaPanel HTTP API 操控服务器：部署、更新线上、读写文件、执行 shell、跑 MySQL，无需 SSH/rsync。自带 `bt_client.py` + 一键部署 `bt_deploy.py`，凭据只从环境变量 / git-ignored `sites.json` 读取。
+  - `/ccg:seo-page-builder` — SERP 意图驱动的 SEO 工具页构建 / 审计 / 优化，附可跑的 `onpage-audit.py` 关键词密度量具。改编自 yuzeiki 的同名技能并大幅重写，已在 SKILL.md 顶部署名。
+  - `/ccg:adsense-site-auditor` — 按 Google AdSense 官方完整清单审计站点达标度（资格 / 归属 / 内容 / ads.txt / 隐私 / 发布商政策）。
+- **技能卫生 + plugin manifest 防回归测试**（`skills-hygiene.test.ts` 10 例 + `plugin-manifest.test.ts` 8 例）：每次 `pnpm test` 自动扫描 `templates/skills/` 全量文本文件拦截密钥/公网 IP/绝对路径泄漏，并校验 marketplace/plugin 版本与 `package.json` 同步、impeccable 收敛不回退。
+
+### 🔄 Changes
+
+- **impeccable 20 个平铺命令收敛为 1 个入口**：`/ccg:polish`、`/ccg:critique`、`/ccg:animate` 等 20 个设计微调命令曾占可调用命令的 65%，而它们已被 `/ccg:frontend-design` 完整融合。现将 impeccable 全部 `user-invocable` 设为 false —— **可调用命令从 31 → 11**，`/ccg:frontend-design` 一个入口统领全部设计能力，20 个手法作为其 playbook 按需读取（文件保留，知识零丢失）。frontend-design 内的斜杠引用同步改为 playbook 引用，消除死链。
+
+### 🐛 Fixes
+
+- **搬运时清除私有信息**：`bt-panel` 文档内一串真实宝塔 API 密钥、真实面板公网 IP、客户项目路径全部替换为占位符；`seo-page-builder` 内原作者本机路径改为署名标注。
+
 ## [3.5.0] - 2026-08-26
 
 ### ✨ Features
@@ -66,6 +97,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🔄 Changes
 
 - **302.AI 赞助结束** — README Banner、init/菜单选项、i18n 文案与 `assets/sponsors/302.ai*.jpg` 一并移除。
+- **npm 发布改用 Trusted Publishing (OIDC)** — 新增 `.github/workflows/publish.yml`，推 `v*` tag 即发布，仓库和 CI 里都不再存放任何 npm token（长期 token 会过期，也会泄漏）。发布前强制跑 typecheck + test + build，并校验 tag 与 `package.json` 版本一致、该版本尚未发布过。附带生成 provenance 证明。
 
 ### ✅ Tests
 

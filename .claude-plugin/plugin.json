@@ -1,0 +1,22 @@
+{
+  "name": "ccg",
+  "description": "CCG-ROS2 skills bundle: six ROS2 domains, engineering references, web scraping, and built-in quality gates. Skills only; install the full workflow with npx ccg-ros2-workflow.",
+  "version": "3.0.0",
+  "author": {
+    "name": "fengshao1227",
+    "url": "https://github.com/fengshao1227"
+  },
+  "homepage": "https://github.com/GuYu-001/ccg-ros2-workflow",
+  "repository": "https://github.com/GuYu-001/ccg-ros2-workflow",
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "ros2",
+    "robotics",
+    "humble",
+    "web-scraping",
+    "code-review",
+    "quality-gate"
+  ],
+  "skills": "./templates/skills"
+}

@@ -2,15 +2,15 @@
 
 > [根目录](../CLAUDE.md) > **codeagent-wrapper**
 
-**Last Updated**: 2026-04-10
-**Binary Version**: v5.10.0
+**Last Updated**: 2026-08-28
+**Binary Version**: v5.15.0
 **Go Version**: 1.21+（`go.mod:1`）
 
 ---
 
 ## 模块职责
 
-`codeagent-wrapper` 是用 Go 编写的跨平台 CLI 包装器，将 Codex CLI / Gemini CLI / Claude Code 三种 AI 后端统一成一个标准接口。CCG 工作流系统中的 20+ 个斜杠命令通过调用它来执行多模型协作任务——Claude 作为编排层，codeagent-wrapper 负责实际派发、执行、输出解析和会话管理。
+`codeagent-wrapper` 是用 Go 编写的跨平台 CLI 包装器，通过 `Backend` 接口 + `backendRegistry` 工厂将 **7 种 AI CLI 后端**（Codex / Gemini / Claude / Grok / Kimi / OpenCode / Antigravity）统一成一个标准接口。CCG 工作流系统中的 20+ 个斜杠命令通过调用它来执行多模型协作任务——Claude 作为编排层，codeagent-wrapper 负责实际派发、执行、输出解析和会话管理。
 
 ---
 
@@ -51,6 +51,7 @@ codeagent-wrapper --cleanup
 | `--backend <name>` | 指定后端：`codex`、`gemini`、`claude` | `codex` |
 | `--gemini-model <name>` | Gemini 型号（仅 gemini 后端有效） | 空（后端默认） |
 | `--progress` | 向 stderr 输出紧凑进度行 | 关 |
+| `--with-mcp` | 让子代理加载 MCP servers。默认跳过：grok/kimi 走影子 HOME（v3.3.0），codex 注入 `-c mcp_servers={}`、gemini 注入哨兵 allowlist（v5.15.0） | 关 |
 | `--lite` / `-L` | 精简模式：关闭 Web UI，加快响应 | 关 |
 | `--parallel` | 并行模式，从 stdin 读取多任务配置 | — |
 | `--full-output` | 并行模式输出完整消息（传统模式） | 关（默认摘要） |
@@ -99,13 +100,19 @@ type Backend interface {
 }
 ```
 
-已注册后端（`config.go:66`）：
+已注册后端（`config.go:75` 的 `backendRegistry` map + `selectBackend()` 工厂）：
 
 | 后端 | 命令 | 参数构建函数 |
 |------|------|------|
 | `codex` | `codex` | `buildCodexArgs()` |
 | `gemini` | `gemini` | `buildGeminiArgs()` |
 | `claude` | `claude` | `buildClaudeArgs()` |
+| `grok` | `grok`（PATH 回退 `~/.grok/bin/grok`） | `buildGrokArgs()` |
+| `kimi` | `kimi` | `buildKimiArgs()` |
+| `opencode` | `opencode` | `buildOpencodeArgs()` |
+| `antigravity` / `agy` | `agy` | `buildAntigravityArgs()` |
+
+**加一个后端**：主路径干净 —— 在 `backend.go` 写个 struct 实现 `Backend` 三方法 + 在 `config.go` 的 `backendRegistry` 注册一行即可。此外需手动碰约 12 处后端字符串特判：`server.go`（SSE 输出格式，~4 处）、`executor.go`（stdin/prompt 传递方式 `line 877-878`、`case "codex"` `line 1018`，~4 处）、`main.go`（flag 校验，~4 处）。`parser.go` 已统一（靠 JSON 事件形状识别后端，0 处特判）。若加后端变频繁，可给 `Backend` 接口加 `PromptMode()` / `SSEFormat()` 把这 12 处也收编——半天~1 天渐进重构，非大工程。
 
 ### stdin 传递协议
 
@@ -160,7 +167,7 @@ id: task-b
 
 | 文件 | 职责 |
 |------|------|
-| `backend.go` | `Backend` 接口；`CodexBackend` / `GeminiBackend` / `ClaudeBackend` 实现；`buildClaudeArgs()` / `buildGeminiArgs()`；`loadMinimalEnvSettings()` 读取 `~/.claude/settings.json` 注入环境变量 |
+| `backend.go` | `Backend` 接口；7 个实现 `CodexBackend` / `GeminiBackend` / `ClaudeBackend` / `GrokBackend` / `KimiBackend` / `OpencodeBackend` / `AntigravityBackend`；各自 `buildXxxArgs()`；`loadMinimalEnvSettings()` 读取 `~/.claude/settings.json` 注入环境变量 |
 
 ### 执行层
 
@@ -272,8 +279,8 @@ bash build-all.sh
 
 | 文件 | 位置 | 当前值 |
 |------|------|--------|
-| `codeagent-wrapper/main.go` | `version = "5.10.0"` （`main.go:17`） | `5.10.0` |
-| `src/utils/installer.ts` | `EXPECTED_BINARY_VERSION = '5.10.0'` | `5.10.0` |
+| `codeagent-wrapper/main.go` | `version = "..."` （`main.go:17`） | `5.15.0` |
+| `src/utils/installer.ts` | `EXPECTED_BINARY_VERSION = '...'` | `5.15.0` |
 
 两边不一致的后果：用户运行 `npx ccg-ros2-workflow update` 时无法触发 binary 重新下载，继续使用旧版 binary。
 

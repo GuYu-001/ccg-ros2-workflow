@@ -1,0 +1,26 @@
+{
+  "name": "ccg",
+  "owner": {
+    "name": "GuYu-001",
+    "url": "https://github.com/GuYu-001"
+  },
+  "metadata": {
+    "description": "CCG-ROS2 collaboration: install skills natively via Claude Code plugins, or the full workflow with npx ccg-ros2-workflow.",
+    "version": "3.0.0"
+  },
+  "plugins": [
+    {
+      "name": "ccg",
+      "source": ".",
+      "description": "Six ROS2 domain skills, engineering references, scrapling, verify-* quality gates, and gen-docs. Invoked as /ccg:<skill>.",
+      "version": "3.0.0",
+      "category": "workflow",
+      "keywords": [
+        "skills",
+        "ros2",
+        "robotics",
+        "code-review"
+      ]
+    }
+  ]
+}

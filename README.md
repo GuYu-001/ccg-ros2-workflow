@@ -58,7 +58,7 @@ There is also a [Python SDK](https://github.com/DshMarketPlace/dshmarketplace-py
 
 ### ROS2 Focus
 
-The default target is **ROS2 Humble** on physical robots. Six built-in domains cover `ros2-core`, `ros2-control`, `ros2-drivers`, `ros2-launch`, `ros2-sim`, and `ros2-upper-app`. ROS2 prompts address node boundaries, messages, QoS, lifecycle, hardware safety, and simulation-based verification.
+The default target is **ROS2 Humble** on physical robots. Six built-in domains cover `ros2-upper-app`, `ros2-perception`, `ros2-control`, `ros2-navigation`, `ros2-manipulation`, and `ros2-hardware`. ROS2 prompts address node boundaries, messages, QoS, lifecycle, hardware safety, and simulation-based verification.
 
 One command. Describe what you want. The engine handles the rest.
 
@@ -160,7 +160,7 @@ Medium+ complexity tasks get a persistent directory:
 
 Domain knowledge includes general engineering and six ROS2 specializations:
 
-`Security` · `Architecture` · `DevOps` · `AI/MLOps` · `Development` · `Infrastructure` · `Mobile` · `Data Engineering` · `Orchestration` · `ROS2 Core` · `ROS2 Control` · `ROS2 Drivers` · `ROS2 Launch` · `ROS2 Simulation` · `ROS2 Upper App`
+`Security` · `Architecture` · `DevOps` · `AI/MLOps` · `Development` · `Infrastructure` · `Mobile` · `Data Engineering` · `Orchestration` · `ROS2 Upper App` · `ROS2 Perception` · `ROS2 Control` · `ROS2 Navigation` · `ROS2 Manipulation` · `ROS2 Hardware`
 
 ## Commands
 
@@ -192,6 +192,8 @@ Includes `/ccg:workflow`, `/ccg:plan`, `/ccg:execute`, `/ccg:frontend`, `/ccg:ba
 
 ## Quick Start
 
+**Option A — full install (multi-model orchestration + commands + hooks + binary, recommended)**
+
 ```bash
 # Install (interactive 4-step wizard)
 npx ccg-ros2-workflow
@@ -201,6 +203,17 @@ npx ccg-ros2-workflow init --skip-prompt
 ```
 
 Requires **Node.js 20+** and **Claude Code CLI**. Codex CLI, Grok CLI, Kimi Code CLI, and Antigravity are optional (enable multi-model features).
+
+**Option B — native plugin (skills only, zero dependencies, v3.5.1+)**
+
+Want just the ROS2 domain knowledge, engineering references, and quality gates without the multi-model orchestration?
+
+```bash
+claude plugin marketplace add GuYu-001/ccg-ros2-workflow
+claude plugin install ccg@ccg
+```
+
+Skills are invoked as `/ccg:<skill>`. No npx, no binary. The multi-model commands ship only through Option A (their templates carry install-time placeholders that a native plugin can't resolve).
 
 ## CLI Commands
 
@@ -292,4 +305,4 @@ MIT
 
 ---
 
-v3.5.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.6.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)

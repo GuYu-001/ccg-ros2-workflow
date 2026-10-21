@@ -2,7 +2,7 @@
 
 > [根目录](../CLAUDE.md) > **skills-v2**
 
-**Last Updated**: 2026-08-26 (v3.5.0)
+**Last Updated**: 2026-08-28 (v3.6.0)
 
 > ⚠ 本文档主体仍停留在 v2.1.16 架构描述（v3.0 引擎重构后未全量同步）。下方变更记录保留 v3.x 修复轨迹，完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -11,6 +11,18 @@
 ## 变更记录 (Changelog)
 
 > 完整变更历史请查看 [CHANGELOG.md](./CHANGELOG.md)
+
+### 2026-08-28 (v3.6.0)
+- ⚡ **codex / gemini 子代理免 MCP 冷启动**：wrapper 默认给 codex 注入 `-c mcp_servers={}`、给 gemini 注入 `--allowed-mcp-server-names __ccg_none__`。子代理用不上 MCP（Claude 才是编排者），但 CCG 自己的 `syncMcpToCodex/Gemini` 会把服务器镜像进两家配置——等于自己制造的每次调用连接税（9 server ≈ 25s，v3.3.0 同型实测；本机 3 server 实测 codex "hi" 9.2s → 7.5s）。`--with-mcp` 恢复，与 grok/kimi 影子 HOME 同一开关，new/resume/parallel 全生效。E2E 验证三形状（新会话/resume/逃生门）。
+- 📌 **gemini 细节**：无干净禁用开关，空 allowlist 项被 PolicyEngine 拒（"mcpName cannot be empty"），故用哨兵名——名单外 server 全不启动（`--debug` 日志验证：MCP refresh 秒完、8 server 无一 spawn）。gemini 本机端到端因停服卡认证无法验证，与 MCP 无关。
+- 🔄 **Binary `5.14.0` → `5.15.0`**。
+
+### 2026-08-27 (v3.5.1)
+- ✨ **原生 Claude Code 插件市场**：新增 `.claude-plugin/marketplace.json` + `plugin.json`。CCG 现可 `claude plugin marketplace add fengshao1227/ccg-workflow` → `claude plugin install ccg@ccg` 原生装入全部技能（`/ccg:<skill>`）。**关键设计**：plugin 的 `skills` 字段指向 `templates/skills`（该字段是「追加到默认扫描」语义），且**刻意不声明 `commands`**——`templates/commands` 带 `{{FRONTEND_PRIMARY}}` 占位符、依赖 npx 安装器注入，进原生 plugin 会暴露未解析的坏命令。仓库根无 `commands/`·`agents/`·`skills/` 目录，故默认扫描为空、零误载。`source: "."`（整个仓库即 plugin 根）已过 `claude plugin validate --strict`。多模型编排仍走 `npx`。
+- ✨ **三个实战建站独立技能**（脱敏随包发布）：`/ccg:bt-panel`（宝塔/aaPanel API 部署运维，自带 `bt_client.py`+`bt_deploy.py`）、`/ccg:seo-page-builder`（SERP 驱动 SEO 工具页 + `onpage-audit.py`，改编自 yuzeiki 并署名）、`/ccg:adsense-site-auditor`（AdSense 达标审计）。
+- 🔄 **impeccable 20 命令收敛为 1 入口**：`/ccg:polish`/`critique`/`animate` 等 20 个设计微调命令曾占可调用命令 65%，已被 `/ccg:frontend-design` 完整融合。现 impeccable 全部 `user-invocable: false`——**可调用命令 31 → 11**，20 个手法降为 frontend-design 的 playbook（文件保留、知识零丢失），frontend-design 内斜杠引用同步改 playbook 引用消除死链。
+- ✅ **两组防回归测试**：`skills-hygiene.test.ts`（10 例，扫 `templates/skills/` 全量文本拦截密钥/公网 IP/绝对路径泄漏）+ `plugin-manifest.test.ts`（8 例，校验 marketplace/plugin 版本与 `package.json` 同步、impeccable 收敛不回退、frontend-design 无死链）。
+- 🐛 **脱敏**：`bt-panel` 文档内真实宝塔 API 密钥、面板公网 IP、客户项目路径全部占位符化。
 
 ### 2026-08-26 (v3.5.0)
 - ✨ **APIMart 赞助商集成**：中英 README 顶部 Banner（置于 Gamma Remover 之上），`init` Step 1 与菜单 API 配置新增 APIMart 选项，自动填 Base URL，用户只填 Key。
@@ -668,31 +680,64 @@ graph TD
 - 添加变更记录条目
 - 更新命令数量、接口表等受影响的章节
 
-### 5. 构建 + 发布 + 推送
+### 5. 本地验证
 
 ```bash
-# 类型检查（必须在 build 之前通过）
-pnpm typecheck
-
-# 构建
+pnpm typecheck   # tsc --noEmit，必须在 build 前通过
 pnpm build
-
-# 测试
 pnpm test
+```
 
-# 发布 npm 包
-npm publish
+### 6. 提交 + 打 tag 发布
 
-# 提交到 Git
+**⛔ 不要在本地跑 `npm publish`。** 自 v3.5.0 起，npm 发布由 GitHub Actions 通过
+**Trusted Publishing (OIDC)** 完成，本地和 CI 都不存任何 npm token（[publish.yml](.github/workflows/publish.yml)）。
+
+```bash
 git add -A
 git commit -m "chore: bump version to x.y.z"
 git push origin main
+
+# 推 tag 触发发布（tag 名必须是 v 前缀 + package.json 里的版本号）
+git tag -a vx.y.z -m "vx.y.z — 一句话说明"
+git push origin vx.y.z
 ```
+
+CI 会自动跑 typecheck → test → build → 校验 tag 与 `package.json` 一致 → 校验该版本未发布过 →
+`npm publish --provenance`。查看结果：
+
+```bash
+gh run list --workflow=publish.yml --limit 1
+npm view ccg-workflow version          # 确认线上版本
+```
+
+需要重跑而不想动 tag 时用 `gh workflow run publish.yml --ref main`。
+
+#### 发布失败排查（OIDC 的坑很隐蔽，报错全是误导）
+
+先用 `--loglevel verbose` 重跑，然后只看这一行：
+
+```
+npm http fetch POST <码> https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/ccg-workflow
+```
+
+| 现象 | 真实含义 | 处理 |
+|------|---------|------|
+| **没有这一行** | npm 压根没发起 OIDC 交换 | 查是否有残留凭据。**`actions/setup-node` 的 `registry-url` 是元凶**——它会写 `_authToken=${NODE_AUTH_TOKEN}`，无 secret 时展开成空 token，npm 便跳过 OIDC。workflow 里已刻意不设该参数，勿加回 |
+| `404` + `package not found` | npm 侧没有该**包**的 Trusted Publisher 记录 | 去 npmjs.com/package/ccg-workflow/access 配（注意是**包**的设置，不是账号设置） |
+| `201` | 交换成功 | 正常 |
+
+⚠ 普通日志级别看不到这行，这是区分「workflow 配错」和「npm 后台没配」的唯一依据。
+⚠ **provenance 签名成功 ≠ npm 认证成功** —— 那走 Sigstore，与 npm 认证是两条独立路径，极易误判。
+⚠ Node 22 自带 npm 10.x 无 OIDC 支持，workflow 里的 `npm install -g npm@latest`（需 ≥ 11.5.1）不可删。
+
+npm 网页的 README 有服务端渲染缓存，发布后要等一会儿才更新（无痕也绕不过）；
+想立刻确认内容用 `npm view ccg-workflow readme | head -20` 直接读 registry。
 
 ### 检查清单
 - [ ] package.json 版本号已更新
 - [ ] CHANGELOG.md 已添加新版本条目
-- [ ] README.md 已更新（命令表 + 使用说明 + 底部版本号）
+- [ ] README.md **和 README.zh-CN.md** 已更新（命令表 + 使用说明 + 底部版本号，两份都要）
 - [ ] CLAUDE.md 已更新（Last Updated + 变更记录 + 受影响章节）
 - [ ] **⚠ 若修改了 `codeagent-wrapper/` 下的 Go 代码，必须同步 bump 两处版本号：**
   - [ ] `codeagent-wrapper/main.go` → `version = "x.y.z"`
@@ -702,8 +747,9 @@ git push origin main
 - [ ] `pnpm typecheck` 通过（tsc --noEmit，不可跳过）
 - [ ] `pnpm build` 通过
 - [ ] `pnpm test` 通过
-- [ ] `npm publish` 成功
 - [ ] `git push origin main` 成功
+- [ ] `git push origin vx.y.z` 成功，且 publish.yml 跑绿
+- [ ] `npm view ccg-workflow version` 已是新版本
 
 ---
 

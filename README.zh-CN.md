@@ -58,7 +58,7 @@ npx dshmarketplace-cli add owner/repo                # 命令行装任意插件
 
 ### ROS2 专项能力
 
-默认面向实体机器人的 **ROS2 Humble**。内置六个领域技能：`ros2-core`、`ros2-control`、`ros2-drivers`、`ros2-launch`、`ros2-sim`、`ros2-upper-app`，覆盖节点边界、消息接口、QoS、生命周期、硬件安全与仿真验证。
+默认面向实体机器人的 **ROS2 Humble**。内置六个领域技能：`ros2-upper-app`、`ros2-perception`、`ros2-control`、`ros2-navigation`、`ros2-manipulation`、`ros2-hardware`，覆盖节点边界、消息接口、QoS、生命周期、硬件安全与仿真验证。
 
 一条命令，描述你要做什么，引擎自动处理一切。
 
@@ -160,7 +160,7 @@ CCG 引擎:
 
 领域知识同时覆盖通用工程与六个 ROS2 专项领域：
 
-`安全` · `架构` · `DevOps` · `AI/MLOps` · `开发语言` · `基础设施` · `移动端` · `数据工程` · `编排` · `ROS2 核心` · `ROS2 控制` · `ROS2 驱动` · `ROS2 Launch` · `ROS2 仿真` · `ROS2 上层应用`
+`安全` · `架构` · `DevOps` · `AI/MLOps` · `开发语言` · `基础设施` · `移动端` · `数据工程` · `编排` · `ROS2 上层应用` · `ROS2 感知` · `ROS2 控制` · `ROS2 导航` · `ROS2 操作` · `ROS2 硬件`
 
 ## 命令
 
@@ -192,6 +192,8 @@ CCG 引擎:
 
 ## 快速开始
 
+**方式 A：完整安装（多模型编排 + 命令 + hooks + binary，推荐）**
+
 ```bash
 # 安装（交互式 4 步向导）
 npx ccg-ros2-workflow
@@ -201,6 +203,17 @@ npx ccg-ros2-workflow init --skip-prompt
 ```
 
 需要 **Node.js 20+** 和 **Claude Code CLI**。Codex CLI、Grok CLI、Kimi Code CLI 和 Antigravity 为可选（启用多模型功能）。
+
+**方式 B：原生插件（仅技能，零依赖，v3.5.1+）**
+
+只想要 ROS2 领域知识、通用工程参考和质量关卡，不需要多模型编排时：
+
+```bash
+claude plugin marketplace add GuYu-001/ccg-ros2-workflow
+claude plugin install ccg@ccg
+```
+
+技能以 `/ccg:<skill>` 形式调用。无需 npx、无需 binary。多模型命令因含模板占位符不随插件分发，需方式 A。
 
 ## CLI 命令大全
 
@@ -292,4 +305,4 @@ MIT
 
 ---
 
-v3.5.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.6.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)
