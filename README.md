@@ -37,7 +37,7 @@
 
 ## What is CCG-ROS2?
 
-**CCG-ROS2 is a ROS2 development workflow engine for Claude Code**, based on upstream CCG. Claude orchestrates while Codex handles low-level control and Antigravity handles upper-layer applications. Grok, Kimi Code, and Gemini remain configurable backends through the Go binary bridge.
+**CCG-ROS2 is a ROS2 development workflow engine for Claude Code**, based on upstream CCG. Claude orchestrates while Codex handles low-level control and Antigravity handles upper-layer applications. Grok, Kimi Code, OpenCode, Claude, and Gemini remain configurable backends through the Go binary bridge.
 
 ### ROS2 Focus
 
@@ -275,4 +275,4 @@ MIT
 
 ---
 
-v3.3.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.4.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)

@@ -37,7 +37,7 @@
 
 ## CCG-ROS2 是什么？
 
-**CCG-ROS2 是基于上游 CCG 的 ROS2 开发工作流引擎。** Claude 负责主控编排，Codex 负责底层控制，Antigravity 负责上层应用；通过 Go 编译的 codeagent-wrapper 也可配置 Grok、Kimi Code、Gemini 等后端。
+**CCG-ROS2 是基于上游 CCG 的 ROS2 开发工作流引擎。** Claude 负责主控编排，Codex 负责底层控制，Antigravity 负责上层应用；通过 Go 编译的 codeagent-wrapper 也可配置 Grok、Kimi Code、OpenCode、Claude、Gemini 等后端。
 
 ### ROS2 专项能力
 
@@ -275,4 +275,4 @@ MIT
 
 ---
 
-v3.3.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.4.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)

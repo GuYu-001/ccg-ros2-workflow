@@ -60,6 +60,7 @@
     "templates/prompts/antigravity/",
     "templates/prompts/grok/",
     "templates/prompts/kimi/",
+    "templates/prompts/opencode/",
     "templates/output-styles/",
     "templates/skills/",
     "templates/rules/"
