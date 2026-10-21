@@ -23,52 +23,55 @@ description: 'ROS2 多模型调试：Codex 底层控制诊断 + Gemini 上层应
 
 ## 多模型调用规范
 
-**调用语法**（并行用 `run_in_background: true`）：
+**工作目录**：
+- 如果用户通过 `/add-dir` 添加了多个工作区，先用 Glob/Grep 确定任务相关的工作区
+- 如果无法确定，用 `AskUserQuestion` 询问用户选择目标工作区
+- **必须通过 Bash 执行 `pwd`（Unix）或 `cd`（Windows CMD）获取当前工作目录的绝对路径**，禁止从 `$HOME` 或环境变量推断
 
-```
-Bash({
-  command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend <codex|gemini> - \"{{WORKDIR}}\" <<'EOF'
-ROLE_FILE: <角色提示词路径>
+**调用示例**：
+
+**{{BACKEND_PRIMARY}} 后端诊断**：
+```bash
+~/.claude/bin/codeagent-wrapper --progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}{{GROK_MODEL_FLAG}}- "$(pwd)" <<'EOF'
+ROLE_FILE: ~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/debugger.md
 <TASK>
-需求：<增强后的需求（如未增强则用 $ARGUMENTS）>
-上下文：<错误日志、堆栈信息、复现步骤等>
+需求：<增强后的需求>
+上下文：<错误日志、堆栈信息、复现步骤>
 </TASK>
 OUTPUT: 诊断假设（按可能性排序）
-EOF",
-  run_in_background: true,
-  timeout: 3600000,
-  description: "简短描述"
-})
+EOF
+```
+
+**{{FRONTEND_PRIMARY}} 前端诊断**：
+```bash
+~/.claude/bin/codeagent-wrapper --progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}{{GROK_MODEL_FLAG}}- "$(pwd)" <<'EOF'
+ROLE_FILE: ~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/debugger.md
+<TASK>
+需求：<增强后的需求>
+上下文：<错误日志、堆栈信息、复现步骤>
+</TASK>
+OUTPUT: 诊断假设（按可能性排序）
+EOF
 ```
 
 **角色提示词**：
 
 | 模型 | 提示词 |
 |------|--------|
-| Codex | `~/.claude/.ccg/prompts/codex/debugger.md` |
-| Gemini | `~/.claude/.ccg/prompts/gemini/debugger.md` |
+| 后端 | `~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/debugger.md` |
+| 前端 | `~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/debugger.md` |
 
-**工作目录**：
-- `{{WORKDIR}}`：替换为目标工作目录的**绝对路径**
-- 如果用户通过 `/add-dir` 添加了多个工作区，先用 Glob/Grep 确定任务相关的工作区
-- 如果无法确定，用 `AskUserQuestion` 询问用户选择目标工作区
-- 默认使用当前工作目录
-
-**模型参数说明**：
-- `{{GEMINI_MODEL_FLAG}}`：当使用 `--backend gemini` 时，替换为 `--gemini-model gemini-3.1-pro-preview `（注意末尾空格）；使用 codex 时替换为空字符串
-
-**并行调用**：使用 `run_in_background: true` 启动，用 `TaskOutput` 等待结果。**必须等所有模型返回后才能进入下一阶段**。
-
-**等待后台任务**（使用最大超时 600000ms = 10 分钟）：
-
-```
-TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })
-```
+**并行调用**：
+1. 使用 `Bash` 工具，设置 `run_in_background: true` 和 `timeout: 600000`（10 分钟）
+2. 同时发起两个后台任务（{{BACKEND_PRIMARY}} + {{FRONTEND_PRIMARY}}）
+3. 使用 `TaskOutput` 等待结果：`TaskOutput({ task_id: "<task_id>", block: true, timeout: 600000 })`
 
 **重要**：
-- 必须指定 `timeout: 600000`，否则默认只有 30 秒会导致提前超时。
-如果 10 分钟后仍未完成，继续用 `TaskOutput` 轮询，**绝对不要 Kill 进程**。
-- 若因等待时间过长跳过了等待 TaskOutput 结果，则**必须调用 `AskUserQuestion` 工具询问用户选择继续等待还是 Kill Task。禁止直接 Kill Task。**
+- 必须指定 `timeout: 600000`，否则默认 30 秒会超时
+- 如果 10 分钟后仍未完成，继续用 `TaskOutput` 轮询，**绝对不要 Kill 进程**
+- 若等待时间过长，**必须用 `AskUserQuestion` 询问用户是否继续等待，禁止直接 Kill**
+- ⛔ **前端模型失败必须重试**：若前端模型调用失败（非零退出码或输出包含错误信息），最多重试 2 次（间隔 5 秒）。仅当 3 次全部失败时才跳过前端模型结果并使用单模型结果继续。
+- ⛔ **后端模型结果必须等待**：后端模型执行时间较长（5-15 分钟）属于正常。TaskOutput 超时后必须继续用 TaskOutput 轮询，**绝对禁止在后端模型未返回结果时直接跳过或继续下一阶段**。已启动的后端任务若被跳过 = 浪费 token + 丢失结果。
 
 ---
 

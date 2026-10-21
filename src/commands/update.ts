@@ -125,6 +125,7 @@ async function askReconfigureRouting(currentRouting?: ModelRouting): Promise<Mod
       { name: 'Gemini', value: 'gemini' as ModelType, checked: currentRouting?.frontend.models.includes('gemini') ?? false },
       { name: 'Claude', value: 'claude' as ModelType, checked: currentRouting?.frontend.models.includes('claude') ?? false },
       { name: 'Codex', value: 'codex' as ModelType, checked: currentRouting?.frontend.models.includes('codex') ?? false },
+      { name: 'Grok', value: 'grok' as ModelType, checked: currentRouting?.frontend.models.includes('grok') ?? false },
     ],
     validate: (answer: string[]) => answer.length > 0 || i18n.t('init:validation.selectAtLeastOne'),
   }])
@@ -139,6 +140,7 @@ async function askReconfigureRouting(currentRouting?: ModelRouting): Promise<Mod
       { name: 'Antigravity', value: 'antigravity' as ModelType, checked: currentRouting?.backend.models.includes('antigravity') ?? false },
       { name: 'Gemini', value: 'gemini' as ModelType, checked: currentRouting?.backend.models.includes('gemini') ?? false },
       { name: 'Claude', value: 'claude' as ModelType, checked: currentRouting?.backend.models.includes('claude') ?? false },
+      { name: 'Grok', value: 'grok' as ModelType, checked: currentRouting?.backend.models.includes('grok') ?? false },
     ],
     validate: (answer: string[]) => answer.length > 0 || i18n.t('init:validation.selectAtLeastOne'),
   }])
@@ -163,6 +165,8 @@ async function askReconfigureRouting(currentRouting?: ModelRouting): Promise<Mod
       strategy: 'parallel',
     },
     mode: currentRouting?.mode || 'smart',
+    geminiModel: currentRouting?.geminiModel,
+    grokModel: currentRouting?.grokModel,
   }
 
   console.log()

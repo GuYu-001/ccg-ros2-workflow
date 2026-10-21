@@ -155,7 +155,23 @@ Agent role: ${detectedRole}
 
   if (contextParts.length === 0) process.exit(0);
 
-  outputHook('PreToolUse', contextParts.join('\n\n'));
+  const injected = `<ccg-injected-context>\n${contextParts.join('\n\n')}\n</ccg-injected-context>`;
+
+  // Agent/Team spawn: rewrite the spawned teammate's OWN prompt via updatedInput.
+  // A PreToolUse hook's additionalContext only reaches the CALLING (lead) session,
+  // which the not-yet-created subagent can never read. updatedInput replaces the
+  // entire tool input, so we spread toolInput to keep subagent_type/name/team_name/
+  // model intact and only prepend the spec to `prompt`. The teammate is born with
+  // the spec already in its prompt. (Docs: PreToolUse → updatedInput.)
+  if (isTeamSpawn && typeof toolInput.prompt === 'string') {
+    outputHook('PreToolUse', null, {
+      updatedInput: { ...toolInput, prompt: `${injected}\n\n---\n\n${toolInput.prompt}` }
+    });
+  } else {
+    // Bash / codeagent-wrapper: the lead builds the HEREDOC task text itself, so the
+    // spec belongs in the lead's context where it can be woven into the command.
+    outputHook('PreToolUse', injected);
+  }
 } catch {
   process.exit(0);
 }

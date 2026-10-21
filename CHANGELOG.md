@@ -49,7 +49,121 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [3.1.0] - 2026-05-20 (Upstream)
+
+## [3.2.0] - 2026-07-12
+
+### ✨ Features
+
+- **Grok CLI backend** — Grok (xAI) joins Codex/Gemini/Claude/Antigravity as a first-class model option. Select it as frontend or backend in `ccg init` Step 2 (or menu → model routing); pick `grok-4.5` (500k context) or `grok-composer-2.5-fast` (Cursor's coding model). `/ccg:go` Builder mode can now dispatch code-writing to Grok — near-zero Claude token consumption.
+- **Grok expert prompts** — Full 7-role prompt set (`analyzer` / `architect` / `builder` / `debugger` / `optimizer` / `reviewer` / `tester`) installed to `~/.claude/.ccg/prompts/grok/`.
+- **`--grok-model` wrapper flag** — codeagent-wrapper accepts `--grok-model <name>` (or `GROK_MODEL` env); templates get a line-aware `{{GROK_MODEL_FLAG}}` placeholder mirroring the gemini flag logic.
+- **`ccg doctor` Grok check** — When routing uses grok, doctor verifies the Grok CLI binary and login state (`~/.grok/auth.json`, tokens expire after 7 days).
+
+### 🐛 Fixes
+
+- **`--gemini-model` silently dropped at spawn time** — In single-task mode the executor rebuilt its config without the model field, so the flag appeared in the displayed command but never reached the actual gemini process. Model fields now flow through TaskSpec.
+- **Parallel mode hard-failed on bare `--gemini-model <value>`** — The flag was recognized but its value fell into `extras` and aborted the run with "only --backend and --full-output are allowed". The value is now consumed (still warned + ignored, as documented).
+- **`ccg update` routing reconfigure dropped `geminiModel`** — Rebuilding routing via the update flow lost the custom Gemini model name; it (and `grokModel`) are now preserved.
+
+### 🔄 Changes
+
+- **codeagent-wrapper `5.11.1` → `5.12.0`** — grok backend (streaming-json parser, `-p` prompt passing, `-r` session resume, PATH + `~/.grok/bin` fallback resolution).
+- **Strategy templates** — `guided-develop` / `full-collaborate` executor choice now shows the configured backend model and accepts by-name overrides ("用grok" / "用codex").
+
+---
+
+## [3.1.11] - 2026-07-09
+
+### ✨ Features
+
+- **`ccg doctor` command** — One-command environment health check: Node version, CCG config, commands, hooks (scripts + registration), codeagent-wrapper binary, skills, rules, MCP servers, Codex mode. Reports issues with ✗/⚠/✓ indicators.
+- **`ccg status` command** — Installation overview: version (with update check), command count, hooks, binary version, frontend/backend model routing, MCP server list, Codex mode, active task count.
+- **DeepWiki badge** — README now links to DeepWiki for AI-powered project Q&A.
+- **Codecov integration** — CI uploads coverage to Codecov; badge in README shows real coverage percentage.
+- **Project health files** — Added SECURITY.md (vulnerability reporting), CODE_OF_CONDUCT.md (Contributor Covenant v2.1), .node-version, and package.json metadata (repository, homepage, bugs, engines) for npm quality score.
+- **Codex mode version marker** — `codex-mode install` writes `~/.codex/.ccg-version` with CCG version for external version checking.
+
+---
+
+## [3.1.9] - 2026-07-04
+
+### ✨ Features
+
+- **Non-interactive CLI commands** — New scriptable commands for CI/automation: `ccg codex-mode install`, `ccg codex-mode uninstall`, and `ccg uninstall`. No interactive prompts; exit codes and stdout suitable for scripting.
+
+---
+
+## [3.1.8] - 2026-07-04
+
+### 🐛 Fixes
+
+- **Quality gate rule used wrong skill names without `ccg:` prefix (#148)** — `ccg-skills.md` told AI to call `verify-security` (no prefix), but the actual installed commands are `/ccg:verify-security`. AI followed the rule, got "Unknown skill", and skipped quality gates. All references now use the correct `/ccg:` prefixed names.
+
+---
+
+## [3.1.6] - 2026-06-18
+
+### ✨ Features
+
+- **CodeGraph MCP option + usage rule (#145)** — Init Step 3 gains a `codegraph` checkbox for local code knowledge graph (call chains, blast radius, architecture). Installs MCP (`npx @colbymchenry/codegraph serve --mcp`) and writes `ccg-codegraph.md` rule to `~/.claude/rules/`. The rule instructs AI to auto-run `codegraph init` when no `.codegraph/` index exists, then prefer `codegraph_explore` for structural queries, `fast_context_search` for semantic search, and grep for exact text matching.
+
+### 🐛 Fixes
+
+- **Codex mode AGENTS.md missing `.exe` path replacement on Windows (#147)** — `installCodexMode()` called `injectConfigVariables()` on AGENTS.md but not `replaceHomePathsInTemplate()`, so `~/.claude/bin/codeagent-wrapper` was never replaced with the absolute path + `.exe` suffix on Windows. Codex app could not find the binary.
+- **Antigravity backend silent no-op on Windows (#146)** — On Windows the wrapper routed antigravity prompts through stdin pipe (like gemini, to avoid cmd.exe multi-line truncation). But `agy` does not read stdin — it requires `-p`. So it received `-p ""`, did nothing, exited 0, and the wrapper reported "completed without agent_message output". Fix: antigravity now always uses `-p` with the full prompt text on all platforms; only gemini uses stdin pipe on Windows.
+
+---
+
+## [3.1.5] - 2026-06-10
+
+### 🐛 Fixes
+
+- **Finished tasks misjudged as active → endless breadcrumb injection** — The hooks only treated `completed`/`archived` as terminal statuses, but task `status` is free-text written by the model and often drifts to synonyms like `done`/`finished`. A task closed with `status: "done"` was therefore seen as still in-progress, so `workflow-state.js` (and the Codex `ccg-workflow.py` hook) kept injecting its breadcrumb forever. Read-side detection is now tolerant: `task-utils.js` gains `isTerminalStatus()` and `ccg-workflow.py` gains `_is_terminal_status()`, both matching a set of synonyms (`completed`/`complete`/`done`/`finished`/`archived`/`cancelled`/`closed`/`resolved`/...) case-insensitively. Canonical write value remains `completed`; the read side is just forgiving. Verified: `status:"done"` → no active task; `status:"in_progress"` → breadcrumb still injected.
+- **Claude review backend could block on tool permissions (#143)** — `codeagent-wrapper`'s claude backend only added `--dangerously-skip-permissions` when `cfg.SkipPermissions` was set, but no caller ever passed it (dead code). The gemini backend always runs autonomously with `-y`; claude was the inconsistent outlier. Since the wrapper is only ever invoked for autonomous orchestration (review/analysis/implementation), the claude backend now always bypasses permissions like gemini, so headless reviews that read diffs/files don't stall on permission gates. Binary `5.11.0` → `5.11.1`.
+- **Live-output browser opened in foreground, stealing focus (#139)** — On macOS the SSE web UI was launched with `open <url>`, which pulls the browser to the front and interrupts whatever the user is doing. Changed to `open -g` so the page opens in the background without stealing focus. Linux/Windows behavior unchanged (no portable background flag).
+
+---
+
+## [3.1.4] - 2026-06-07
+
+### ✨ Features
+
+- **SubAgent direct context injection** — `subagent-context.js` now uses PreToolUse `updatedInput` to rewrite the spawned teammate's `prompt`, injecting `<ccg-injected-context>` (spec + task + research) directly into the subagent. Previously, context was injected into the lead's `additionalContext` where subagents could never read it. Benefits: subagents born with spec in their prompt; role-based filtering actually reaches the correct agent; lead's context stays clean (less orchestration hallucination). Bash/codeagent-wrapper calls still use `additionalContext` (lead builds the HEREDOC, so that path remains correct). ~10 lines changed.
+- **`outputHook()` extended** — `task-utils.js:outputHook()` now accepts an optional third `extra` parameter, merged into `hookSpecificOutput`. Enables passing `updatedInput`/`permissionDecision` alongside or instead of `additionalContext`. Back-compatible: existing 2-arg calls unchanged.
+
+---
+
+## [3.1.3] - 2026-06-01
+
+### 🐛 Fixes
+
+- **Uninstall left hooks and settings behind** — `uninstallWorkflows` predated the v3.0 hook engine and never removed `~/.claude/hooks/ccg/` (5 scripts) or the CCG hook registrations in `~/.claude/settings.json` (`UserPromptSubmit`/`SessionStart`/`PreToolUse`). Uninstall now removes the `hooks/ccg/` directory and deregisters only CCG hook entries (identified by a `hooks/ccg/` command path), preserving the user's own hooks. Added `removedHooks` to the uninstall result. Verified with an install→uninstall round-trip test.
+
+---
+
+## [3.1.2] - 2026-05-30
+
+### 🐛 Fixes
+
+- **Codex Mode hook loaded wrong directory** — `hooks.json` used a relative path (`python3 .codex/hooks/ccg-workflow.py`), so Codex looked for `.codex/hooks/` in the project folder instead of the user home. Now resolved to an absolute home path at install time (`installCodexMode` replaces `~/` with the real home dir).
+- **Codex Mode still called `--backend gemini`** — `hooks/ccg-workflow.py` hardcoded "Gemini" / `--backend gemini` and was copied as-is (never passed through `injectConfigVariables`). Combined with the antigravity default switch + Gemini CLI sunset, this produced empty external-model responses. The script now uses `{{FRONTEND_PRIMARY}}` placeholders injected at install time, and AGENTS.md descriptive text was de-hardcoded too. Antigravity (and any configured frontend) now routes correctly in Codex Mode.
+
+---
+
+## [3.1.1] - 2026-05-23
+
+### 🐛 Fixes
+
+- **Codex-Led AGENTS.md hardcoded gemini** — External model calls in AGENTS.md were hardcoded to `--backend gemini` + `prompts/gemini/`. Now uses `{{FRONTEND_PRIMARY}}`/`{{BACKEND_PRIMARY}}` template variables, replaced at install time via `injectConfigVariables()`. Users who selected antigravity or other models now get correct routing in Codex-Led mode.
+
+### 🔄 Changes
+
+- **Ralph Loop auto-retry** — Critical issues now auto-fix without asking user each round. Only stops at MAX_ROUNDS (3) if Critical persists, or passes through immediately when no Critical found. Reduces human intervention in quality gates.
+- **Artifact Registry** — `task.json` gains `artifacts: []` array. Each deliverable (plan, review, code) registered with type/path/status. Hooks inject artifact summary into breadcrumbs (`workflow-state.js`) and session context (`session-start.js`).
+
+---
+
+## [3.1.0] - 2026-05-20
 
 ### ✨ New Features
 

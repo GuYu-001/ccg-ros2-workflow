@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	version               = "5.11.0"
+	version               = "5.12.0"
 	defaultWorkdir        = "."
 	defaultTimeout        = 7200 // seconds (2 hours)
 	defaultCoverageTarget = 90.0
@@ -195,6 +195,7 @@ func run() (exitCode int) {
 		if parallelIndex != -1 {
 			backendName := defaultBackendName
 			fullOutput := false
+			progressFlag := false
 			var extras []string
 
 			// Check for gemini-model in parallel mode
@@ -207,6 +208,12 @@ func run() (exitCode int) {
 					continue
 				case arg == "--full-output":
 					fullOutput = true
+				case arg == "--lite", arg == "-L":
+					// Templates emit {{LITE_MODE_FLAG}}--progress on parallel calls
+					// too — accept them instead of hard-failing the run.
+					liteMode = true
+				case arg == "--progress":
+					progressFlag = true
 				case arg == "--backend":
 					if i+1 >= len(args) {
 						fmt.Fprintln(os.Stderr, "ERROR: --backend flag requires a value")
@@ -221,7 +228,15 @@ func run() (exitCode int) {
 						return 1
 					}
 					backendName = value
-				case arg == "--gemini-model" || strings.HasPrefix(arg, "--gemini-model="):
+				case arg == "--gemini-model", arg == "--grok-model":
+					// Bare form carries its value in the next arg — consume it too,
+					// otherwise the value lands in extras and hard-fails the run.
+					geminiModelInParallel = true
+					if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+						i++
+					}
+					continue
+				case strings.HasPrefix(arg, "--gemini-model="), strings.HasPrefix(arg, "--grok-model="):
 					geminiModelInParallel = true
 					continue
 				default:
@@ -231,7 +246,7 @@ func run() (exitCode int) {
 
 			// Warn about unsupported parameter
 			if geminiModelInParallel {
-				logWarn("--gemini-model parameter is not supported in parallel mode")
+				logWarn("--gemini-model/--grok-model parameters are not supported in parallel mode")
 			}
 
 			if len(extras) > 0 {
@@ -268,6 +283,7 @@ func run() (exitCode int) {
 				if strings.TrimSpace(cfg.Tasks[i].Backend) == "" {
 					cfg.Tasks[i].Backend = backendName
 				}
+				cfg.Tasks[i].Progress = progressFlag
 				// Inject ROLE_FILE content if present
 				injectedTask, err := injectRoleFile(cfg.Tasks[i].Task)
 				if err != nil {
@@ -371,6 +387,13 @@ func run() (exitCode int) {
 		logWarn("--gemini-model parameter is only effective with --backend gemini")
 	}
 
+	if cfg.GrokModel != "" && cfg.Backend == "grok" {
+		logInfo(fmt.Sprintf("Using Grok model: %s", cfg.GrokModel))
+	}
+	if cfg.GrokModel != "" && cfg.Backend != "grok" {
+		logWarn("--grok-model parameter is only effective with --backend grok")
+	}
+
 	timeoutSec := resolveTimeout()
 	logInfo(fmt.Sprintf("Timeout: %ds", timeoutSec))
 	cfg.Timeout = timeoutSec
@@ -417,10 +440,11 @@ func run() (exitCode int) {
 	useStdin := cfg.ExplicitStdin || shouldUseStdin(taskText, piped)
 
 	targetArg := taskText
-	// Gemini/Antigravity CLI doesn't support "-" as stdin marker — pass text directly via -p.
-	promptBackend := cfg.Backend == "gemini" || cfg.Backend == "antigravity"
-	promptDirect := useStdin && promptBackend && !isWindows()
-	promptStdinPipe := useStdin && promptBackend && isWindows()
+	// Gemini/Antigravity/Grok CLI doesn't support "-" as stdin marker — pass text directly via -p.
+	// Keep in sync with runCodexTaskWithContext (executor.go): only gemini uses
+	// the Windows stdin pipe; antigravity (#146) and grok take -p everywhere.
+	promptDirect := useStdin && ((cfg.Backend == "gemini" && !isWindows()) || cfg.Backend == "antigravity" || cfg.Backend == "grok")
+	promptStdinPipe := useStdin && cfg.Backend == "gemini" && isWindows()
 	if useStdin && !promptDirect && !promptStdinPipe {
 		targetArg = "-"
 	}
@@ -473,13 +497,15 @@ func run() (exitCode int) {
 	logInfo(fmt.Sprintf("%s running...", cfg.Backend))
 
 	taskSpec := TaskSpec{
-		Task:      taskText,
-		WorkDir:   cfg.WorkDir,
-		Mode:      cfg.Mode,
-		SessionID: cfg.SessionID,
-		UseStdin:  useStdin,
-		Progress:  cfg.Progress,
-		Backend:   cfg.Backend,
+		Task:        taskText,
+		WorkDir:     cfg.WorkDir,
+		Mode:        cfg.Mode,
+		SessionID:   cfg.SessionID,
+		UseStdin:    useStdin,
+		Progress:    cfg.Progress,
+		Backend:     cfg.Backend,
+		GeminiModel: cfg.GeminiModel,
+		GrokModel:   cfg.GrokModel,
 	}
 
 	result := runTaskFn(taskSpec, false, cfg.Timeout)

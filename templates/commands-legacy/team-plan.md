@@ -26,7 +26,7 @@ description: 'Agent Teams 规划 - Lead 调用 Codex/Gemini 并行分析，产�
    **FIRST Bash call (Codex - 底层控制)**:
    ```
    Bash({
-     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend codex - \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/codex/analyzer.md\n<TASK>\n需求：$ARGUMENTS\n上下文：<步骤1收集的项目结构和关键代码>\n</TASK>\nOUTPUT:\n1) 技术可行性评估（C++节点/实时性/硬件驱动）\n2) 推荐底层控制架构（精确到文件和函数）\n3) 详细实施步骤（节点、消息、控制算法）\n4) 风险评估（硬件依赖、实时性约束、驱动兼容性）\nEOF",
+     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{BACKEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}{{GROK_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/{{BACKEND_PRIMARY}}/analyzer.md\n<TASK>\n需求：$ARGUMENTS\n上下文：<步骤1收集的项目结构和关键代码>\n</TASK>\nOUTPUT:\n1) 技术可行性评估（C++节点/实时性/硬件驱动）\n2) 推荐底层控制架构（精确到文件和函数）\n3) 详细实施步骤（节点、消息、控制算法）\n4) 风险评估（硬件依赖、实时性约束、驱动兼容性）\nEOF",
      run_in_background: true,
      timeout: 3600000,
      description: "Codex 底层控制分析"
@@ -36,7 +36,7 @@ description: 'Agent Teams 规划 - Lead 调用 Codex/Gemini 并行分析，产�
    **SECOND Bash call (Gemini - 上层应用) - IN THE SAME MESSAGE**:
    ```
    Bash({
-     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--backend gemini {{GEMINI_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/gemini/analyzer.md\n<TASK>\n需求：$ARGUMENTS\n上下文：<步骤1收集的项目结构和关键代码>\n</TASK>\nOUTPUT:\n1) 上层应用架构方案（Launch文件/Python节点/RViz配置）\n2) 节点拆分建议（精确到文件和函数）\n3) 详细实施步骤（Launch、仿真、可视化）\n4) 系统集成要点（Topic/Service/Action 设计）\nEOF",
+     command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend {{FRONTEND_PRIMARY}} {{GEMINI_MODEL_FLAG}}{{GROK_MODEL_FLAG}}- \"{{WORKDIR}}\" <<'EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/{{FRONTEND_PRIMARY}}/analyzer.md\n<TASK>\n需求：$ARGUMENTS\n上下文：<步骤1收集的项目结构和关键代码>\n</TASK>\nOUTPUT:\n1) 上层应用架构方案（Launch文件/Python节点/RViz配置）\n2) 节点拆分建议（精确到文件和函数）\n3) 详细实施步骤（Launch、仿真、可视化）\n4) 系统集成要点（Topic/Service/Action 设计）\nEOF",
      run_in_background: true,
      timeout: 3600000,
      description: "Gemini 上层应用分析"

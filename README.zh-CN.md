@@ -1,256 +1,278 @@
-# CCG-ROS2 - Claude + Codex + Antigravity ROS2 多模型协作系统
+# CCG-ROS2 - ROS2 多模型协作开发
 
 <div align="center">
 
-<img src="assets/logo/ccg-logo-cropped.png" alt="CCG-ROS2 Workflow" width="400">
+<img src="assets/logo/ccg-logo-cropped.png" alt="CCG Workflow" width="400">
 
+[![GitHub stars](https://img.shields.io/github/stars/GuYu-001/ccg-ros2-workflow?style=social)](https://github.com/GuYu-001/ccg-ros2-workflow)
+[![NPM Downloads](https://img.shields.io/npm/dt/ccg-ros2-workflow?style=flat-square&color=blue)](https://www.npmjs.com/package/ccg-ros2-workflow)
 [![npm version](https://img.shields.io/npm/v/ccg-ros2-workflow.svg)](https://www.npmjs.com/package/ccg-ros2-workflow)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/GuYu-001/ccg-ros2-workflow/actions/workflows/ci.yml/badge.svg)](https://github.com/GuYu-001/ccg-ros2-workflow/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/GuYu-001/ccg-ros2-workflow/graph/badge.svg)](https://codecov.io/gh/GuYu-001/ccg-ros2-workflow)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-green.svg)](https://claude.ai/code)
-[![ROS2](https://img.shields.io/badge/ROS2-Humble-blue.svg)](https://docs.ros.org/en/humble/)
+[![Node](https://img.shields.io/badge/Node.js-%3E%3D20-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Follow on X](https://img.shields.io/badge/X-@CCG__Workflow-black?logo=x&logoColor=white)](https://x.com/CCG_Workflow)
+![star](https://atomgit.com/GuYu-001/ccg-ros2-workflow/star/badge.svg)
+[![Docs](https://img.shields.io/badge/文档站-ccg.fengshao1227.com-blue?style=for-the-badge&logo=readthedocs&logoColor=white)](https://ccg.fengshao1227.com/)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTEgMTdoLTJ2LTJoMnYyem0yLjA3LTcuNzVsLS45Ljkydi4wMUM0LjE3IDEyLjE3IDE0IDEzIDE0IDEzaC0yYzAtMS4xLjktMiAyLTJzMi0uOSAyLTItLjktMi0yLTJINmMwLTIuMjEgMS43OS00IDQtNGgyYzIuMjEgMCA0IDEuNzkgNCA0IDAgLjg4LS4zNiAxLjY4LS45MyAyLjI1eiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=)](https://deepwiki.com/GuYu-001/ccg-ros2-workflow)
 
-简体中文 | [English](./README.md)
+[简体中文](./README.zh-CN.md) | [English](./README.md) | [**完整文档**](https://ccg.fengshao1227.com/)
 
 </div>
 
+## ♥️ Sponsor
+
+[![Gamma Remover](assets/sponsors/gamma-remover.webp)](https://gammaremover.com/)
+
+[Gamma Remover](https://gammaremover.com/) — 免费浏览器本地 Gamma 水印去除工具。支持 PDF 和 PPTX，无需注册，即时出结果，100% 隐私，文件不离开你的设备。
+
 ---
 
-CCG-ROS2 是 Claude Code 的工作流引擎,编排多个 AI 模型(Codex 负责底层控制、Antigravity 负责上层应用、Claude 负责编排),具备基于 Hook 的状态追踪、自动策略选择和 Agent Teams 并行执行能力 — 专为 ROS2 机器人开发定制。
+[![302.AI](assets/sponsors/302.ai-en.jpg)](https://share.302.ai/oUDqQ6)
 
-> **Fork 自** [fengshao1227/ccg-workflow](https://github.com/fengshao1227/ccg-workflow) v3.1.0,为 ROS2 Humble 机器人开发定制。
+[302.AI](https://share.302.ai/oUDqQ6) is a pay-as-you-go enterprise AI resource hub that offers the latest and most comprehensive AI models and APIs on the market, along with a variety of ready-to-use online AI applications.
 
-## v3.0.0 新特性(ROS2 版)
+---
 
-v3.0.0 将强大的 v3.1.0 引擎带入 ROS2 开发,并增加领域特定增强:
+## CCG-ROS2 是什么？
 
-- **ROS2 感知路由** — 上层应用任务(Launch 文件、Python 节点、RViz、仿真)路由至 Antigravity。底层控制任务(C++ 节点、硬件驱动、实时控制)路由至 Codex。
-- **7 阶段工作流** — 从 6 阶段扩展,新增专门的硬件部署阶段(部署脚本、硬件依赖检查、Gazebo 仿真验证)。
-- **ROS2 系统集成设计师** — 用 `system-integrator` agent 替换 UI/UX 设计师,专注于 ROS2 节点架构、Topic/Service 设计和 QoS 配置。
-- **ROS2 领域技能** — 感知(激光雷达/相机/点云)、控制(PID/轨迹/电机驱动)、导航(Nav2/SLAM/路径规划)、操作(MoveIt/抓取规划)、硬件集成(CAN/串口/传感器驱动)。
-- **ROS2 版 Codex Mode** — Codex 主导编排,注入 ROS2 上下文(节点边界、消息选型、QoS 决策)。
-- **所有 v3.1.0 特性** — Hook 引擎、任务持久化、Agent Teams、质量关卡、领域知识 Hook、Codex 主导模式。
+**CCG-ROS2 是基于上游 CCG 的 ROS2 开发工作流引擎。** Claude 负责主控编排，Codex 负责底层控制，Antigravity 负责上层应用；通过 Go 编译的 codeagent-wrapper 也可配置 Gemini、Grok 等后端。
 
-## 快速开始
+### ROS2 专项能力
+
+默认面向实体机器人的 **ROS2 Humble**。内置六个领域技能：`ros2-core`、`ros2-control`、`ros2-drivers`、`ros2-launch`、`ros2-sim`、`ros2-upper-app`，覆盖节点边界、消息接口、QoS、生命周期、硬件安全与仿真验证。
+
+一条命令，描述你要做什么，引擎自动处理一切。
 
 ```bash
-npx ccg-ros2-workflow
+npx ccg-ros2-workflow    # 60 秒安装
 ```
 
-**要求**: Node.js 20+、Claude Code CLI  
-**可选**: Codex CLI(底层控制)、Antigravity CLI(上层应用)
+## 架构
 
-安装器引导 4 个步骤:API 配置、模型路由、MCP 工具、性能模式。
+<div align="center">
+<img src="assets/readme/architecture-zh.png" alt="CCG 架构" width="800">
+</div>
 
-## 工作原理(ROS2 示例)
+**Claude Code** 是主控编排器。它分析你的意图、选择策略、管理整个工作流。**Hook 引擎**每轮注入状态，确保 Claude 永不丢失上下文 —— 即使上下文被压缩。**codeagent-wrapper**（编译的 Go 二进制）作为桥梁，将 Claude 连接到外部模型进行并行分析和审查。
+
+## 工作流程
 
 ```
-你: /ccg:go 为差速驱动机器人实现自主导航
+你: /ccg:go 添加带生命周期管理的电机控制器
 
-CCG-ROS2 引擎:
-  1. 读取 ROS2 项目上下文(package.xml、colcon 工作空间、launch 文件)
-  2. 分类: 功能 / XL 复杂度 / 混合(上层+底层) / 高风险
-  3. 选择策略: full-collaborate
-  4. 创建 .ccg/tasks/autonomous-navigation/task.json
-  5. 启动双模型分析:
-     - Codex: 电机驱动、里程计、底层控制
-     - Antigravity: Nav2 配置、launch 文件、RViz 设置
-  6. 生成计划(节点架构 + QoS 设计) → HARD STOP 等待批准
-  7. 生成 Agent Teams Builders 并行实施
-  8. 运行质量关卡(验证 ROS2 消息定义、QoS 策略、生命周期)
-  9. 硬件部署阶段: 生成部署脚本、检查 CAN/串口、Gazebo 仿真
-  10. 报告结果
+CCG 引擎:
+  1. 读取项目上下文（git 状态、技术栈、文件结构）
+  2. 分类：功能 / L 复杂度 / 底层控制 / 高风险
+  3. 选择策略：full-collaborate（全协作）
+  4. 创建 .ccg/tasks/add-motor-controller/task.json
+  5. 启动已配置模型分析（默认 Codex + Antigravity）
+  6. 生成计划 → 硬停等你审批
+  7. 派生 Agent Teams Builder 并行实施
+  8. 运行质量关卡 + 双模型交叉审查
+  9. 报告结果
 
-每轮注入:
+每一轮，Hook 自动注入：
   <ccg-state>
-  任务: autonomous-navigation (进行中)
+  任务: add-motor-controller (进行中)
   策略: full-collaborate
   阶段: 4-实施
-  ROS2 上下文: colcon 工作空间、3 个包、Nav2 栈
-  下一步: Layer 1 Builders 执行中(motor_driver_node + nav2_config)
   </ccg-state>
 ```
 
-## ROS2 模型路由
+## 10 种内置策略
 
-| 模型 | 职责 | 适用场景 |
-|------|------|----------|
-| **Codex** | 底层控制权威 | C++ 节点、硬件驱动、实时控制算法、消息定义 |
-| **Antigravity** | 上层应用权威 | Launch 文件、Python 节点、RViz 配置、仿真设置 |
-| **Claude** | 编排 + 交付 | 计划审批、代码写入、质量把关 |
+引擎根据任务类型和复杂度自动选择最佳策略：
 
-## 策略(ROS2 感知)
+| 策略 | 适用场景 | 外部模型 | Agent Teams |
+|------|---------|:---:|:---:|
+| `direct-fix` | 简单 bug，单文件 | — | — |
+| `quick-implement` | 小功能，范围明确 | — | — |
+| `guided-develop` | 中等功能，需要规划 | 单模型 | — |
+| `full-collaborate` | 复杂功能，跨模块 | 双模型并行 | ✓ |
+| `debug-investigate` | 复杂 bug，原因未知 | 双模型诊断 | — |
+| `refactor-safely` | 代码重构 | 双模型审查 | — |
+| `deep-research` | 技术调研 | 双模型探索 | — |
+| `optimize-measure` | 性能优化 | 可选 | — |
+| `review-audit` | 代码审查 | 双模型交叉审查 | — |
+| `git-action` | commit、rollback、分支 | — | — |
 
-引擎根据任务类型和复杂度选择策略,注入 ROS2 特定上下文:
+简单任务零开销快速执行。复杂任务调动全部引擎能力。
 
-| 策略 | 适用场景 | 外部模型 | Teams | ROS2 上下文 |
-|------|----------|----------|-------|-------------|
-| direct-fix | 简单 bug,单文件 | 否 | 否 | 节点崩溃、话题不匹配 |
-| quick-implement | 小功能,范围清晰 | 否 | 否 | 添加参数、简单服务 |
-| guided-develop | 中等功能,需要规划 | 单模型 | 否 | 新节点、消息定义 |
-| full-collaborate | 复杂功能,多模块 | 双模型并行 | 是 | 导航栈、感知管线 |
-| debug-investigate | 复杂 bug,原因未知 | 双模型诊断 | 否 | QoS 不匹配、生命周期问题 |
-| refactor-safely | 代码重构 | 双模型审查 | 否 | 节点拆分、消息重构 |
-| deep-research | 技术研究、对比 | 双模型探索 | 否 | SLAM 算法、控制策略 |
-| optimize-measure | 性能优化 | 可选 | 否 | CPU/内存、QoS 调优 |
-| review-audit | 代码审查 | 双模型交叉审查 | 否 | QoS 策略、生命周期、安全 |
-| git-action | commit、rollback、分支 | 否 | 否 | 标准 git 操作 |
+## 核心能力
 
-简单任务快速运行无开销。复杂 ROS2 任务获得完整引擎和硬件部署阶段。
+### Hook 引擎 — 永不丢失上下文
+
+4 个 JavaScript Hook 为每个 Claude Code 会话注入状态：
+
+| Hook | 触发时机 | 作用 |
+|------|---------|------|
+| `workflow-state.js` | 每轮用户消息 | 注入当前任务状态面包屑 |
+| `session-start.js` | 会话开始/压缩 | 重新注入完整项目上下文 |
+| `subagent-context.js` | Agent/Bash 调用 | 将 spec 直接注入子 agent 的 prompt |
+| `skill-router.js` | 每轮用户消息 | 按关键词自动注入域知识 |
+
+上下文在压缩后自动恢复。子 agent 出生即带 spec。零状态丢失。
+
+### 任务系统 — 持久化生命周期
+
+中等及以上复杂度的任务获得持久化目录：
+
+```
+.ccg/tasks/add-motor-controller/
+├── task.json         # 状态、策略、阶段、门控
+├── requirements.md   # 增强需求
+├── plan.md           # 已审批的实施计划
+├── context.jsonl     # 子 agent 注入的 spec 文件
+├── review.md         # 审查结果
+└── research/         # 持久化研究成果
+```
+
+### 质量关卡 — 内置安全与质量检查
+
+| 关卡 | 触发条件 |
+|------|---------|
+| `/ccg:verify-security` | 新模块、安全相关变更 |
+| `/ccg:verify-quality` | 变更超过 30 行 |
+| `/ccg:verify-change` | 文档同步检查 |
+| `/ccg:verify-module` | 模块结构检查 |
+| `/ccg:gen-docs` | 自动生成 README + DESIGN |
+
+### 100+ 域知识秘典
+
+领域知识同时覆盖通用工程与六个 ROS2 专项领域：
+
+`安全` · `架构` · `DevOps` · `AI/MLOps` · `开发语言` · `基础设施` · `移动端` · `数据工程` · `编排` · `ROS2 核心` · `ROS2 控制` · `ROS2 驱动` · `ROS2 Launch` · `ROS2 仿真` · `ROS2 上层应用`
 
 ## 命令
 
-### 智能入口
+### 核心命令（v3.0 默认安装 13 个）
 
 | 命令 | 说明 |
 |------|------|
-| `/ccg:go` | 用自然语言描述需求。引擎分析意图、选择策略并执行。 |
+| `/ccg:go` | **智能入口** — 描述你要做什么，引擎自动处理 |
+| `/ccg:commit` | 智能 Conventional Commit |
+| `/ccg:rollback` | 交互式回滚 |
+| `/ccg:clean-branches` | 清理已合并分支 |
+| `/ccg:worktree` | Worktree 管理 |
+| `/ccg:init` | 初始化项目 CLAUDE.md |
+| `/ccg:context` | 项目上下文管理 |
 
-### ROS2 开发工作流(传统命令)
-
-| 命令 | 说明 |
-|------|------|
-| `/ccg:workflow` | 7 阶段完整工作流(含硬件部署) |
-| `/ccg:plan` | 多模型协作规划(Phase 1-2) |
-| `/ccg:execute` | 多模型协作执行(Phase 3-5) |
-| `/ccg:frontend` | 上层应用专项(Antigravity 主导:Launch/Python/RViz) |
-| `/ccg:backend` | 底层控制专项(Codex 主导:C++/驱动/实时) |
-| `/ccg:feat` | 智能功能开发 |
-| `/ccg:analyze` | 双模型技术分析 |
-| `/ccg:debug` | 多模型问题诊断 |
-| `/ccg:optimize` | 多模型性能优化 |
-| `/ccg:test` | 智能测试生成 |
-| `/ccg:review` | 双模型代码审查 |
-| `/ccg:enhance` | Prompt 增强 |
-| `/ccg:init` | 初始化 CLAUDE.md |
-
-### OpenSpec 规范驱动
+### OpenSpec 集成
 
 | 命令 | 说明 |
 |------|------|
 | `/ccg:spec-init` | 初始化 OPSX 环境 |
 | `/ccg:spec-research` | 需求 → 约束集 |
-| `/ccg:spec-plan` | 约束 → 零决策计划 |
-| `/ccg:spec-impl` | 按规范执行 + 归档 |
+| `/ccg:spec-plan` | 零决策可执行计划 |
+| `/ccg:spec-impl` | 按规范实施 + 归档 |
 | `/ccg:spec-review` | 双模型交叉审查 |
 
-### Agent Teams 并行实施
+### Legacy 模式（额外 18 个命令）
 
-| 命令 | 说明 |
-|------|------|
-| `/ccg:team` | **统一工作流(推荐)** — 8 阶段全流程,7 角色自动编排 |
-| `/ccg:team-research` | 并行约束集研究(Codex 底层 + Antigravity 上层) |
-| `/ccg:team-plan` | 零决策并行实施计划 |
-| `/ccg:team-exec` | spawn Builder teammates 并行写代码 |
-| `/ccg:team-review` | 双模型交叉审查实施产出 |
+包括 `/ccg:workflow`、`/ccg:plan`、`/ccg:execute`、`/ccg:frontend`、`/ccg:backend`、`/ccg:analyze`、`/ccg:debug`、`/ccg:optimize`、`/ccg:test`、`/ccg:review`、`/ccg:team` 等。
 
-### Git 工具
+## 快速开始
 
-| 命令 | 说明 |
-|------|------|
-| `/ccg:commit` | 智能 Git 提交(conventional commit) |
-| `/ccg:rollback` | 交互式 Git 回滚 |
-| `/ccg:clean-branches` | 清理已合并分支 |
-| `/ccg:worktree` | Worktree 管理 |
+```bash
+# 安装（交互式 4 步向导）
+npx ccg-ros2-workflow
 
-### 项目管理
-
-| 命令 | 说明 |
-|------|------|
-| `/ccg:context` | 项目上下文管理(.context 初始化/日志/压缩/历史) |
-| `/ccg:codex-exec` | Codex 全权执行计划(MCP + 代码 + 测试) |
-
-## 7 阶段 ROS2 工作流
-
-```
-研究 → 构思 → 计划 → 执行 → 优化 → 评审 → 硬件部署
+# 或非交互式使用默认配置
+npx ccg-ros2-workflow init --skip-prompt
 ```
 
-- **阶段 1-2(研究/构思)**: Codex + Antigravity 并行分析,双视角评估
-- **阶段 3(计划)**: Claude 综合方案,用户批准后存档
-- **阶段 4(执行)**: Claude 主导代码实现
-- **阶段 5(优化)**: Codex + Antigravity 并行审查,Claude 整合修复
-- **阶段 6(评审)**: 最终质量把关
-- **阶段 7(硬件部署)**: 生成部署脚本、检查硬件依赖(串口/CAN/传感器)、Gazebo 仿真验证
+需要 **Node.js 20+** 和 **Claude Code CLI**。Codex CLI、Gemini CLI 和 Grok CLI 为可选（启用多模型功能）。
 
-## 架构
+## CLI 命令大全
+
+```bash
+npx ccg-ros2-workflow                          # 交互式菜单
+npx ccg-ros2-workflow init                     # 4 步安装向导
+npx ccg-ros2-workflow doctor                   # 环境健康检查
+npx ccg-ros2-workflow status                   # 安装概况
+npx ccg-ros2-workflow codex-mode install       # 安装 Codex 主导模式
+npx ccg-ros2-workflow codex-mode uninstall     # 卸载 Codex 主导模式
+npx ccg-ros2-workflow uninstall                # 卸载 CCG
+npx ccg-ros2-workflow config mcp               # 配置 MCP Token
+npx ccg-ros2-workflow diagnose-mcp             # 诊断 MCP 问题
+```
+
+## 配置
 
 ```
-Claude(编排 + 最终写代码)
-  ├── Codex      → 只读,返回 patch(底层:C++/驱动/实时)
-  └── Antigravity → 只读,返回 patch(上层:Launch/Python/RViz)
+~/.claude/
+├── commands/ccg/          # 斜杠命令
+├── hooks/ccg/             # Hook 脚本（5 个文件）
+├── skills/ccg/            # 质量关卡 + 100+ 域知识
+├── rules/                 # 自动触发规则
+├── .ccg/
+│   ├── config.toml        # 模型路由、MCP、性能配置
+│   ├── engine/            # 10 个策略文件 + 模型路由器
+│   └── prompts/           # 专家提示词（codex/gemini/claude）
+└── bin/codeagent-wrapper  # 多模型桥接（Go 二进制）
 ```
 
-外部模型对文件系统零写入权限,所有代码由 Claude 审核后落盘。
+### 环境变量
 
-## 子智能体
+在 `~/.claude/settings.json` 的 `"env"` 中设置：
 
-| 智能体 | 用途 |
-|--------|------|
-| `system-integrator` | ROS2 系统集成设计师(节点架构/Topic-Service/QoS 设计) |
-| `planner` | ROS2 任务规划师(WBS 分解) |
-| `init-architect` | 项目初始化架构师 |
-| `get-current-datetime` | 获取当前时间 |
-| `team-architect` | 团队架构师(v3.0+) |
-| `team-qa` | QA 工程师(v3.0+) |
-| `team-reviewer` | 代码审查员(v3.0+) |
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `CODEX_TIMEOUT` | `7200` | Wrapper 超时（秒） |
+| `CODEAGENT_POST_MESSAGE_DELAY` | `5` | 完成后延迟（秒） |
+| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | 未设置 | 设为 `1` 启用 Agent Teams 并行 |
 
-## 输出风格
+## 更新 / 卸载
 
-安装后可通过 output-styles 目录选择 AI 输出风格:
+```bash
+npx ccg-ros2-workflow@latest     # 更新到最新版
+npx ccg-ros2-workflow doctor     # 更新后健康检查
+npx ccg-ros2-workflow uninstall  # 彻底卸载
+```
 
-- `engineer-professional` - SOLID/KISS/DRY 专业工程师风格
-- `nekomata-engineer` - 猫娘工程师(幽浮喵)
-- `laowang-engineer` - 老王工程师
-- `abyss-cultivator` - 深渊修炼者
-- `ojousama-engineer` - 大小姐风格
-- `abyss-concise` - 深渊简报
-- `abyss-command` - 深渊铁律
-- `abyss-ritual` - 深渊祭仪
+## 致谢
 
-## 固定配置
+- [cexll/myclaude](https://github.com/cexll/myclaude) — codeagent-wrapper 灵感来源
+- [UfoMiao/zcf](https://github.com/UfoMiao/zcf) — Git 工具参考
+- [mindfold-ai/Trellis](https://github.com/mindfold-ai/Trellis) — Hook 状态注入模式
+- [ace-tool](https://linux.do/t/topic/1344562) — MCP 代码检索
 
-| 项目 | 值 |
-|------|----|
-| ROS2 版本 | Humble Hawksbill(LTS) |
-| 目标平台 | 物理机器人 |
-| 上层应用模型 | Antigravity(默认) / Gemini(备选) |
-| 底层控制模型 | Codex |
-| 工作流阶段 | 7 阶段(含硬件部署) |
+## 贡献者
 
-## Codex 主导模式(可选)
+<!-- readme: contributors -start -->
+<table>
+<tr>
+    <td align="center"><a href="https://github.com/fengshao1227"><img src="https://avatars.githubusercontent.com/fengshao1227?v=4&s=100" width="100;" alt="fengshao1227"/><br /><sub><b>fengshao1227</b></sub></a></td>
+    <td align="center"><a href="https://github.com/SXP-Simon"><img src="https://avatars.githubusercontent.com/SXP-Simon?v=4&s=100" width="100;" alt="SXP-Simon"/><br /><sub><b>SXP-Simon</b></sub></a></td>
+    <td align="center"><a href="https://github.com/RebornQ"><img src="https://avatars.githubusercontent.com/RebornQ?v=4&s=100" width="100;" alt="RebornQ"/><br /><sub><b>RebornQ</b></sub></a></td>
+    <td align="center"><a href="https://github.com/Sakuranda"><img src="https://avatars.githubusercontent.com/Sakuranda?v=4&s=100" width="100;" alt="Sakuranda"/><br /><sub><b>Sakuranda</b></sub></a></td>
+    <td align="center"><a href="https://github.com/Mriris"><img src="https://avatars.githubusercontent.com/Mriris?v=4&s=100" width="100;" alt="Mriris"/><br /><sub><b>Mriris</b></sub></a></td>
+    <td align="center"><a href="https://github.com/23q3"><img src="https://avatars.githubusercontent.com/23q3?v=4&s=100" width="100;" alt="23q3"/><br /><sub><b>23q3</b></sub></a></td>
+    <td align="center"><a href="https://github.com/MrNine-666"><img src="https://avatars.githubusercontent.com/MrNine-666?v=4&s=100" width="100;" alt="MrNine-666"/><br /><sub><b>MrNine-666</b></sub></a></td>
+</tr>
+<tr>
+    <td align="center"><a href="https://github.com/GGzili"><img src="https://avatars.githubusercontent.com/GGzili?v=4&s=100" width="100;" alt="GGzili"/><br /><sub><b>GGzili</b></sub></a></td>
+</tr>
+</table>
+<!-- readme: contributors -end -->
 
-通过菜单选项 `X. Codex Mode` 安装。Codex CLI 作为主编排器,注入 ROS2 上下文:
+## 联系
 
-- `~/.codex/AGENTS.md` — 自适应决策框架,注入 ROS2 上下文(节点边界、消息选型、QoS 决策)
-- `~/.codex/hooks/ccg-workflow.py` — 智能守护 Hook,注入 ROS2 检查点(package.xml、CMakeLists.txt、launch 文件、colcon build)
-- `~/.codex/config.toml` — 启用 Multi-agent v2
-- `~/.codex/agents/` — 原生子 agent 定义,注入 ROS2 上下文
+- **X (Twitter)**: [@CCG_Workflow](https://x.com/CCG_Workflow)
+- **Email**: [fengshao1227@gmail.com](mailto:fengshao1227@gmail.com)
+- **Issues**: [GitHub Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues)
+- **社区**: [Linux.do](https://linux.do)
 
-## MCP 工具集成
+## Star 历史
 
-可选 MCP 工具增强功能:
-
-- **fast-context**(推荐) — Windsurf Fast Context 代码检索
-- **ace-tool** — 代码搜索 + prompt 增强
-- **ContextWeaver** — 本地优先语义代码搜索
-- **context7**(自动安装) — 免费库文档查询
-
-## 相关链接
-
-- [npm 包](https://www.npmjs.com/package/ccg-ros2-workflow)
-- [GitHub 仓库](https://github.com/GuYu-001/ccg-ros2-workflow)
-- [官方 ccg-workflow](https://github.com/fengshao1227/ccg-workflow)
-- [ROS2 Humble 文档](https://docs.ros.org/en/humble/)
-
-## 贡献
-
-欢迎贡献!请阅读 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解指南。
+[![Star History Chart](https://api.star-history.com/svg?repos=GuYu-001/ccg-ros2-workflow&type=timeline&legend=top-left)](https://www.star-history.com/#GuYu-001/ccg-ros2-workflow&type=timeline&legend=top-left)
 
 ## 许可证
 
-MIT License - 详见 [LICENSE](./LICENSE)
+MIT
 
 ---
 
-**版本**: 3.0.0  
-**最后更新**: 2026-05-20
+v3.2.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)

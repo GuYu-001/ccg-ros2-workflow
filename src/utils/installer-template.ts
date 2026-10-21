@@ -68,6 +68,7 @@ export function injectConfigVariables(content: string, config: {
     backend?: { models?: string[], primary?: string }
     review?: { models?: string[] }
     geminiModel?: string
+    grokModel?: string
   }
   liteMode?: boolean
   mcpProvider?: string
@@ -136,6 +137,32 @@ export function injectConfigVariables(content: string, config: {
       }
       // Conditional / gemini-hard-coded — keep the flag.
       return line.replace(/\{\{GEMINI_MODEL_FLAG\}\}/g, geminiModelFlagValue)
+    }).join('\n')
+  }
+
+  // Grok model flag — same line-aware substitution as GEMINI_MODEL_FLAG:
+  // strip the flag on lines that hard-code a non-grok backend, keep it on
+  // conditional / grok / runtime-variable ($MODEL) lines.
+  const grokModel = routing.grokModel || 'grok-4.5'
+  const usesGrok = frontendPrimary === 'grok' || backendPrimary === 'grok'
+    || frontendModels.includes('grok') || backendModels.includes('grok')
+
+  if (!usesGrok) {
+    processed = processed.replace(/\{\{GROK_MODEL_FLAG\}\}/g, '')
+  }
+  else {
+    const grokModelFlagValue = `--grok-model ${grokModel} `
+    const hardCodedBackendRe = /--backend\s+([a-z0-9-]+)(?:\s|$)/
+
+    processed = processed.split('\n').map((line) => {
+      if (!line.includes('{{GROK_MODEL_FLAG}}')) {
+        return line
+      }
+      const m = line.match(hardCodedBackendRe)
+      if (m && m[1] !== 'grok') {
+        return line.replace(/\{\{GROK_MODEL_FLAG\}\}/g, '')
+      }
+      return line.replace(/\{\{GROK_MODEL_FLAG\}\}/g, grokModelFlagValue)
     }).join('\n')
   }
 

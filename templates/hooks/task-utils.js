@@ -18,6 +18,21 @@ function findProjectRoot(startDir) {
   return null;
 }
 
+// Terminal task statuses — a task in any of these is no longer active, so the
+// hooks stop injecting its breadcrumb. Matched case-insensitively after trim,
+// covering common synonyms the model may write (done/finished/closed/...) so a
+// committed-and-finished task is never misjudged as still in progress. The
+// canonical write-side value is "completed" (see go.md), but the read side must
+// be forgiving because status is free-text written by the model.
+const TERMINAL_STATUSES = new Set([
+  'completed', 'complete', 'done', 'finished', 'finish',
+  'archived', 'archive', 'cancelled', 'canceled', 'closed', 'resolved', 'abandoned'
+]);
+
+function isTerminalStatus(status) {
+  return TERMINAL_STATUSES.has(String(status == null ? '' : status).trim().toLowerCase());
+}
+
 function getActiveTask(projectRoot) {
   const tasksDir = path.join(projectRoot, '.ccg', 'tasks');
   if (!fs.existsSync(tasksDir)) return null;
@@ -40,7 +55,7 @@ function getActiveTask(projectRoot) {
         if (!fs.existsSync(taskPath)) continue; // stale pointer detection
         const raw = fs.readFileSync(taskPath, 'utf-8');
         const task = JSON.parse(raw);
-        if (task.status !== 'completed' && task.status !== 'archived') {
+        if (!isTerminalStatus(task.status)) {
           return { dir: path.join(tasksDir, dir), ...task, _stale: false };
         }
       } catch { /* skip malformed */ }
@@ -95,13 +110,20 @@ function getGitInfo(projectRoot) {
   } catch { return { branch: 'unknown', dirtyCount: 0 }; }
 }
 
-function outputHook(eventName, additionalContext) {
-  console.log(JSON.stringify({
-    hookSpecificOutput: {
-      hookEventName: eventName,
-      additionalContext
-    }
-  }));
+// outputHook(event, additionalContext)           → inject context into the CALLING session
+// outputHook(event, null, { updatedInput, ... })  → rewrite the tool input before it runs
+//   `extra` is merged into hookSpecificOutput, so it can carry updatedInput /
+//   permissionDecision / permissionDecisionReason. Pass additionalContext = null
+//   to omit it. Back-compatible: existing 2-arg calls behave exactly as before.
+function outputHook(eventName, additionalContext, extra) {
+  const hookSpecificOutput = { hookEventName: eventName };
+  if (additionalContext != null && additionalContext !== '') {
+    hookSpecificOutput.additionalContext = additionalContext;
+  }
+  if (extra && typeof extra === 'object') {
+    Object.assign(hookSpecificOutput, extra);
+  }
+  console.log(JSON.stringify({ hookSpecificOutput }));
 }
 
 function archiveTask(taskDir, projectRoot) {
@@ -176,6 +198,7 @@ function detectLoop(turns, threshold) {
 module.exports = {
   findProjectRoot,
   getActiveTask,
+  isTerminalStatus,
   readFileSafe,
   readJsonSafe,
   readContextJsonl,

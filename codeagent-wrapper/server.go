@@ -117,8 +117,10 @@ func openBrowser(url string) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		cmd = exec.Command("open", url)
+		// -g: open in background — don't steal focus from the user's current app (#139)
+		cmd = exec.Command("open", "-g", url)
 	case "linux":
+		// xdg-open has no portable background flag; focus behavior is up to the WM/browser
 		cmd = exec.Command("xdg-open", url)
 	case "windows":
 		// Use rundll32 for better compatibility

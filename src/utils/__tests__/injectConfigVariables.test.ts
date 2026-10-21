@@ -370,3 +370,79 @@ describe('integration: real templates with gemini+codex config', () => {
     })
   }
 })
+
+// ─────────────────────────────────────────────────────────────
+// F. GROK_MODEL_FLAG line-aware substitution (v3.2.0)
+// ─────────────────────────────────────────────────────────────
+describe('GROK_MODEL_FLAG line-aware substitution', () => {
+  const grokBackendConfig = {
+    routing: {
+      frontend: { primary: 'antigravity' },
+      backend: { primary: 'grok' },
+      grokModel: 'grok-4.5',
+    },
+  }
+
+  it('keeps flag on lines with hard-coded grok backend', () => {
+    const input = '--backend grok {{GROK_MODEL_FLAG}}- "/workdir"'
+    const result = injectConfigVariables(input, grokBackendConfig)
+    expect(result).toBe('--backend grok --grok-model grok-4.5 - "/workdir"')
+  })
+
+  it('strips flag on lines with hard-coded non-grok backend', () => {
+    const input = '--backend {{FRONTEND_PRIMARY}} {{GROK_MODEL_FLAG}}- "/workdir"'
+    const result = injectConfigVariables(input, grokBackendConfig)
+    expect(result).toBe('--backend antigravity - "/workdir"')
+    expect(result).not.toContain('--grok-model')
+  })
+
+  it('keeps flag on runtime-variable lines ($MODEL)', () => {
+    const input = '--backend $MODEL {{GROK_MODEL_FLAG}}- "$WORKDIR"'
+    const result = injectConfigVariables(input, grokBackendConfig)
+    expect(result).toContain('--grok-model grok-4.5')
+  })
+
+  it('supports grok-composer-2.5-fast model', () => {
+    const config = {
+      routing: {
+        frontend: { primary: 'gemini' },
+        backend: { primary: 'grok' },
+        grokModel: 'grok-composer-2.5-fast',
+      },
+    }
+    const input = '--backend grok {{GROK_MODEL_FLAG}}- "/w"'
+    const result = injectConfigVariables(input, config)
+    expect(result).toContain('--grok-model grok-composer-2.5-fast')
+  })
+
+  it('strips all flags when neither role uses grok', () => {
+    const config = {
+      routing: {
+        frontend: { primary: 'antigravity' },
+        backend: { primary: 'codex' },
+      },
+    }
+    const input = [
+      '--backend grok {{GROK_MODEL_FLAG}}- "/w"',
+      '--backend $MODEL {{GROK_MODEL_FLAG}}- "/w"',
+    ].join('\n')
+    const result = injectConfigVariables(input, config)
+    expect(result).not.toContain('--grok-model')
+    expect(result).not.toContain('{{GROK_MODEL_FLAG}}')
+  })
+
+  it('gemini and grok flags coexist on $MODEL lines when both configured', () => {
+    const config = {
+      routing: {
+        frontend: { primary: 'gemini' },
+        backend: { primary: 'grok' },
+        geminiModel: 'gemini-3.1-pro-preview',
+        grokModel: 'grok-4.5',
+      },
+    }
+    const input = '--backend $MODEL {{GEMINI_MODEL_FLAG}}{{GROK_MODEL_FLAG}}- "$WORKDIR"'
+    const result = injectConfigVariables(input, config)
+    expect(result).toContain('--gemini-model gemini-3.1-pro-preview')
+    expect(result).toContain('--grok-model grok-4.5')
+  })
+})

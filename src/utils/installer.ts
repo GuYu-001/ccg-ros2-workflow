@@ -5,7 +5,9 @@ import fs from 'fs-extra'
 import { basename, join } from 'pathe'
 import { getLegacyCommandIds, getWorkflowById } from './installer-data'
 import { PACKAGE_ROOT, injectConfigVariables, replaceHomePathsInTemplate } from './installer-template'
+import { readCcgConfig } from './config'
 import { installSkillCommands } from './skill-registry'
+import { version as packageVersion } from '../../package.json'
 
 // ═══════════════════════════════════════════════════════
 // Re-exports — all consumers import from './installer'
@@ -61,7 +63,7 @@ export type { SkillMeta } from './skill-registry'
  * Must match the `version` constant in codeagent-wrapper/main.go.
  * When this differs from the installed binary, update triggers re-download.
  */
-const EXPECTED_BINARY_VERSION = '5.11.0'
+const EXPECTED_BINARY_VERSION = '5.12.0'
 
 // ═══════════════════════════════════════════════════════
 // Install context — shared across sub-functions
@@ -296,7 +298,7 @@ async function installPromptFiles(ctx: InstallContext): Promise<void> {
     return
   }
 
-  for (const model of ['codex', 'gemini', 'claude', 'antigravity']) {
+  for (const model of ['codex', 'gemini', 'claude', 'antigravity', 'grok']) {
     try {
       const installed = await copyMdTemplates(
         ctx,
@@ -504,6 +506,17 @@ export async function installCodexMode(): Promise<{ success: boolean, message: s
     const codexHome = join(homedir(), '.codex')
     await fs.ensureDir(join(codexHome, 'agents'))
 
+    // Read CCG config once — reused for template variable injection across
+    // AGENTS.md + hooks/ccg-workflow.py so model routing (frontend/backend)
+    // stays consistent with what the user configured (issue: codex mode still
+    // referenced gemini after the antigravity default switch).
+    const config = await readCcgConfig()
+    const injectOpts = {
+      routing: config?.routing as any,
+      liteMode: config?.performance?.liteMode || false,
+      mcpProvider: config?.mcp?.provider || 'skip',
+    }
+
     const configSrc = join(codexTemplateDir, 'config.toml')
     const configDest = join(codexHome, 'config.toml')
     if (await fs.pathExists(configSrc) && !(await fs.pathExists(configDest))) {
@@ -517,25 +530,51 @@ export async function installCodexMode(): Promise<{ success: boolean, message: s
 
     const agentsMdSrc = join(codexTemplateDir, 'AGENTS.md')
     if (await fs.pathExists(agentsMdSrc)) {
-      await fs.copy(agentsMdSrc, join(codexHome, 'AGENTS.md'), { overwrite: true })
+      // Always inject — injectConfigVariables falls back to sane defaults
+      // (antigravity/codex) when no config, so placeholders never leak.
+      let content = await fs.readFile(agentsMdSrc, 'utf-8')
+      content = injectConfigVariables(content, injectOpts)
+      content = replaceHomePathsInTemplate(content, join(homedir(), '.claude'))
+      await fs.writeFile(join(codexHome, 'AGENTS.md'), content, 'utf-8')
     }
 
-    // hooks/
+    // hooks/ — inject template variables into ccg-workflow.py so the guidance
+    // it emits references the user's actual frontend model, not hardcoded gemini.
     const hooksSrc = join(codexTemplateDir, 'hooks')
     if (await fs.pathExists(hooksSrc)) {
-      await fs.ensureDir(join(codexHome, 'hooks'))
-      await fs.copy(hooksSrc, join(codexHome, 'hooks'), { overwrite: true })
+      const hooksDest = join(codexHome, 'hooks')
+      await fs.ensureDir(hooksDest)
+      for (const file of await fs.readdir(hooksSrc)) {
+        const srcFile = join(hooksSrc, file)
+        const destFile = join(hooksDest, file)
+        if (file.endsWith('.py')) {
+          let content = await fs.readFile(srcFile, 'utf-8')
+          content = injectConfigVariables(content, injectOpts)
+          await fs.writeFile(destFile, content, 'utf-8')
+        }
+        else {
+          await fs.copy(srcFile, destFile, { overwrite: true })
+        }
+      }
     }
 
-    // hooks.json
+    // hooks.json — resolve the `~/.codex/...` hook command to an absolute path.
+    // Codex does not reliably expand `~` when spawning the hook command, so a
+    // relative/tilde path made it look for `.codex/hooks/` in the project dir.
     const hooksJsonSrc = join(codexTemplateDir, 'hooks.json')
     if (await fs.pathExists(hooksJsonSrc)) {
-      await fs.copy(hooksJsonSrc, join(codexHome, 'hooks.json'), { overwrite: true })
+      let content = await fs.readFile(hooksJsonSrc, 'utf-8')
+      const absHome = homedir().replace(/\\/g, '/')
+      content = content.replace(/~\//g, `${absHome}/`)
+      await fs.writeFile(join(codexHome, 'hooks.json'), content, 'utf-8')
     }
+
+    // Write version marker so external tools can check which CCG version installed Codex mode
+    await fs.writeFile(join(codexHome, '.ccg-version'), packageVersion, 'utf-8')
 
     return {
       success: true,
-      message: `Codex mode installed:\n  ~/.codex/AGENTS.md\n  ~/.codex/config.toml\n  ~/.codex/hooks.json\n  ~/.codex/hooks/ccg-workflow.py\n  ~/.codex/agents/ccg-implement.toml\n  ~/.codex/agents/ccg-review.toml\n  ~/.codex/agents/ccg-research.toml`,
+      message: `Codex mode installed:\n  ~/.codex/AGENTS.md\n  ~/.codex/config.toml\n  ~/.codex/hooks.json\n  ~/.codex/hooks/ccg-workflow.py\n  ~/.codex/agents/ccg-implement.toml\n  ~/.codex/agents/ccg-review.toml\n  ~/.codex/agents/ccg-research.toml\n  ~/.codex/.ccg-version (${packageVersion})`,
     }
   }
   catch (error) {
@@ -558,6 +597,7 @@ export async function uninstallCodexMode(): Promise<{ success: boolean, removed:
     join(codexHome, 'agents', 'ccg-research.toml'),
     join(codexHome, 'hooks', 'ccg-workflow.py'),
     join(codexHome, 'hooks.json'),
+    join(codexHome, '.ccg-version'),
   ]
 
   // AGENTS.md — only remove if it contains CCG marker
@@ -1064,6 +1104,7 @@ export interface UninstallResult {
   removedAgents: string[]
   removedSkills: string[]
   removedRules: boolean
+  removedHooks: boolean
   removedBin: boolean
   errors: string[]
 }
@@ -1080,6 +1121,7 @@ export async function uninstallWorkflows(installDir: string, options?: { preserv
     removedAgents: [],
     removedSkills: [],
     removedRules: false,
+    removedHooks: false,
     removedBin: false,
     errors: [],
   }
@@ -1124,7 +1166,7 @@ export async function uninstallWorkflows(installDir: string, options?: { preserv
   // Remove CCG rules files
   if (await fs.pathExists(rulesDir)) {
     try {
-      for (const ruleFile of ['ccg-skills.md', 'ccg-grok-search.md', 'ccg-skill-routing.md']) {
+      for (const ruleFile of ['ccg-skills.md', 'ccg-grok-search.md', 'ccg-skill-routing.md', 'ccg-codegraph.md']) {
         const rulePath = join(rulesDir, ruleFile)
         if (await fs.pathExists(rulePath)) {
           await fs.remove(rulePath)
@@ -1153,7 +1195,7 @@ export async function uninstallWorkflows(installDir: string, options?: { preserv
     }
   }
 
-  // Remove .ccg config directory
+  // Remove .ccg config directory (engine, prompts, strategies all live here)
   if (await fs.pathExists(ccgConfigDir)) {
     try {
       await fs.remove(ccgConfigDir)
@@ -1161,6 +1203,54 @@ export async function uninstallWorkflows(installDir: string, options?: { preserv
     }
     catch (error) {
       result.errors.push(`Failed to remove .ccg directory: ${error}`)
+    }
+  }
+
+  // Remove CCG hook scripts directory (hooks/ccg/) — added by the v3.0 engine.
+  // Older uninstall logic predates the hook engine and left these behind.
+  const hooksCcgDir = join(installDir, 'hooks', 'ccg')
+  if (await fs.pathExists(hooksCcgDir)) {
+    try {
+      await fs.remove(hooksCcgDir)
+      result.removedHooks = true
+    }
+    catch (error) {
+      result.errors.push(`Failed to remove hooks directory: ${error}`)
+      result.success = false
+    }
+  }
+
+  // Deregister CCG hooks from settings.json — preserve the user's own hooks.
+  // CCG hook entries are identified by a command path that points at hooks/ccg/.
+  const settingsPath = join(installDir, 'settings.json')
+  if (await fs.pathExists(settingsPath)) {
+    try {
+      const settings = JSON.parse(await fs.readFile(settingsPath, 'utf-8')) as Record<string, any>
+      const hooks = settings.hooks as Record<string, any[]> | undefined
+      if (hooks && typeof hooks === 'object') {
+        const isCcgEntry = (h: any): boolean => {
+          const hHooks = (h?.hooks || []) as any[]
+          return hHooks.some(hh => typeof hh?.command === 'string' && /hooks[\\/]ccg[\\/]/.test(hh.command))
+        }
+        let modified = false
+        for (const event of Object.keys(hooks)) {
+          const arr = Array.isArray(hooks[event]) ? hooks[event] : []
+          const filtered = arr.filter(h => !isCcgEntry(h))
+          if (filtered.length !== arr.length) {
+            modified = true
+            if (filtered.length === 0) delete hooks[event]
+            else hooks[event] = filtered
+          }
+        }
+        if (modified) {
+          if (Object.keys(hooks).length === 0) delete settings.hooks
+          await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8')
+          result.removedHooks = true
+        }
+      }
+    }
+    catch (error) {
+      result.errors.push(`Failed to deregister hooks from settings.json: ${error}`)
     }
   }
 

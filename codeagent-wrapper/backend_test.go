@@ -5,16 +5,17 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
 func TestClaudeBuildArgs_ModesAndPermissions(t *testing.T) {
 	backend := ClaudeBackend{}
 
-	t.Run("new mode omits skip-permissions by default", func(t *testing.T) {
+	t.Run("new mode always bypasses permissions (autonomous orchestration)", func(t *testing.T) {
 		cfg := &Config{Mode: "new", WorkDir: "/repo"}
 		got := backend.BuildArgs(cfg, "todo")
-		want := []string{"-p", "--setting-sources", "", "--output-format", "stream-json", "--verbose", "todo"}
+		want := []string{"-p", "--dangerously-skip-permissions", "--setting-sources", "", "--output-format", "stream-json", "--verbose", "todo"}
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("got %v, want %v", got, want)
 		}
@@ -32,7 +33,7 @@ func TestClaudeBuildArgs_ModesAndPermissions(t *testing.T) {
 	t.Run("resume mode includes session id", func(t *testing.T) {
 		cfg := &Config{Mode: "resume", SessionID: "sid-123", WorkDir: "/ignored"}
 		got := backend.BuildArgs(cfg, "resume-task")
-		want := []string{"-p", "--setting-sources", "", "-r", "sid-123", "--output-format", "stream-json", "--verbose", "resume-task"}
+		want := []string{"-p", "--dangerously-skip-permissions", "--setting-sources", "", "-r", "sid-123", "--output-format", "stream-json", "--verbose", "resume-task"}
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("got %v, want %v", got, want)
 		}
@@ -41,7 +42,7 @@ func TestClaudeBuildArgs_ModesAndPermissions(t *testing.T) {
 	t.Run("resume mode without session still returns base flags", func(t *testing.T) {
 		cfg := &Config{Mode: "resume", WorkDir: "/ignored"}
 		got := backend.BuildArgs(cfg, "follow-up")
-		want := []string{"-p", "--setting-sources", "", "--output-format", "stream-json", "--verbose", "follow-up"}
+		want := []string{"-p", "--dangerously-skip-permissions", "--setting-sources", "", "--output-format", "stream-json", "--verbose", "follow-up"}
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("got %v, want %v", got, want)
 		}
@@ -287,4 +288,104 @@ func TestLoadMinimalEnvSettings(t *testing.T) {
 			t.Fatalf("got %v, want empty", got)
 		}
 	})
+}
+
+func TestGrokBuildArgs_NewMode(t *testing.T) {
+	cfg := &Config{Mode: "new", WorkDir: "/tmp/project", Backend: "grok"}
+	args := buildGrokArgs(cfg, "do the task")
+
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "--always-approve") {
+		t.Fatalf("args missing --always-approve: %v", args)
+	}
+	if !strings.Contains(joined, "--output-format streaming-json") {
+		t.Fatalf("args missing streaming-json output format: %v", args)
+	}
+	if strings.Contains(joined, "--cwd") {
+		t.Fatalf("args must not contain --cwd (workdir comes from cmd.Dir): %v", args)
+	}
+	// -p must be followed by the task text
+	for i, a := range args {
+		if a == "-p" {
+			if i+1 >= len(args) || args[i+1] != "do the task" {
+				t.Fatalf("-p not followed by task text: %v", args)
+			}
+			return
+		}
+	}
+	t.Fatalf("args missing -p: %v", args)
+}
+
+func TestGrokBuildArgs_ResumeMode(t *testing.T) {
+	cfg := &Config{Mode: "resume", SessionID: "sess-123", WorkDir: "/tmp/project", Backend: "grok"}
+	args := buildGrokArgs(cfg, "continue")
+
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "-r sess-123") {
+		t.Fatalf("resume args missing -r <session>: %v", args)
+	}
+	if !strings.Contains(joined, "-p continue") {
+		t.Fatalf("resume args missing -p prompt: %v", args)
+	}
+}
+
+func TestGrokBuildArgs_WithModel(t *testing.T) {
+	cfg := &Config{Mode: "new", WorkDir: ".", Backend: "grok", GrokModel: "grok-4.5"}
+	args := buildGrokArgs(cfg, "task")
+
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "-m grok-4.5") {
+		t.Fatalf("args missing -m grok-4.5: %v", args)
+	}
+}
+
+func TestGrokBuildArgs_NilConfig(t *testing.T) {
+	if args := buildGrokArgs(nil, "x"); args != nil {
+		t.Fatalf("nil config should return nil args, got %v", args)
+	}
+}
+
+func TestGrokBackend_Metadata(t *testing.T) {
+	b := GrokBackend{}
+	if b.Name() != "grok" {
+		t.Fatalf("name = %s, want grok", b.Name())
+	}
+	if b.Command() == "" {
+		t.Fatalf("command must not be empty")
+	}
+}
+
+func TestParseJSONStream_GrokEvents(t *testing.T) {
+	stream := `{"type":"thought","data":"thinking"}
+{"type":"thought","data":" more"}
+{"type":"text","data":"Hello"}
+{"type":"text","data":" world"}
+{"type":"end","stopReason":"EndTurn","sessionId":"019f-abc","requestId":"req-1"}
+`
+	var sessionFromCallback string
+	message, threadID := parseJSONStreamInternalWithContent(
+		strings.NewReader(stream), nil, nil, nil, nil, nil, nil,
+		func(id string) { sessionFromCallback = id },
+	)
+
+	if message != "Hello world" {
+		t.Fatalf("message = %q, want %q", message, "Hello world")
+	}
+	if threadID != "019f-abc" {
+		t.Fatalf("threadID = %q, want %q", threadID, "019f-abc")
+	}
+	if sessionFromCallback != "019f-abc" {
+		t.Fatalf("onSessionStarted got %q, want %q", sessionFromCallback, "019f-abc")
+	}
+}
+
+func TestParseJSONStream_GrokThoughtsExcludedFromMessage(t *testing.T) {
+	stream := `{"type":"thought","data":"secret reasoning"}
+{"type":"text","data":"answer"}
+{"type":"end","stopReason":"EndTurn","sessionId":"s1","requestId":"r1"}
+`
+	message, _ := parseJSONStreamInternal(strings.NewReader(stream), nil, nil, nil, nil)
+	if message != "answer" {
+		t.Fatalf("message = %q, want %q (thoughts must not leak)", message, "answer")
+	}
 }

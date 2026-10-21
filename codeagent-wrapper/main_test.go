@@ -1551,7 +1551,7 @@ func TestBackendBuildArgs_ClaudeBackend(t *testing.T) {
 	backend := ClaudeBackend{}
 	cfg := &Config{Mode: "new", WorkDir: defaultWorkdir}
 	got := backend.BuildArgs(cfg, "todo")
-	want := []string{"-p", "--setting-sources", "", "--output-format", "stream-json", "--verbose", "todo"}
+	want := []string{"-p", "--dangerously-skip-permissions", "--setting-sources", "", "--output-format", "stream-json", "--verbose", "todo"}
 	if len(got) != len(want) {
 		t.Fatalf("args length=%d, want %d: %v", len(got), len(want), got)
 	}
@@ -1572,7 +1572,7 @@ func TestClaudeBackendBuildArgs_OutputValidation(t *testing.T) {
 	target := "ensure-flags"
 
 	args := backend.BuildArgs(cfg, target)
-	want := []string{"-p", "--setting-sources", "", "--output-format", "stream-json", "--verbose", target}
+	want := []string{"-p", "--dangerously-skip-permissions", "--setting-sources", "", "--output-format", "stream-json", "--verbose", target}
 	if len(args) != len(want) {
 		t.Fatalf("args length=%d, want %d: %v", len(args), len(want), args)
 	}
@@ -3052,7 +3052,7 @@ func TestVersionFlag(t *testing.T) {
 		}
 	})
 
-	want := "codeagent-wrapper version 5.10.0\n"
+	want := "codeagent-wrapper version 5.12.0\n"
 
 	if output != want {
 		t.Fatalf("output = %q, want %q", output, want)
@@ -3068,7 +3068,7 @@ func TestVersionShortFlag(t *testing.T) {
 		}
 	})
 
-	want := "codeagent-wrapper version 5.10.0\n"
+	want := "codeagent-wrapper version 5.12.0\n"
 
 	if output != want {
 		t.Fatalf("output = %q, want %q", output, want)
@@ -3084,7 +3084,7 @@ func TestVersionLegacyAlias(t *testing.T) {
 		}
 	})
 
-	want := "codex-wrapper version 5.10.0\n"
+	want := "codex-wrapper version 5.12.0\n"
 
 	if output != want {
 		t.Fatalf("output = %q, want %q", output, want)

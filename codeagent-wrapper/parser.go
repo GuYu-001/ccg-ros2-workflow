@@ -90,6 +90,13 @@ type UnifiedEvent struct {
 	Content        string `json:"content,omitempty"`
 	Delta          *bool  `json:"delta,omitempty"`
 	Status         string `json:"status,omitempty"`
+
+	// Grok-specific fields (grok --output-format streaming-json):
+	//   {"type":"thought","data":"..."}  — reasoning token deltas
+	//   {"type":"text","data":"..."}     — response token deltas
+	//   {"type":"end","stopReason":"EndTurn","sessionId":"...","requestId":"..."}
+	Data       string `json:"data,omitempty"`
+	StopReason string `json:"stopReason,omitempty"`
 }
 
 // GetSessionID returns the session ID from either snake_case or camelCase field.
@@ -146,6 +153,7 @@ func parseJSONStreamInternalWithContent(r io.Reader, warnFn func(string), infoFn
 		codexMessage  string
 		claudeMessage string
 		geminiBuffer  strings.Builder
+		grokBuffer    strings.Builder
 	)
 
 	for {
@@ -209,6 +217,11 @@ func parseJSONStreamInternalWithContent(r io.Reader, warnFn func(string), infoFn
 		}
 		isGemini := event.Role != "" || event.Delta != nil || event.Status != "" ||
 			(event.Type == "init" && event.GetSessionID() != "")
+		// Grok streaming-json: token deltas carry "data"; the terminal "end"
+		// event carries stopReason + camelCase sessionId (no role/status).
+		isGrok := !isCodex && !isClaude && !isGemini &&
+			(((event.Type == "thought" || event.Type == "text") && event.Data != "") ||
+				(event.Type == "end" && (event.StopReason != "" || event.SessionIDCamel != "")))
 
 		// Handle Codex events
 		if isCodex {
@@ -372,11 +385,37 @@ func parseJSONStreamInternalWithContent(r io.Reader, warnFn func(string), infoFn
 			continue
 		}
 
+		// Handle Grok events
+		if isGrok {
+			switch event.Type {
+			case "text":
+				grokBuffer.WriteString(event.Data)
+				if onContent != nil {
+					onContent(event.Data, "message")
+				}
+			case "thought":
+				// Reasoning token deltas — not part of the final message.
+				// Skip per-token logging: a single turn can emit thousands of
+				// thought events and flood the log line limit.
+			case "end":
+				infoFn(fmt.Sprintf("Parsed Grok end event #%d stop_reason=%s session_id=%s message_len=%d", totalEvents, event.StopReason, event.SessionIDCamel, grokBuffer.Len()))
+				if grokBuffer.Len() > 0 {
+					notifyMessage()
+					emitProgress(formatProgressLine("message", map[string]string{"text": strconv.Quote(safeProgressSnippet(grokBuffer.String(), 120))}))
+				}
+				emitProgress(formatProgressLine("session_completed", map[string]string{"total_events": strconv.Itoa(totalEvents)}))
+				notifyComplete()
+			}
+			continue
+		}
+
 		// Unknown event format from other backends (turn.started/assistant/user); ignore.
 		continue
 	}
 
 	switch {
+	case grokBuffer.Len() > 0:
+		message = grokBuffer.String()
 	case geminiBuffer.Len() > 0:
 		message = geminiBuffer.String()
 	case claudeMessage != "":

@@ -11,9 +11,10 @@ Read ~/.claude/.ccg/config.toml
 ```
 
 从 `[routing]` 区块提取：
-- `frontend.primary` — 上层应用模型（默认 `gemini`）
-- `backend.primary` — 底层控制模型（默认 `codex`）
+- `frontend.primary` — 上层应用模型（默认 `antigravity`，可选 `gemini` / `codex` / `grok`）
+- `backend.primary` — 底层控制模型（默认 `codex`，可选 `gemini` / `antigravity` / `grok`）
 - `geminiModel` — Gemini 型号（默认 `gemini-3.1-pro-preview`）
+- `grokModel` — Grok 型号（默认 `grok-4.5`，代码实施可选 `grok-composer-2.5-fast`）
 
 如果配置文件不存在或不可读，使用默认值直接继续。
 
@@ -50,8 +51,9 @@ Read ~/.claude/.ccg/config.toml
 **默认模式**（Claude 执行）：
 - 外部模型仅提供建议，Claude 执行所有文件修改
 
-**Codex Builder 模式**（用户选择时）：
+**Builder 模式**（用户选择时，backend 模型全权写代码）：
 - backend 模型 + `$BACKEND/builder.md` — **有完整写权限**，直接写代码到文件系统
+- 支持任意已配置的 backend 模型（`codex` / `grok` / `gemini`），Claude token 消耗极低
 - Claude 监控进度，审查产出，必要时接管
 - 适用于 M-L 复杂度、低中风险的明确实施任务
 
@@ -68,7 +70,7 @@ WORKDIR=$(pwd)
 
 ```
 Bash({
-  command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend $MODEL {{GEMINI_MODEL_FLAG}}- \"$WORKDIR\" <<'CODEAGENT_EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/$MODEL/$ROLE.md\n<TASK>\n$TASK_CONTENT\n</TASK>\nOUTPUT: $OUTPUT_FORMAT\nCODEAGENT_EOF",
+  command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend $MODEL {{GEMINI_MODEL_FLAG}}{{GROK_MODEL_FLAG}}- \"$WORKDIR\" <<'CODEAGENT_EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/$MODEL/$ROLE.md\n<TASK>\n$TASK_CONTENT\n</TASK>\nOUTPUT: $OUTPUT_FORMAT\nCODEAGENT_EOF",
   run_in_background: true,
   timeout: 3600000,
   description: "$SHORT_DESCRIPTION"
@@ -76,7 +78,7 @@ Bash({
 ```
 
 变量说明：
-- `$MODEL` — 选定的模型名（`codex` / `gemini` / `claude`）
+- `$MODEL` — 选定的模型名（`codex` / `gemini` / `claude` / `antigravity` / `grok`）
 - `$ROLE` — 角色文件名（`analyzer` / `architect` / `reviewer` / `debugger` / `optimizer` / `tester` / `builder`）
 - `$TASK_CONTENT` — 任务内容（需求 + 上下文）
 - `$OUTPUT_FORMAT` — 期望输出格式
@@ -86,7 +88,7 @@ Bash({
 
 ```
 Bash({
-  command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend $MODEL {{GEMINI_MODEL_FLAG}}resume $SESSION_ID - \"$WORKDIR\" <<'CODEAGENT_EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/$MODEL/$ROLE.md\n<TASK>\n$TASK_CONTENT\n</TASK>\nOUTPUT: $OUTPUT_FORMAT\nCODEAGENT_EOF",
+  command: "~/.claude/bin/codeagent-wrapper {{LITE_MODE_FLAG}}--progress --backend $MODEL {{GEMINI_MODEL_FLAG}}{{GROK_MODEL_FLAG}}resume $SESSION_ID - \"$WORKDIR\" <<'CODEAGENT_EOF'\nROLE_FILE: ~/.claude/.ccg/prompts/$MODEL/$ROLE.md\n<TASK>\n$TASK_CONTENT\n</TASK>\nOUTPUT: $OUTPUT_FORMAT\nCODEAGENT_EOF",
   run_in_background: true,
   timeout: 3600000,
   description: "$SHORT_DESCRIPTION"

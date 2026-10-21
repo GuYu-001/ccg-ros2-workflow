@@ -456,12 +456,16 @@ async function configModelRouting(): Promise<void> {
   const currentFrontend = config?.routing?.frontend?.primary || 'antigravity'
   const currentBackend = config?.routing?.backend?.primary || 'codex'
   const currentGeminiModel = config?.routing?.geminiModel || 'gemini-3.1-pro-preview'
+  const currentGrokModel = config?.routing?.grokModel || 'grok-4.5'
 
   console.log(ansis.gray(`  ${i18n.t('init:model.currentRouting')}:`))
   console.log(`  ${ansis.cyan('Frontend:')} ${ansis.green(currentFrontend)}`)
   console.log(`  ${ansis.cyan('Backend:')}  ${ansis.blue(currentBackend)}`)
   if (currentFrontend === 'gemini' || currentBackend === 'gemini') {
     console.log(`  ${ansis.cyan('Gemini:')}   ${ansis.gray(currentGeminiModel)}`)
+  }
+  if (currentFrontend === 'grok' || currentBackend === 'grok') {
+    console.log(`  ${ansis.cyan('Grok:')}     ${ansis.gray(currentGrokModel)}`)
   }
   console.log()
 
@@ -474,6 +478,7 @@ async function configModelRouting(): Promise<void> {
       { name: `Antigravity ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'antigravity' },
       { name: 'Gemini', value: 'gemini' },
       { name: 'Codex', value: 'codex' },
+      { name: 'Grok', value: 'grok' },
     ],
     default: currentFrontend,
   }])
@@ -487,6 +492,7 @@ async function configModelRouting(): Promise<void> {
       { name: `Codex ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'codex' },
       { name: 'Antigravity', value: 'antigravity' },
       { name: 'Gemini', value: 'gemini' },
+      { name: 'Grok', value: 'grok' },
     ],
     default: currentBackend,
   }])
@@ -520,8 +526,37 @@ async function configModelRouting(): Promise<void> {
     }
   }
 
+  // Grok model name (if grok is selected for any role)
+  let grokModel = currentGrokModel
+  if (selectedFrontend === 'grok' || selectedBackend === 'grok') {
+    const { selectedGrokModel } = await inquirer.prompt([{
+      type: 'list',
+      name: 'selectedGrokModel',
+      message: i18n.t('init:model.selectGrokModel'),
+      choices: [
+        { name: `grok-4.5 ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'grok-4.5' },
+        { name: 'grok-composer-2.5-fast', value: 'grok-composer-2.5-fast' },
+        { name: `${i18n.t('init:model.custom')}`, value: 'custom' },
+      ],
+      default: currentGrokModel,
+    }])
+
+    if (selectedGrokModel === 'custom') {
+      const { customModel } = await inquirer.prompt([{
+        type: 'input',
+        name: 'customModel',
+        message: i18n.t('init:model.enterCustomModel'),
+        validate: (v: string) => v.trim() !== '' || i18n.t('init:model.enterCustomModel'),
+      }])
+      grokModel = customModel.trim()
+    }
+    else {
+      grokModel = selectedGrokModel
+    }
+  }
+
   // Check if anything changed
-  if (selectedFrontend === currentFrontend && selectedBackend === currentBackend && geminiModel === currentGeminiModel) {
+  if (selectedFrontend === currentFrontend && selectedBackend === currentBackend && geminiModel === currentGeminiModel && grokModel === currentGrokModel) {
     console.log(ansis.gray(`  ${i18n.t('common:configNotModified')}`))
     return
   }
@@ -543,6 +578,7 @@ async function configModelRouting(): Promise<void> {
       strategy: 'parallel',
     }
     config.routing.geminiModel = geminiModel
+    config.routing.grokModel = grokModel
     await writeCcgConfig(config)
   }
 

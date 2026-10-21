@@ -2,12 +2,16 @@ import type { CAC } from 'cac'
 import type { CliOptions } from './types'
 import ansis from 'ansis'
 import { version } from '../package.json'
+import { homedir } from 'node:os'
+import { join } from 'pathe'
 import { configMcp } from './commands/config-mcp'
+import { doctor, status } from './commands/doctor'
 import { diagnoseMcp, fixMcp } from './commands/diagnose-mcp'
 import { init } from './commands/init'
 import { showMainMenu } from './commands/menu'
 import { i18n, initI18n } from './i18n'
 import { readCcgConfig } from './utils/config'
+import { installCodexMode, uninstallCodexMode, uninstallWorkflows } from './utils/installer'
 
 function customizeHelp(sections: any[]): any[] {
   sections.unshift({
@@ -23,6 +27,10 @@ function customizeHelp(sections: any[]): any[] {
       `  ${ansis.cyan('ccg config mcp')}   ${i18n.t('cli:help.commandDescriptions.configMcp')}`,
       `  ${ansis.cyan('ccg diagnose-mcp')} ${i18n.t('cli:help.commandDescriptions.diagnoseMcp')}`,
       `  ${ansis.cyan('ccg fix-mcp')}      ${i18n.t('cli:help.commandDescriptions.fixMcp')}`,
+      `  ${ansis.cyan('ccg doctor')}       Check installation health`,
+      `  ${ansis.cyan('ccg status')}       Show installation overview`,
+      `  ${ansis.cyan('ccg codex-mode')}   Install/uninstall Codex-Led mode`,
+      `  ${ansis.cyan('ccg uninstall')}    Uninstall CCG (non-interactive)`,
       '',
       ansis.gray(`  ${i18n.t('cli:help.shortcuts')}`),
       `  ${ansis.cyan('ccg i')}            ${i18n.t('cli:help.shortcutDescriptions.quickInit')}`,
@@ -134,6 +142,68 @@ export async function setupCommands(cli: CAC): Promise<void> {
       else {
         console.log(ansis.red(i18n.t('common:unknownSubcommand', { subcommand })))
         console.log(ansis.gray(i18n.t('common:availableSubcommands', { list: 'mcp' })))
+      }
+    })
+
+  // Doctor: environment health check
+  cli
+    .command('doctor', 'Check CCG installation health')
+    .action(async () => { await doctor() })
+
+  // Status: show current installation overview
+  cli
+    .command('status', 'Show CCG installation status')
+    .action(async () => { await status() })
+
+  // Codex mode: non-interactive install/uninstall
+  cli
+    .command('codex-mode <action>', 'Install or uninstall Codex-Led mode (non-interactive)')
+    .action(async (action: string) => {
+      if (action === 'install') {
+        const result = await installCodexMode()
+        if (result.success) {
+          console.log(ansis.green('✓ Codex mode installed'))
+          console.log(result.message)
+        }
+        else {
+          console.error(ansis.red(`✗ ${result.message}`))
+          process.exitCode = 1
+        }
+      }
+      else if (action === 'uninstall') {
+        const result = await uninstallCodexMode()
+        if (result.success) {
+          console.log(ansis.green('✓ Codex mode uninstalled'))
+          if (result.removed.length > 0) console.log(ansis.gray(`  Removed: ${result.removed.join(', ')}`))
+        }
+        else {
+          console.error(ansis.red('✗ Codex mode uninstall failed'))
+          process.exitCode = 1
+        }
+      }
+      else {
+        console.error(ansis.red(`Unknown action: ${action}`))
+        console.log(ansis.gray('Usage: ccg codex-mode <install|uninstall>'))
+        process.exitCode = 1
+      }
+    })
+
+  // Uninstall CCG (Claude Code mode): non-interactive
+  cli
+    .command('uninstall', 'Uninstall CCG workflows from ~/.claude/ (non-interactive)')
+    .action(async () => {
+      const installDir = join(homedir(), '.claude')
+      const result = await uninstallWorkflows(installDir)
+      if (result.success) {
+        console.log(ansis.green('✓ CCG uninstalled'))
+        if (result.removedCommands.length > 0) console.log(ansis.gray(`  Commands: ${result.removedCommands.length} removed`))
+        if (result.removedHooks) console.log(ansis.gray('  Hooks: removed'))
+        if (result.removedBin) console.log(ansis.gray('  Binary: removed'))
+      }
+      else {
+        console.error(ansis.red('✗ Uninstall failed'))
+        for (const err of result.errors) console.error(ansis.gray(`  ${err}`))
+        process.exitCode = 1
       }
     })
 

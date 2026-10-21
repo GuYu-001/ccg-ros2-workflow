@@ -338,6 +338,12 @@ describe('installWorkflows — prompts installation', () => {
     const geminiFiles = readdirSync(join(promptsDir, 'gemini')).filter(f => f.endsWith('.md'))
     expect(codexFiles.length).toBeGreaterThanOrEqual(5)
     expect(geminiFiles.length).toBeGreaterThanOrEqual(5)
+
+    // Grok prompts (v3.2.0): full role set including builder.md
+    expect(fs.existsSync(join(promptsDir, 'grok'))).toBe(true)
+    const grokFiles = readdirSync(join(promptsDir, 'grok')).filter(f => f.endsWith('.md'))
+    expect(grokFiles.length).toBeGreaterThanOrEqual(7)
+    expect(grokFiles).toContain('builder.md')
   })
 })
 

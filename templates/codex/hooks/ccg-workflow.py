@@ -16,6 +16,19 @@ from pathlib import Path
 from datetime import datetime
 
 
+# Terminal task statuses — matched case-insensitively after trim. Covers common
+# synonyms the model may write (done/finished/closed/...) so a finished task is
+# never misjudged as still active. Canonical write value is "completed".
+_TERMINAL_STATUSES = frozenset({
+    "completed", "complete", "done", "finished", "finish",
+    "archived", "archive", "cancelled", "canceled", "closed", "resolved", "abandoned",
+})
+
+
+def _is_terminal_status(status):
+    return str(status or "").strip().lower() in _TERMINAL_STATUSES
+
+
 def find_project_root():
     """Walk up to find .ccg/ or .git/"""
     d = os.environ.get("CODEX_PROJECT_DIR", os.getcwd())
@@ -43,7 +56,7 @@ def get_active_task(root):
         try:
             with open(task_file) as f:
                 task = json.load(f)
-            if task.get("status") not in ("completed", "archived"):
+            if not _is_terminal_status(task.get("status")):
                 task["_dir"] = os.path.join(tasks_dir, name)
                 task["_name"] = name
                 return task
@@ -127,8 +140,8 @@ def build_guidance(task, progress, root):
     if phase == "analysis":
         if complexity in ("M", "L", "XL"):
             parts.append("")
-            parts.append(f"⛔ {complexity} complexity: you MUST call BOTH Gemini AND Claude for parallel analysis before coding.")
-            parts.append("Use the dual-model parallel template in AGENTS.md: --backend gemini & --backend claude with & + wait.")
+            parts.append(f"⛔ {complexity} complexity: you MUST call BOTH the frontend model AND Claude for parallel analysis before coding.")
+            parts.append("Use the dual-model parallel template in AGENTS.md: --backend {{FRONTEND_PRIMARY}} & --backend claude with & + wait.")
 
     # Phase: implementation — coding in progress
     elif phase == "implementation":
@@ -146,12 +159,12 @@ def build_guidance(task, progress, root):
     # Big changes without review
     if progress["changed_lines"] > 30 and phase != "review":
         parts.append("")
-        parts.append(f"⚠️ {progress['changed_lines']} lines changed. When done coding, you MUST call BOTH Gemini AND Claude for dual-model review. Not just one — both.")
+        parts.append(f"⚠️ {progress['changed_lines']} lines changed. When done coding, you MUST call BOTH the frontend model AND Claude for dual-model review. Not just one — both.")
 
     # Review phase: enforce dual model
     if phase == "review":
         parts.append("")
-        parts.append("⛔ Review phase: call BOTH Gemini (--backend gemini) AND Claude (--backend claude) with reviewer role. Two models, not one.")
+        parts.append("⛔ Review phase: call BOTH the frontend model (--backend {{FRONTEND_PRIMARY}}) AND Claude (--backend claude) with reviewer role. Two models, not one.")
 
     # High-risk files detected
     if progress["high_risk_files"] and phase not in ("review", "completed"):
@@ -177,7 +190,7 @@ def build_guidance(task, progress, root):
             parts.append(f"Spec files available: {', '.join(specs)} — read before writing code.")
 
     # --- Archive reminder ---
-    if phase == "completed" or (task.get("status") == "completed"):
+    if phase in ("completed", "done", "finished") or _is_terminal_status(task.get("status")):
         parts.append("")
         parts.append("⛔ Task completed. You MUST archive it now:")
         parts.append(f"  mkdir -p .ccg/tasks/archive/$(date +%Y-%m) && mv .ccg/tasks/{task['_name']} .ccg/tasks/archive/$(date +%Y-%m)/")

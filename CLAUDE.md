@@ -2,13 +2,57 @@
 
 > [根目录](../CLAUDE.md) > **skills-v2**
 
-**Last Updated**: 2026-04-10 (v2.1.16)
+**Last Updated**: 2026-07-12 (v3.2.0)
+
+> ⚠ 本文档主体仍停留在 v2.1.16 架构描述（v3.0 引擎重构后未全量同步）。下方变更记录保留 v3.x 修复轨迹，完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ---
 
 ## 变更记录 (Changelog)
 
 > 完整变更历史请查看 [CHANGELOG.md](./CHANGELOG.md)
+
+### 2026-07-12 (v3.2.0)
+- ✨ **Grok CLI 后端**：Grok (xAI) 成为第五个模型选项，init Step 2 / 菜单可选为前端或后端；型号可选 `grok-4.5`（500k 上下文）或 `grok-composer-2.5-fast`（Cursor 编码模型）。`/ccg:go` Builder 模式可让 Grok 全权写代码，Claude token 消耗极低。
+- ✨ **Grok 专家提示词**：7 角色全套（analyzer/architect/builder/debugger/optimizer/reviewer/tester）→ `~/.claude/.ccg/prompts/grok/`。
+- ✨ **`--grok-model` flag + `{{GROK_MODEL_FLAG}}` 模板变量**：行级感知注入，与 gemini flag 同逻辑。
+- ✨ **`ccg doctor` Grok 检查**：路由用到 grok 时检查 CLI 存在 + 登录态（auth.json 7 天过期）。
+- 🐛 **`--gemini-model` spawn 时被静默丢弃**：单任务模式 executor 重建 cfg 未带模型字段，flag 只出现在显示行、从未到达 gemini 进程。经 TaskSpec 传递修复。
+- 🐛 **parallel 模式裸 `--gemini-model <value>` 硬报错**：值掉进 extras 触发 "only --backend..." 中止。现消费值后警告忽略。
+- 🐛 **`ccg update` 重配路由丢 `geminiModel`**：现与 `grokModel` 一并保留。
+- 🔄 **Binary `5.11.1` → `5.12.0`**：grok 后端（streaming-json 解析 / `-p` 传参 / `-r` 会话恢复 / PATH + `~/.grok/bin` 回退）。
+
+### 2026-07-09 (v3.1.11)
+- ✨ **`ccg doctor` 命令**：一键环境健康检查（Node 版本、配置、命令、Hooks、Binary、Skills、Rules、MCP、Codex 模式），有问题标红。
+- ✨ **`ccg status` 命令**：安装概况（版本+更新检查、模型路由、MCP 列表、活跃任务数）。
+- ✨ **Codecov 集成**：CI 上传覆盖率到 Codecov，README 展示覆盖率 badge。
+- ✨ **项目健康文件**：新增 SECURITY.md、CODE_OF_CONDUCT.md、.node-version，package.json 补全 repository/homepage/bugs/engines。
+- ✨ **Codex 模式版本标记**：`codex-mode install` 写入 `~/.codex/.ccg-version`。
+
+### 2026-07-04 (v3.1.9)
+- ✨ **非交互 CLI 命令**：新增 `ccg codex-mode install`/`uninstall` 和 `ccg uninstall`，支持脚本/CI 无交互调用。
+- 🐛 **质量关卡 rule 用了错误的 skill 名（#148）**：`ccg-skills.md` 指示 AI 调用不带 `ccg:` 前缀的命令名，但实际注册的命令是 `/ccg:verify-security` 等。AI 按 rule 调用失败后跳过质量关卡。修复：所有引用改为带 `/ccg:` 前缀。
+
+### 2026-06-18 (v3.1.6)
+- ✨ **CodeGraph MCP 可选安装（#145）**：init Step 3 新增 `codegraph` 选项，本地代码知识图谱（调用链/影响范围/架构查询）。安装 MCP（`npx @colbymchenry/codegraph serve --mcp`）+ 写入 `ccg-codegraph.md` 使用规则。规则指示 AI 在无 `.codegraph/` 时自动 `codegraph init` 建索引，优先 `codegraph_explore` 查结构、`fast_context_search` 查语义、grep 查精确文本。
+- 🐛 **Codex 模式 AGENTS.md 缺少 `.exe` 路径替换（#147）**：`installCodexMode()` 对 AGENTS.md 只调了 `injectConfigVariables()` 没调 `replaceHomePathsInTemplate()`，Windows 上 `~/.claude/bin/codeagent-wrapper` 未替换为绝对路径 + `.exe`，Codex app 找不到 binary。
+- 🐛 **Antigravity 后端 Windows 静默无输出（#146）**：Windows 上 wrapper 把 antigravity 的 prompt 走 stdin pipe（与 gemini 相同，为避免 cmd.exe 多行截断）。但 `agy` 不读 stdin、只认 `-p` 参数，收到 `-p ""` 后直接 exit 0 无输出。修复：antigravity 在所有平台统一走 `-p` 传参；仅 gemini 在 Windows 保留 stdin pipe。
+
+### 2026-06-10 (v3.1.5)
+- 🐛 **完成的任务被误判为活跃 → 无限注入面包屑**：hooks 只认 `completed`/`archived` 为终态，但任务 `status` 是模型自由文本写入，常漂移成 `done`/`finished` 等近义词。以 `status: "done"` 收尾的任务被判为未完成，`workflow-state.js`（及 Codex 模式 `ccg-workflow.py`）持续注入面包屑。修复：判定端容错——`task-utils.js` 新增 `isTerminalStatus()`、`ccg-workflow.py` 新增 `_is_terminal_status()`，匹配一组近义终态词（completed/complete/done/finished/archived/cancelled/closed/resolved/... 大小写+空格归一）。写入端规范仍用 `completed`，读端宽容。已验证：`done` → 无活跃任务；`in_progress` → 面包屑正常。
+- 🐛 **Claude 审核后端可能卡在工具权限上（#143）**：`codeagent-wrapper` 的 claude 后端只在 `cfg.SkipPermissions` 时才加 `--dangerously-skip-permissions`，但无任何调用方传它（死代码）。gemini 后端永远带 `-y` 自主运行，claude 是唯一异类。鉴于 wrapper 只用于自主编排（审核/分析/实施），claude 后端现改为像 gemini 一样恒定绕过权限，headless 审核读 diff/文件时不再卡在权限门。binary `5.11.0` → `5.11.1`。
+- 🐛 **live output 浏览器抢占前台焦点（#139）**：macOS 用 `open <url>` 打开 SSE Web UI 会把浏览器拉到最前、打断用户当前操作。改用 `open -g` 后台打开、不抢焦点。Linux/Windows 行为不变（无可移植的后台标志）。
+
+### 2026-06-07 (v3.1.4)
+- ✨ **SubAgent 直接上下文注入**：`subagent-context.js` 的 Agent/Team spawn 分支改用 PreToolUse `updatedInput` 改写子 agent 的 `prompt`，将 `<ccg-injected-context>`（spec + task + research）直接注入子 agent。之前用 `additionalContext` 仅注入主控上下文，子 agent 读不到。好处：子 agent 出生即带 spec；角色过滤真正到达正确 agent；主控上下文更干净（减少编排幻觉）。Bash/codeagent-wrapper 分支保留 `additionalContext`（主控构造 HEREDOC，路径本就正确）。
+- ✨ **`outputHook()` 扩展**：`task-utils.js` 的 `outputHook()` 新增可选第三参数 `extra`，合并进 `hookSpecificOutput`，支持传递 `updatedInput`/`permissionDecision`。向后兼容，现有双参数调用行为不变。
+
+### 2026-06-01 (v3.1.3)
+- 🐛 **卸载残留 hooks 与 settings**：`uninstallWorkflows` 是 v3.0 引擎重构前写的，从未删除 `~/.claude/hooks/ccg/`（5 个脚本）和 `settings.json` 的 CCG hook 注册（`UserPromptSubmit`/`SessionStart`/`PreToolUse`）。现补删 hooks/ccg 目录 + 精确清理 CCG hook 注册（按 `hooks/ccg/` 命令路径识别，保留用户自有 hooks），新增 `removedHooks` 字段，装→卸载闭环测试验证。impeccable skip 经实测正常（v3 模式 `impeccable found: []`），用户本机残留 impeccable 系历次卸载不净累积。
+
+### 2026-05-30 (v3.1.2)
+- 🐛 **Codex 模式 hook 加载错目录**：`hooks.json` 用相对路径 `python3 .codex/hooks/ccg-workflow.py`，Codex 从项目目录而非用户 home 找脚本。`installCodexMode` 安装时将 `~/` 替换为绝对 home 路径写入。
+- 🐛 **Codex 模式仍调 `--backend gemini`**：`hooks/ccg-workflow.py` 硬编码 "Gemini"/`--backend gemini` 且未走 `injectConfigVariables`，叠加 antigravity 默认 + Gemini CLI 日落导致外部模型空响应。改用 `{{FRONTEND_PRIMARY}}` 占位符 + 安装时注入，AGENTS.md 描述文字同步去硬编码。
 
 ### 2026-04-10 (v2.1.16)
 - ✨ **Init 交互状态机**：`init` 重构为状态机，每步首个 list 内嵌 `← 返回上一步` 和 `× 取消` 哨兵；Step 3 MCP 因首 prompt 是 checkbox，加前导 list 守门；解决"填错要 Ctrl+C 全部重来"痛点
@@ -344,9 +388,10 @@ npx ccg-ros2-workflow menu
 | 项目 | 默认值 | 可配置 | 说明 |
 |------|--------|--------|------|
 | 语言 | 中文 | ✗ | 所有模板为中文 |
-| 前端模型 | Gemini | ✓ (v2.1.0+) | init Step 2/4 / 菜单 6 |
-| 后端模型 | Codex | ✓ (v2.1.0+) | init Step 2/4 / 菜单 6 |
+| 前端模型 | Antigravity | ✓ (v2.1.0+) | init Step 2/4 / 菜单 6，可选 gemini/codex/grok |
+| 后端模型 | Codex | ✓ (v2.1.0+) | init Step 2/4 / 菜单 6，可选 gemini/antigravity/grok |
 | Gemini 型号 | gemini-3.1-pro-preview | ✓ (v2.1.0+) | 选 gemini 时可配 |
+| Grok 型号 | grok-4.5 | ✓ (v3.2.0+) | 选 grok 时可配，代码任务可选 grok-composer-2.5-fast |
 | 协作模式 | smart | ✗ | 最佳实践 |
 | 命令数量 | 29 个 | ✗ | 全部安装 |
 

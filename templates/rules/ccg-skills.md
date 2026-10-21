@@ -2,7 +2,7 @@
 
 When working in a project, automatically invoke the corresponding quality gate skills based on the scenario below. These skills are installed at `~/.claude/skills/ccg/` and can be called directly.
 
-**IMPORTANT**: Skill names do NOT have a `ccg:` prefix. Use exactly: `verify-security`, `verify-quality`, `verify-change`, `verify-module`, `gen-docs`. Do NOT call `ccg:verify-security` — that will fail with "Unknown skill".
+**IMPORTANT**: Quality gate skills are installed as `/ccg:*` commands. Use the full prefixed name: `/ccg:verify-security`, `/ccg:verify-quality`, `/ccg:verify-change`, `/ccg:verify-module`, `/ccg:gen-docs`.
 
 ## Trigger Rules
 
@@ -11,11 +11,11 @@ When working in a project, automatically invoke the corresponding quality gate s
 When a new module/package/directory is created with source code:
 
 ```
-/gen-docs <module-path>        → Generate README.md + DESIGN.md skeleton
+/ccg:gen-docs <module-path>        → Generate README.md + DESIGN.md skeleton
   ↓ (after development)
-/verify-module <module-path>   → Check structure completeness
+/ccg:verify-module <module-path>   → Check structure completeness
   ↓
-/verify-security <module-path> → Scan for security vulnerabilities
+/ccg:verify-security <module-path> → Scan for security vulnerabilities
 ```
 
 ### Code Changes > 30 Lines
@@ -23,9 +23,9 @@ When a new module/package/directory is created with source code:
 When a single task produces code changes exceeding 30 lines:
 
 ```
-/verify-change                 → Analyze change impact, check doc sync
+/ccg:verify-change                 → Analyze change impact, check doc sync
   ↓
-/verify-quality <changed-path> → Check complexity, code smells, naming
+/ccg:verify-quality <changed-path> → Check complexity, code smells, naming
 ```
 
 ### Security-Related Changes
@@ -33,7 +33,7 @@ When a single task produces code changes exceeding 30 lines:
 When changes involve authentication, authorization, encryption, input validation, or secrets management:
 
 ```
-/verify-security <changed-path> → Scan for vulnerabilities
+/ccg:verify-security <changed-path> → Scan for vulnerabilities
 ```
 
 ### Refactoring
@@ -41,11 +41,11 @@ When changes involve authentication, authorization, encryption, input validation
 When refactoring existing code:
 
 ```
-/verify-change                  → Ensure docs reflect the refactoring
+/ccg:verify-change                  → Ensure docs reflect the refactoring
   ↓
-/verify-quality <refactored-path> → Verify quality improved
+/ccg:verify-quality <refactored-path> → Verify quality improved
   ↓
-/verify-security <refactored-path> → No new vulnerabilities introduced
+/ccg:verify-security <refactored-path> → No new vulnerabilities introduced
 ```
 
 ## Execution Rules

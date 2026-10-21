@@ -229,6 +229,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
   let frontendModels: ModelType[] = ['antigravity']
   let backendModels: ModelType[] = ['codex']
   let geminiModel = 'gemini-3.1-pro-preview'
+  let grokModel = 'grok-4.5'
   const mode: CollaborationMode = 'smart'
   let selectedWorkflows = getCoreCommandIds()
   let installMode: 'v3' | 'legacy' = 'v3'
@@ -240,6 +241,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       frontendModels = existingConfig.routing.frontend?.models || ['antigravity']
       backendModels = existingConfig.routing.backend?.models || ['codex']
       geminiModel = existingConfig.routing.geminiModel || 'gemini-3.1-pro-preview'
+      grokModel = existingConfig.routing.grokModel || 'grok-4.5'
     }
     // Preserve install mode: if existing install has legacy commands, keep them
     if (existingConfig?.workflows?.installed) {
@@ -268,6 +270,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
 
   // Grok Search MCP
   let wantGrokSearch = false
+  let wantCodeGraph = false
   let tavilyKey = ''
   let firecrawlKey = ''
   let grokApiUrl = ''
@@ -314,6 +317,8 @@ export async function init(options: InitOptions = {}): Promise<void> {
         backendModels = [eb]
       if (existingConfig.routing.geminiModel)
         geminiModel = existingConfig.routing.geminiModel
+      if (existingConfig.routing.grokModel)
+        grokModel = existingConfig.routing.grokModel
     }
     if (existingConfig?.performance?.liteMode !== undefined) {
       liteMode = existingConfig.performance.liteMode
@@ -402,6 +407,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
           { name: `Antigravity ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'antigravity' as ModelType },
           { name: 'Gemini', value: 'gemini' as ModelType },
           { name: 'Codex', value: 'codex' as ModelType },
+          { name: 'Grok', value: 'grok' as ModelType },
           ...navSentinels(canGoBack),
         ],
         default: frontendModels[0] || 'antigravity',
@@ -420,6 +426,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
           { name: `Codex ${ansis.green(`(${i18n.t('init:model.recommended')})`)}`, value: 'codex' as ModelType },
           { name: 'Antigravity', value: 'antigravity' as ModelType },
           { name: 'Gemini', value: 'gemini' as ModelType },
+          { name: 'Grok', value: 'grok' as ModelType },
         ],
         default: backendModels[0] || 'codex',
       }])
@@ -452,6 +459,34 @@ export async function init(options: InitOptions = {}): Promise<void> {
         }
         else {
           geminiModel = selectedGeminiModel
+        }
+      }
+
+      if (selectedFrontend === 'grok' || selectedBackend === 'grok') {
+        const { selectedGrokModel } = await inquirer.prompt([{
+          type: 'list',
+          name: 'selectedGrokModel',
+          message: i18n.t('init:model.selectGrokModel'),
+          choices: [
+            { name: `grok-4.5 ${ansis.green(`(${i18n.t('init:model.recommended')})`)} ${ansis.gray('— 500k context')}`, value: 'grok-4.5' },
+            { name: `grok-composer-2.5-fast ${ansis.gray('— Cursor Composer, fast coding')}`, value: 'grok-composer-2.5-fast' },
+            { name: `${i18n.t('init:model.custom')}`, value: 'custom' },
+          ],
+          default: grokModel || 'grok-4.5',
+        }])
+
+        if (selectedGrokModel === 'custom') {
+          const { customModel } = await inquirer.prompt([{
+            type: 'input',
+            name: 'customModel',
+            message: i18n.t('init:model.enterCustomModel'),
+            default: grokModel || '',
+            validate: (v: string) => v.trim() !== '' || i18n.t('init:model.enterCustomModel'),
+          }])
+          grokModel = customModel.trim()
+        }
+        else {
+          grokModel = selectedGrokModel
         }
       }
       return 'next'
@@ -492,6 +527,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       contextWeaverApiKey = ''
       wantFastContext = false
       wantGrokSearch = false
+      wantCodeGraph = false
       tavilyKey = ''
       firecrawlKey = ''
       grokApiUrl = ''
@@ -521,6 +557,10 @@ export async function init(options: InitOptions = {}): Promise<void> {
             value: 'grok-search',
           },
           {
+            name: `codegraph ${ansis.gray('— 本地代码知识图谱 (调用链/影响范围/架构)')}`,
+            value: 'codegraph',
+          },
+          {
             name: `contextweaver ${ansis.gray('— 硅基流动嵌入检索 (需 API Key)')}`,
             value: 'contextweaver',
           },
@@ -530,8 +570,10 @@ export async function init(options: InitOptions = {}): Promise<void> {
       const hasAceTool = selectedTools.includes('ace-tool')
       const hasFastContext = selectedTools.includes('fast-context')
       const hasContextWeaver = selectedTools.includes('contextweaver')
+      const hasCodeGraph = selectedTools.includes('codegraph')
       wantFastContext = hasFastContext
       wantGrokSearch = selectedTools.includes('grok-search')
+      wantCodeGraph = hasCodeGraph
 
       if (hasAceTool) {
         mcpProvider = 'ace-tool'
@@ -716,6 +758,9 @@ export async function init(options: InitOptions = {}): Promise<void> {
       if (frontendModels[0] === 'gemini' || backendModels[0] === 'gemini') {
         console.log(`  ${ansis.cyan(i18n.t('init:summary.geminiModel'))}   ${ansis.gray(geminiModel)}`)
       }
+      if (frontendModels[0] === 'grok' || backendModels[0] === 'grok') {
+        console.log(`  ${ansis.cyan(i18n.t('init:summary.grokModel'))}   ${ansis.gray(grokModel)}`)
+      }
       console.log(`  ${ansis.cyan(i18n.t('init:summary.commandCount'))}  ${ansis.yellow(workflowsCount.toString())}`)
       const mcpSummary = (() => {
         if (mcpProvider === 'fast-context')
@@ -838,6 +883,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
     },
     mode,
     geminiModel,
+    grokModel,
   }
 
   // Summary + confirmation handled by runSummaryStep() inside the state
@@ -1026,6 +1072,23 @@ export async function init(options: InitOptions = {}): Promise<void> {
         console.log()
         console.log(`    ${ansis.yellow('⚠')} grok-search MCP ${i18n.t('init:grok.installFailed')}`)
         console.log(ansis.gray(`      ${grokResult.message}`))
+      }
+    }
+
+    // Install CodeGraph MCP if requested (no API key needed — pure local)
+    if (wantCodeGraph) {
+      const cgResult = await installMcpServer(
+        'codegraph',
+        'npx',
+        ['-y', '@colbymchenry/codegraph@latest', 'serve', '--mcp'],
+      )
+      if (cgResult.success) {
+        console.log()
+        console.log(`    ${ansis.green('✓')} CodeGraph MCP ${ansis.gray('→ ~/.claude.json')}`)
+      }
+      else {
+        console.log()
+        console.log(`    ${ansis.yellow('⚠')} CodeGraph: ${ansis.gray(cgResult.message)}`)
       }
     }
 

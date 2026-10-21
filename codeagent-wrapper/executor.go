@@ -821,12 +821,14 @@ func runCodexTaskWithContext(parentCtx context.Context, taskSpec TaskSpec, backe
 	logger := injectedLogger
 
 	cfg := &Config{
-		Mode:      taskSpec.Mode,
-		Task:      taskSpec.Task,
-		SessionID: taskSpec.SessionID,
-		WorkDir:   taskSpec.WorkDir,
-		Backend:   defaultBackendName,
-		Progress:  taskSpec.Progress,
+		Mode:        taskSpec.Mode,
+		Task:        taskSpec.Task,
+		SessionID:   taskSpec.SessionID,
+		WorkDir:     taskSpec.WorkDir,
+		Backend:     defaultBackendName,
+		Progress:    taskSpec.Progress,
+		GeminiModel: taskSpec.GeminiModel,
+		GrokModel:   taskSpec.GrokModel,
 	}
 
 	commandName := codexCommand
@@ -862,8 +864,12 @@ func runCodexTaskWithContext(parentCtx context.Context, taskSpec TaskSpec, backe
 	// multi-line args in argv). On Windows: npm's .cmd wrapper routes through
 	// cmd.exe which truncates multi-line args at the first newline (Issue #129).
 	// Use stdin pipe instead and omit -p so the CLI reads from piped stdin.
-	promptDirect := useStdin && (cfg.Backend == "gemini" || cfg.Backend == "antigravity") && !isWindows()
-	promptStdinPipe := useStdin && (cfg.Backend == "gemini" || cfg.Backend == "antigravity") && isWindows()
+	// Antigravity (agy) does NOT read stdin at all — it requires -p on every
+	// platform, including Windows (#146). The cmd.exe truncation risk is
+	// accepted because a truncated prompt is better than a silent no-op.
+	// Grok is a native binary (no .cmd shim), so -p is safe on every platform.
+	promptDirect := useStdin && ((cfg.Backend == "gemini" && !isWindows()) || cfg.Backend == "antigravity" || cfg.Backend == "grok")
+	promptStdinPipe := useStdin && cfg.Backend == "gemini" && isWindows()
 	if useStdin && !promptDirect && !promptStdinPipe {
 		targetArg = "-"
 	}
