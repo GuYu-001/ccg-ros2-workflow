@@ -535,7 +535,7 @@ export async function installCodexMode(): Promise<{ success: boolean, message: s
 
     return {
       success: true,
-      message: `Codex mode installed:\n  ~/.codex/AGENTS.md\n  ~/.codex/config.toml\n  ~/.codex/hooks.json\n  ~/.codex/hooks/ccg-ros2-workflow.py\n  ~/.codex/agents/ccg-implement.toml\n  ~/.codex/agents/ccg-review.toml\n  ~/.codex/agents/ccg-research.toml`,
+      message: `Codex mode installed:\n  ~/.codex/AGENTS.md\n  ~/.codex/config.toml\n  ~/.codex/hooks.json\n  ~/.codex/hooks/ccg-workflow.py\n  ~/.codex/agents/ccg-implement.toml\n  ~/.codex/agents/ccg-review.toml\n  ~/.codex/agents/ccg-research.toml`,
     }
   }
   catch (error) {
@@ -556,7 +556,7 @@ export async function uninstallCodexMode(): Promise<{ success: boolean, removed:
     join(codexHome, 'agents', 'ccg-implement.toml'),
     join(codexHome, 'agents', 'ccg-review.toml'),
     join(codexHome, 'agents', 'ccg-research.toml'),
-    join(codexHome, 'hooks', 'ccg-ros2-workflow.py'),
+    join(codexHome, 'hooks', 'ccg-workflow.py'),
     join(codexHome, 'hooks.json'),
   ]
 
