@@ -23,15 +23,32 @@
 
 ## ♥️ Sponsor
 
+[![APIMart](assets/sponsors/apimart.jpg)](https://go.apimart.ai/gh-ccg-workflow)
+
+Thanks to [APIMart](https://go.apimart.ai/gh-ccg-workflow) for sponsoring this project! APIMart is a low-cost API platform for AI image & video generation — GPT-Image-2 from $0.006/image, 160+ images per dollar. One async API covers both image and video: submit a task, get an ID, fetch results via polling or callback. Batch tens of thousands of images without timeouts, switch models without changing code. Pay-as-you-go with no monthly fee — [sign up here](https://go.apimart.ai/gh-ccg-workflow) to get started.
+
+> 💡 APIMart also exposes an Anthropic-compatible endpoint, so it can serve as your API provider for Claude Code itself — run `npx ccg-workflow`, pick APIMart at Step 1, and paste your key.
+
+---
+
 [![Gamma Remover](assets/sponsors/gamma-remover.webp)](https://gammaremover.com/)
 
 [Gamma Remover](https://gammaremover.com/) — Free browser-local Gamma watermark remover for PDF & PPTX. No signup, instant results, 100% private. Your files never leave your device.
 
 ---
 
-[![302.AI](assets/sponsors/302.ai-en.jpg)](https://share.302.ai/oUDqQ6)
+## 🧩 Also by the author
 
-[302.AI](https://share.302.ai/oUDqQ6) is a pay-as-you-go enterprise AI resource hub that offers the latest and most comprehensive AI models and APIs on the market, along with a variety of ready-to-use online AI applications.
+**[DSH Marketplace](https://dshmarketplace.dev/)** — a directory of [DeepSeek Harness plugins](https://dshmarketplace.dev/plugins). 2,500+ indexed across 14 categories, bilingual EN / 中文.
+
+Not a sponsor — same author as CCG, built out of a plain annoyance: DSH plugins are multiplying fast, but figuring out what one does, whether it still installs, and what the command actually is meant opening one GitHub README after another. So the install commands here are put through a throwaway container first. **A plugin only gets a check mark if it really installs — and if it can't, the listing says why** (buried in a monorepo subdirectory, never published to npm, and so on). A verified index, not another awesome list.
+
+```bash
+dsh plugin --profile web add dshmarketplace-plugin   # browse the store from inside DSH
+npx dshmarketplace-cli add owner/repo                # install any plugin from your shell
+```
+
+There is also a [Python SDK](https://github.com/DshMarketPlace/dshmarketplace-py) and a [public API](https://dshmarketplace.dev/api-docs). Early days — bug reports and plugin submissions are very welcome on [GitHub](https://github.com/DshMarketPlace).
 
 ---
 
@@ -275,4 +292,4 @@ MIT
 
 ---
 
-v3.4.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.5.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)

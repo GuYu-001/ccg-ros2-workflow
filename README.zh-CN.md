@@ -23,15 +23,32 @@
 
 ## ♥️ Sponsor
 
+[![APIMart](assets/sponsors/apimart.jpg)](https://go.apimart.ai/gh-ccg-workflow)
+
+感谢 [APIMart](https://go.apimart.ai/gh-ccg-workflow) 赞助了本项目！APIMart 是专注 AI 图片/视频生成的低价 API 平台，GPT-Image-2 低至 $0.006/张，1 美元可出图 160+ 张。图片、视频一套异步 API 通吃，提交任务拿 ID、回调取结果，跑批万张不超时、换模型不改代码。按量付费、无月费，通过[此注册链接](https://go.apimart.ai/gh-ccg-workflow)注册即可开用。
+
+> 💡 APIMart 同时提供 Anthropic 原生兼容端点，可直接作为 Claude Code 的 API 提供方 —— 运行 `npx ccg-workflow` 在 Step 1 选择 APIMart，填入 Key 即可。
+
+---
+
 [![Gamma Remover](assets/sponsors/gamma-remover.webp)](https://gammaremover.com/)
 
 [Gamma Remover](https://gammaremover.com/) — 免费浏览器本地 Gamma 水印去除工具。支持 PDF 和 PPTX，无需注册，即时出结果，100% 隐私，文件不离开你的设备。
 
 ---
 
-[![302.AI](assets/sponsors/302.ai-en.jpg)](https://share.302.ai/oUDqQ6)
+## 🧩 作者的另一个项目
 
-[302.AI](https://share.302.ai/oUDqQ6) is a pay-as-you-go enterprise AI resource hub that offers the latest and most comprehensive AI models and APIs on the market, along with a variety of ready-to-use online AI applications.
+**[DSH Marketplace](https://dshmarketplace.dev/zh)** — [DeepSeek Harness 插件](https://dshmarketplace.dev/zh/plugins)目录，2500+ 插件、14 个分类，中英双语。
+
+不是广告位，和 CCG 同一个作者。做它的起因很朴素：DSH 插件涨得飞快，但想知道「这插件干什么的、现在还装不装得上、命令到底是哪一条」，还得一个个点进 GitHub README 里翻。所以这里的安装命令都会先扔进一次性容器里真跑一遍，**装得上才打勾；装不上的会直接写明原因**（埋在大仓库子目录里、压根没发 npm 包之类）。是验证过的索引，不是又一份 awesome 列表。
+
+```bash
+dsh plugin --profile web add dshmarketplace-plugin   # 装进 DSH，在 harness 里直接搜插件
+npx dshmarketplace-cli add owner/repo                # 命令行装任意插件
+```
+
+另有 [Python SDK](https://github.com/DshMarketPlace/dshmarketplace-py) 和[公开 API](https://dshmarketplace.dev/zh/api-docs)。站还很早期，欢迎去 [GitHub](https://github.com/DshMarketPlace) 提 issue 吐槽，插件作者也欢迎[自荐](https://dshmarketplace.dev/zh/submit)。
 
 ---
 
@@ -275,4 +292,4 @@ MIT
 
 ---
 
-v3.4.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.5.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)
