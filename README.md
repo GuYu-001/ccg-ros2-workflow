@@ -9,43 +9,13 @@
 [![npm version](https://img.shields.io/npm/v/ccg-ros2-workflow.svg)](https://www.npmjs.com/package/ccg-ros2-workflow)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/GuYu-001/ccg-ros2-workflow/actions/workflows/ci.yml/badge.svg)](https://github.com/GuYu-001/ccg-ros2-workflow/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/GuYu-001/ccg-ros2-workflow/graph/badge.svg)](https://codecov.io/gh/GuYu-001/ccg-ros2-workflow)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-green.svg)](https://claude.ai/code)
 [![Node](https://img.shields.io/badge/Node.js-%3E%3D20-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Follow on X](https://img.shields.io/badge/X-@CCG__Workflow-black?logo=x&logoColor=white)](https://x.com/CCG_Workflow)
-![star](https://atomgit.com/GuYu-001/ccg-ros2-workflow/star/badge.svg)
-[![Docs](https://img.shields.io/badge/Docs-ccg.fengshao1227.com-blue?style=for-the-badge&logo=readthedocs&logoColor=white)](https://ccg.fengshao1227.com/)
 [![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTEgMTdoLTJ2LTJoMnYyem0yLjA3LTcuNzVsLS45Ljkydi4wMUM0LjE3IDEyLjE3IDE0IDEzIDE0IDEzaC0yYzAtMS4xLjktMiAyLTJzMi0uOSAyLTItLjktMi0yLTJINmMwLTIuMjEgMS43OS00IDQtNGgyYzIuMjEgMCA0IDEuNzkgNCA0IDAgLjg4LS4zNiAxLjY4LS45MyAyLjI1eiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=)](https://deepwiki.com/GuYu-001/ccg-ros2-workflow)
 
-[简体中文](./README.zh-CN.md) | English | [**Documentation**](https://ccg.fengshao1227.com/)
+[简体中文](./README.zh-CN.md) | English
 
 </div>
-
-## ♥️ Sponsor
-
-[![PackyCode](assets/sponsors/packycode.png)](https://www.packyapi.ai/register?aff=m21P)
-
-Thanks to [PackyCode](https://www.packyapi.ai/register?aff=m21P) for sponsoring this project! PackyCode is a stable, high-throughput API gateway for leading models — one domain, one key, automatic failover, 97% availability. Dedicated high-speed routes for Codex and Claude Code. Pay in RMB 1:1 with no FX markup or top-up fees; new users get a first-charge discount plus $1 in free credits, and eligible groups start from 20% of list price. [Sign up here](https://www.packyapi.ai/register?aff=m21P) to get started.
-
-> 💡 PackyCode also exposes an Anthropic-compatible endpoint, so it can serve as your API provider for Claude Code itself — run `npx ccg-ros2-workflow`, pick PackyCode at Step 1, and paste your key.
-
----
-
-[![APIMart](assets/sponsors/apimart.jpg)](https://go.apimart.ai/gh-ccg-workflow)
-
-Thanks to [APIMart](https://go.apimart.ai/gh-ccg-workflow) for sponsoring this project! APIMart is a low-cost API platform for AI image & video generation — GPT-Image-2 from $0.006/image, 160+ images per dollar. One async API covers both image and video: submit a task, get an ID, fetch results via polling or callback. Batch tens of thousands of images without timeouts, switch models without changing code. Pay-as-you-go with no monthly fee — [sign up here](https://go.apimart.ai/gh-ccg-workflow) to get started.
-
-> 💡 APIMart also exposes an Anthropic-compatible endpoint, so it can serve as your API provider for Claude Code itself — run `npx ccg-ros2-workflow`, pick APIMart at Step 1, and paste your key.
-
----
-
-[![x6.ai](assets/sponsors/x6ai.png)](https://x6.ai)
-
-[x6.ai](https://x6.ai): One API key for every major model. Official-key and proxy channels, up to 90% off, free credits on sign-up. Pay with Alipay, Google Pay, Apple Pay, Visa or Mastercard.
-
-> 💡 x6.ai also exposes an Anthropic-compatible endpoint, so it can serve as your API provider for Claude Code itself — run `npx ccg-ros2-workflow`, pick x6.ai at Step 1, and paste your key.
-
----
 
 ## Choose the skills you use (v3.7.0)
 
@@ -334,10 +304,7 @@ npx ccg-ros2-workflow uninstall  # Clean uninstall
 
 ## Contact
 
-- **X (Twitter)**: [@CCG_Workflow](https://x.com/CCG_Workflow)
-- **Email**: [fengshao1227@gmail.com](mailto:fengshao1227@gmail.com)
-- **Issues**: [GitHub Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues)
-- **Community**: [Linux.do](https://linux.do)
+Please report issues through [GitHub Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues).
 
 ## Star History
 

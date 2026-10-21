@@ -9,43 +9,13 @@
 [![npm version](https://img.shields.io/npm/v/ccg-ros2-workflow.svg)](https://www.npmjs.com/package/ccg-ros2-workflow)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/GuYu-001/ccg-ros2-workflow/actions/workflows/ci.yml/badge.svg)](https://github.com/GuYu-001/ccg-ros2-workflow/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/GuYu-001/ccg-ros2-workflow/graph/badge.svg)](https://codecov.io/gh/GuYu-001/ccg-ros2-workflow)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-green.svg)](https://claude.ai/code)
 [![Node](https://img.shields.io/badge/Node.js-%3E%3D20-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Follow on X](https://img.shields.io/badge/X-@CCG__Workflow-black?logo=x&logoColor=white)](https://x.com/CCG_Workflow)
-![star](https://atomgit.com/GuYu-001/ccg-ros2-workflow/star/badge.svg)
-[![Docs](https://img.shields.io/badge/文档站-ccg.fengshao1227.com-blue?style=for-the-badge&logo=readthedocs&logoColor=white)](https://ccg.fengshao1227.com/)
 [![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTEgMTdoLTJ2LTJoMnYyem0yLjA3LTcuNzVsLS45Ljkydi4wMUM0LjE3IDEyLjE3IDE0IDEzIDE0IDEzaC0yYzAtMS4xLjktMiAyLTJzMi0uOSAyLTItLjktMi0yLTJINmMwLTIuMjEgMS43OS00IDQtNGgyYzIuMjEgMCA0IDEuNzkgNCA0IDAgLjg4LS4zNiAxLjY4LS45MyAyLjI1eiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=)](https://deepwiki.com/GuYu-001/ccg-ros2-workflow)
 
-[简体中文](./README.zh-CN.md) | [English](./README.md) | [**完整文档**](https://ccg.fengshao1227.com/)
+[简体中文](./README.zh-CN.md) | [English](./README.md)
 
 </div>
-
-## ♥️ Sponsor
-
-[![PackyCode](assets/sponsors/packycode.png)](https://www.packyapi.ai/register?aff=m21P)
-
-感谢 [PackyCode](https://www.packyapi.ai/register?aff=m21P) 赞助了本项目！PackyCode 是稳定、高效的 API 中转服务商，一句话接入主流大模型。统一域名、统一密钥、智能容灾切换，97% 可用性。人民币 1:1 充值，无汇率无手续费坑；新用户首充立享折扣 + $1 免费体验额度，多分组折扣低至 2 折起，提供专属 Codex / Claude Code 高速通道。通过[此注册链接](https://www.packyapi.ai/register?aff=m21P)注册即可开用。
-
-> 💡 PackyCode 同时提供 Anthropic 原生兼容端点，可直接作为 Claude Code 的 API 提供方 —— 运行 `npx ccg-ros2-workflow` 在 Step 1 选择 PackyCode，填入 Key 即可。
-
----
-
-[![APIMart](assets/sponsors/apimart.jpg)](https://go.apimart.ai/gh-ccg-workflow)
-
-感谢 [APIMart](https://go.apimart.ai/gh-ccg-workflow) 赞助了本项目！APIMart 是专注 AI 图片/视频生成的低价 API 平台，GPT-Image-2 低至 $0.006/张，1 美元可出图 160+ 张。图片、视频一套异步 API 通吃，提交任务拿 ID、回调取结果，跑批万张不超时、换模型不改代码。按量付费、无月费，通过[此注册链接](https://go.apimart.ai/gh-ccg-workflow)注册即可开用。
-
-> 💡 APIMart 同时提供 Anthropic 原生兼容端点，可直接作为 Claude Code 的 API 提供方 —— 运行 `npx ccg-ros2-workflow` 在 Step 1 选择 APIMart，填入 Key 即可。
-
----
-
-[![x6.ai](assets/sponsors/x6ai.png)](https://x6.ai)
-
-[x6.ai](https://x6.ai)：一个 Key 调用所有主流模型，官 Key 直连和反代双通道，最低 1 折，注册送免费额度。支持支付宝、Google Pay、Apple Pay、Visa、Mastercard。
-
-> 💡 x6.ai 同时提供 Anthropic 原生兼容端点，可直接作为 Claude Code 的 API 提供方 —— 运行 `npx ccg-ros2-workflow` 在 Step 1 选择 x6.ai，填入 Key 即可。
-
----
 
 ## 只安装需要的 Skills（v3.7.0）
 
@@ -334,10 +304,7 @@ npx ccg-ros2-workflow uninstall  # 彻底卸载
 
 ## 联系
 
-- **X (Twitter)**: [@CCG_Workflow](https://x.com/CCG_Workflow)
-- **Email**: [fengshao1227@gmail.com](mailto:fengshao1227@gmail.com)
-- **Issues**: [GitHub Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues)
-- **社区**: [Linux.do](https://linux.do)
+问题反馈请提交 [GitHub Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues)。
 
 ## Star 历史
 
