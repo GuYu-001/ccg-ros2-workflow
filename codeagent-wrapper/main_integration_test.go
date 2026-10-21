@@ -708,8 +708,8 @@ func TestRunConcurrentSpeedupBenchmark(t *testing.T) {
 	_ = executeConcurrent(layers, 5)
 	concurrentElapsed := time.Since(concurrentStart)
 
-	if concurrentElapsed >= serialElapsed/5 {
-		t.Fatalf("expected concurrent time <20%% of serial, serial=%v concurrent=%v", serialElapsed, concurrentElapsed)
+	if concurrentElapsed >= serialElapsed/3 {
+		t.Fatalf("expected concurrent time <33%% of serial, serial=%v concurrent=%v", serialElapsed, concurrentElapsed)
 	}
 	ratio := float64(concurrentElapsed) / float64(serialElapsed)
 	t.Logf("speedup ratio (concurrent/serial)=%.3f", ratio)

@@ -59,6 +59,7 @@
     "templates/prompts/claude/",
     "templates/prompts/antigravity/",
     "templates/prompts/grok/",
+    "templates/prompts/kimi/",
     "templates/output-styles/",
     "templates/skills/",
     "templates/rules/"

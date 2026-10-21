@@ -82,6 +82,7 @@ When the user is working with a specific programming language, read the correspo
 | C / C++ | `~/.claude/skills/ccg/domains/development/cpp.md` |
 | Shell / Bash | `~/.claude/skills/ccg/domains/development/shell.md` |
 
+
 ## Routing Rules
 
 1. **Keyword match is fuzzy** — match on intent, not exact string. "How to do SQL injection testing" triggers `pentest.md`.
