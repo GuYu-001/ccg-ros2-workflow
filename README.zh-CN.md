@@ -23,34 +23,58 @@
 
 ## ♥️ Sponsor
 
+[![PackyCode](assets/sponsors/packycode.png)](https://www.packyapi.ai/register?aff=m21P)
+
+感谢 [PackyCode](https://www.packyapi.ai/register?aff=m21P) 赞助了本项目！PackyCode 是稳定、高效的 API 中转服务商，一句话接入主流大模型。统一域名、统一密钥、智能容灾切换，97% 可用性。人民币 1:1 充值，无汇率无手续费坑；新用户首充立享折扣 + $1 免费体验额度，多分组折扣低至 2 折起，提供专属 Codex / Claude Code 高速通道。通过[此注册链接](https://www.packyapi.ai/register?aff=m21P)注册即可开用。
+
+> 💡 PackyCode 同时提供 Anthropic 原生兼容端点，可直接作为 Claude Code 的 API 提供方 —— 运行 `npx ccg-ros2-workflow` 在 Step 1 选择 PackyCode，填入 Key 即可。
+
+---
+
 [![APIMart](assets/sponsors/apimart.jpg)](https://go.apimart.ai/gh-ccg-workflow)
 
 感谢 [APIMart](https://go.apimart.ai/gh-ccg-workflow) 赞助了本项目！APIMart 是专注 AI 图片/视频生成的低价 API 平台，GPT-Image-2 低至 $0.006/张，1 美元可出图 160+ 张。图片、视频一套异步 API 通吃，提交任务拿 ID、回调取结果，跑批万张不超时、换模型不改代码。按量付费、无月费，通过[此注册链接](https://go.apimart.ai/gh-ccg-workflow)注册即可开用。
 
-> 💡 APIMart 同时提供 Anthropic 原生兼容端点，可直接作为 Claude Code 的 API 提供方 —— 运行 `npx ccg-workflow` 在 Step 1 选择 APIMart，填入 Key 即可。
+> 💡 APIMart 同时提供 Anthropic 原生兼容端点，可直接作为 Claude Code 的 API 提供方 —— 运行 `npx ccg-ros2-workflow` 在 Step 1 选择 APIMart，填入 Key 即可。
 
 ---
 
-[![Gamma Remover](assets/sponsors/gamma-remover.webp)](https://gammaremover.com/)
+[![x6.ai](assets/sponsors/x6ai.png)](https://x6.ai)
 
-[Gamma Remover](https://gammaremover.com/) — 免费浏览器本地 Gamma 水印去除工具。支持 PDF 和 PPTX，无需注册，即时出结果，100% 隐私，文件不离开你的设备。
+[x6.ai](https://x6.ai)：一个 Key 调用所有主流模型，官 Key 直连和反代双通道，最低 1 折，注册送免费额度。支持支付宝、Google Pay、Apple Pay、Visa、Mastercard。
+
+> 💡 x6.ai 同时提供 Anthropic 原生兼容端点，可直接作为 Claude Code 的 API 提供方 —— 运行 `npx ccg-ros2-workflow` 在 Step 1 选择 x6.ai，填入 Key 即可。
 
 ---
 
-## 🧩 作者的另一个项目
+## 只安装需要的 Skills（v3.7.0）
 
-**[DSH Marketplace](https://dshmarketplace.dev/zh)** — [DeepSeek Harness 插件](https://dshmarketplace.dev/zh/plugins)目录，2500+ 插件、14 个分类，中英双语。
-
-不是广告位，和 CCG 同一个作者。做它的起因很朴素：DSH 插件涨得飞快，但想知道「这插件干什么的、现在还装不装得上、命令到底是哪一条」，还得一个个点进 GitHub README 里翻。所以这里的安装命令都会先扔进一次性容器里真跑一遍，**装得上才打勾；装不上的会直接写明原因**（埋在大仓库子目录里、压根没发 npm 包之类）。是验证过的索引，不是又一份 awesome 列表。
+Skills 可以独立安装，也可以在 CCG 初始化向导里选择。每个选中的技能都有一个 `ccg-` 原生入口，脚本和参考资料保存在版本化源码缓存里。
 
 ```bash
-dsh plugin --profile web add dshmarketplace-plugin   # 装进 DSH，在 harness 里直接搜插件
-npx dshmarketplace-cli add owner/repo                # 命令行装任意插件
+npx ccg-ros2-workflow skills catalog
+npx ccg-ros2-workflow skills install verify-quality ros2-control
+npx ccg-ros2-workflow skills list --installed --json
+npx ccg-ros2-workflow skills update
+npx ccg-ros2-workflow skills remove ros2-control
+# 装入 Codex 原生 Skills
+npx ccg-ros2-workflow skills install verify-quality --target codex
+# 给完整框架保存按需选择
+npx ccg-ros2-workflow init --skills verify-quality,verify-security
+npx ccg-ros2-workflow doctor --json
 ```
 
-另有 [Python SDK](https://github.com/DshMarketPlace/dshmarketplace-py) 和[公开 API](https://dshmarketplace.dev/zh/api-docs)。站还很早期，欢迎去 [GitHub](https://github.com/DshMarketPlace) 提 issue 吐槽，插件作者也欢迎[自荐](https://dshmarketplace.dev/zh/submit)。
+Claude Code 使用 `/ccg-verify-quality`，Codex 使用 `$ccg-verify-quality`。管理器只暴露选中的入口，保留完整资源依赖，遇到归属冲突会拒绝覆盖，修改过的缓存也会保留。菜单新增 **S. Skills 管理**、**V. 环境诊断**。重装沿用最新选择；`--skills all` 选择完整目录，`--skills none` 为空选择。已有全量安装可继续使用兼容模式。
 
----
+`doctor --json` 输出带 schema 版本的检查报告，包括 check ID、状态、修复指引和失败/警告数量。它识别真实 Claude/Codex/Skills-only 模式，检查所选后端（包括审查路由）、Hook 注册和受管技能；失败退出码为 1。版本和文件检查验证配置状态，不调用模型，也不代表厂商 API 可用性验证。
+
+独立 Codex 模式检查自身 CLI、配置和已安装文件；共享 Claude 路由配置为可选，缺少外部模型委派工具时给出警告和安装指引。
+
+模型动作 Hook 跟随实际路由和具体型号，同一后端只调用一次；纯 Claude 配置使用原生 Agent。原生模式按需发现技能，兼容模式的知识片段有固定大小上限。
+
+### Claude 规划，OpenCode / DeepSeek 实施
+
+先在 OpenCode 用 `/connect` 配好 provider，再运行 `opencode models`（DeepSeek 可用 `opencode models deepseek`）查询实际型号。在 CCG 模型菜单选择 **OpenCode** 并填写对应的 `provider/model`。Claude Code 继续负责主控，worker 通过已有 wrapper 执行；改路由、重装和更新都会保留型号，CCG 不接管 provider 凭据。
 
 ## CCG-ROS2 是什么？
 
@@ -221,6 +245,8 @@ claude plugin install ccg@ccg
 npx ccg-ros2-workflow                          # 交互式菜单
 npx ccg-ros2-workflow init                     # 4 步安装向导
 npx ccg-ros2-workflow doctor                   # 环境健康检查
+npx ccg-ros2-workflow doctor --json            # 机器可读的诊断报告
+npx ccg-ros2-workflow skills list              # 查看目录与原生选择
 npx ccg-ros2-workflow status                   # 安装概况
 npx ccg-ros2-workflow codex-mode install       # 安装 Codex 主导模式
 npx ccg-ros2-workflow codex-mode uninstall     # 卸载 Codex 主导模式
@@ -235,7 +261,9 @@ npx ccg-ros2-workflow diagnose-mcp             # 诊断 MCP 问题
 ~/.claude/
 ├── commands/ccg/          # 斜杠命令
 ├── hooks/ccg/             # Hook 脚本（5 个文件）
-├── skills/ccg/            # 质量关卡 + 100+ 域知识
+├── skills/ccg/            # 兼容模式的全量技能
+├── skills/ccg-<slug>      # 已选择的原生技能入口
+├── .ccg-skills/           # 原生选择清单与资源缓存
 ├── rules/                 # 自动触发规则
 ├── .ccg/
 │   ├── config.toml        # 模型路由、MCP、性能配置
@@ -264,7 +292,7 @@ npx ccg-ros2-workflow uninstall  # 彻底卸载
 
 ## 致谢
 
-- [cexll/myclaude](https://github.com/cexll/myclaude) — codeagent-wrapper 灵感来源
+- [stellarlinkco/myclaude](https://github.com/stellarlinkco/myclaude) — codeagent-wrapper 灵感来源
 - [UfoMiao/zcf](https://github.com/UfoMiao/zcf) — Git 工具参考
 - [mindfold-ai/Trellis](https://github.com/mindfold-ai/Trellis) — Hook 状态注入模式
 - [ace-tool](https://linux.do/t/topic/1344562) — MCP 代码检索
@@ -305,4 +333,4 @@ MIT
 
 ---
 
-v3.6.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.7.2-ros2.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)

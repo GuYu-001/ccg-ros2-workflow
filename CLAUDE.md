@@ -2,7 +2,7 @@
 
 > [根目录](../CLAUDE.md) > **skills-v2**
 
-**Last Updated**: 2026-08-28 (v3.6.0)
+**Last Updated**: 2026-10-18 (v3.7.2)
 
 > ⚠ 本文档主体仍停留在 v2.1.16 架构描述（v3.0 引擎重构后未全量同步）。下方变更记录保留 v3.x 修复轨迹，完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -11,6 +11,59 @@
 ## 变更记录 (Changelog)
 
 > 完整变更历史请查看 [CHANGELOG.md](./CHANGELOG.md)
+
+### 2026-10-18 (v3.7.2)
+- ✨ **x6.ai 赞助商**：README Banner（置于 PackyCode / APIMart 之下）+ `init` Step 1 / 菜单 API 配置新选项，`ANTHROPIC_BASE_URL=https://api.x6.ai`（**不带** `/v1`）。Codex `[model_providers.x6ai]`，`base_url=https://api.x6.ai/v1`（**带** `/v1`），`env_key=X6AI_API_KEY`，注册与启用分离。只在 `src/utils/sponsors.ts` 加了一项，其余全部遍历注册表。
+- 🗑️ **Gamma Remover 下架**：README Banner 与 `assets/sponsors/gamma-remover.webp` 移除。
+
+### 2026-10-12 (v3.7.1)
+- 🐛 **新装 CLI 的 JSON 输出**：显式关闭兼容 i18next 新版的 support notice，避免赞助 banner 污染 `skills --json`、`doctor --json` 和版本输出。
+
+### 2026-10-12 (v3.7.0)
+- ✨ **Skills 按需管理**：新增 `ccg skills catalog/list/install/update/remove` 与菜单 S；Claude/Codex 原生 `ccg-*` 入口，immutable source cache、归属清单、写锁、事务回滚；脚本与参考依赖保留，入口只暴露所选技能。
+- ✨ **原生选择持久化**：初始化支持兼容/核心六项/自定义及 `--skills all|none|names`；重装优先读取当前 manifest，显式 legacy 模式可持久切回。
+- ✨ **诊断 JSON**：`doctor --json` 输出稳定 schema/checks/remediation/计数，失败退出 1；按真实 Claude/Codex/Skills-only 模式检查所选路由、Hook 和技能。
+- 🐛 **工作流闭环**：Hooks 配置安全注入，跟随实际后端及具体模型，单后端去重、纯 Claude 用原生 Agent；native 不重复注入旧知识，legacy 片段有大小预算。ESM 项目中的 Hook/skill scripts 有 CommonJS 边界。
+- 🐛 **配置和更新**：OpenCode provider/model 在 init/menu/重装保留；模型菜单复用本地 init；任一安装错误返回失败，不再让更新误清旧备份。
+
+### 2026-10-12 (v3.6.8)
+- 🐛 **dsh 0.2 插件适配（#163 / #165）**：删除失效的 settings 导出依赖，使用 Loader volatile Config 和 profile 表单读写；设置卡迁移到 `settings.plugins.tab`，browser inject 改为 `dsh-client-ui-renderer`。
+- 🐛 **两代委派接口兼容**：rc2 保留旧启动接口，alpha 使用 activation；模型群等待 caller 结果、检查完成状态并清理，队友通过 parent 完成通知交付。运行状态改读直接子级列表。
+- 🐛 **配置与安装结果**：修订号拒绝并发覆盖，非法矩阵在 Loader 提交前拒绝；安装器跟随目标 DSH_HOME 并链接稳定源码副本，链接失败不再报安装成功，Windows cmd shim 使用安全参数。
+- 🔄 **兼容范围**：dsh-ccg 0.5.0 支持 dsh 0.2.0-rc.2 / 0.2.1-alpha.2，不再支持旧 0.1.x；更新后重新运行 `ccg dsh install` 并重启 dsh。
+
+### 2026-09-15 (v3.6.7)
+- 🐛 **npm 扫描 hold：** tarball 不再含 `templates/skills/domains/security/`（红队/渗透笔记）。3.6.5/3.6.6 的 PUT 成功但永不 GET。文件仍在 git。
+
+### 2026-09-15 (v3.6.6)
+- 🔄 **重发 3.6.5。** 3.6.5 被 npm 暂存后从未 GET 得到（PUT 409 previously staged，owner 也 404）。功能与 3.6.5 相同。**此号同样未上线。**
+
+### 2026-09-15 (v3.6.5)
+- ✨ **PackyCode 赞助商**：README Banner（置于 APIMart 之上）+ `init` Step 1 / 菜单 API 配置新选项。自动填 `ANTHROPIC_BASE_URL=https://cf.api.fan`（**不带** `/v1`），用户只填 Key。注册链接 `https://www.packyapi.ai/register?aff=m21P`。
+- ✨ **Codex CLI 接入 PackyCode**：`[model_providers.packycode]`，`base_url=https://cf.api.fan/v1`（**带** `/v1`），`env_key=PACKYCODE_API_KEY`。注册与启用分离，启用默认否。`codex-mode install` 静默注册；卸载只摘自己那张表，不误伤 APIMart。
+- ✨ **赞助商表 `src/utils/sponsors.ts`**：一家一个对象。init / 菜单 / Codex 注册 / 卸载全遍历它，再加一家只改这一处 + README Banner。
+- ✅ `installer-codex-api.test.ts` 改测注册表 + 通用 API。
+
+### 2026-09-03 (v3.6.4)
+- 🐛 **dsh-ccg 让新版 harness 的整个 Web UI 打不开**（#162）：插件配置页把 `settings.plugin.item` 从 `list` 改声明为 `keyed`（按卡片编辑的 settings 命名空间派发）。**插槽注册缺了它那个 kind 要求的选项会抛异常，而异常吃掉的是整条 loader entry** —— 不是少个卡片，是设置卡片 + 面板视图 + 团队条一起没，页面只剩 `Failed to load plugins`。修法是一份注册**同时带 `key` 和 `id`**：两种 kind 各读各的、忽略对方的。⚠ 新版 harness 已把**全部** settings 命名空间发给浏览器（`settings.describe({redactSecrets:true})` 不再过白名单）——这正是插槽改 keyed 的动机，也意味着第三方插件的卡片终于能被派发到。
+- 🐛 **`ccg doctor` 永远报 `✗ Binary Not found`**（#161，报告人已完整定位）：`dist/cli.mjs` 是 ESM 且无 `createRequire` shim，而 `execSafe()` 里是 CommonJS `require('node:child_process')` → `ReferenceError` 被 `catch` 吞掉 → 返回 `null` → 调用方读作「没装」。**全平台、重装无用**。实际影响 6 处调用（binary / opencode / kimi / grok 检测 + `status` 的版本检查），比 issue 描述的更广。
+- 🐛 **`ccg dsh install` 无视 `DSH_HOME`**（自测发现）：harness 自己就靠这个变量换 home，安装器却写死 `~/.dsh` —— 设了该变量的用户会拿到一次「安装成功」，插件却躺在一个没人启动的 home 里。
+- ✅ **3 组回归测试**（主包 191 → 197，插件 112 → 116）。其中 `esm-only.test.ts` 扫 `src/**` 拦 CommonJS 全局；插件侧 `client-slots.test.mjs` **用真实 slots 运行时**验证同一份注册在两种 kind 声明下都成立、拆掉任一半都会抛。修复已在独立 `DSH_HOME` + dsh `0.1.1-rc.2` 下**实机复现并验证**。
+
+### 2026-08-29 (v3.6.3)
+- 🐛 **`/ccg:codex-exec` 被 v3.6.0 自己的性能优化打断**（魔尊追问「codex 实施模式没 MCP 怎么搞」查出）：该命令的全部前提是「Claude 不做检索，{{BACKEND_PRIMARY}} 全权执行含 MCP 搜索」，载荷里点名 ace-tool / context7 / grok-search；而 v3.6.0 让 wrapper 默认禁用子代理 MCP（`-c mcp_servers={}`），**全仓库没有任何模板传 `--with-mcp`**。结果：子代理被要求用它看不到的工具，**且不报错** —— 检索不到就照样往下写。现三处**执行者**调用加 flag；**审核**（只读 diff、禁改文件）与**修正**（按 file:line）不加，不白付启动开销。
+- ✅ **3 例回归测试** `subagent-mcp.test.ts`（188 → 191），删掉 flag 会红（已验证）。⚠ **通用教训：改 wrapper 默认行为前，先 grep 模板里有没有依赖旧默认的载荷** —— 两半分别住在 Go 和 Markdown 里，除了测试没东西连得起来。
+
+### 2026-08-29 (v3.6.2)
+- ✨ **CCG 落地 DeepSeek Harness**：`dsh-ccg/` 进仓库并**随主包一起发**（`files` 加 7 条白名单，不含 test/）。七个角色委派工具各跑各的模型；一个角色挂多模型即成**模型群**（同一简报、独立作答、**答案在对话流里并排渲染**，不投票不平均）；`ccg_team` 把角色雇成**常驻队友**（跨轮次存活、独占文件、撞车直接拒绝、每次雇人先走 harness 原生 `userQuestions` 请用户批准）。另有持久所有权（存储域）+ 项目记忆（`.ccg/memory.md`）+ 四档分诊。全程 provider API，无外部 CLI。插件自身 112 单测。
+- ✨ **入口两个**：菜单「其他工具」组新增 `D. DeepSeek Harness`；命令 `ccg dsh <install|uninstall|list> [--profile x]`。
+- 🔄 **新模块 `src/utils/installer-dsh.ts`** + 12 单测（总 176 → 188）。⚠ 两个易错点已在代码注释里锁死：**必须把插件拷到 `~/.dsh/ccg/dsh-ccg`**（指 PACKAGE_ROOT 会在 npx 缓存被清后失效）；**profile 要 `dependencies` 和 `dsh.profile.bundles` 两半**才加载，而 `pnpm add` 只写前者，且 bundles 只能追加不能插入（顺序即 patch 分层）。
+- 📌 **不单独发 npm**：`publish-dsh-ccg.yml` 完整可用但只留手动触发，反悔改一行，步骤见下方专章。
+
+### 2026-08-28 (v3.6.1)
+- ✨ **帮配 Gemini CLI 第三方 API**（用户反馈：没 Google 账号想用中转但不会配）：init Step 1 末尾 confirm + 菜单 API 配置新选项。新模块 `src/utils/installer-gemini-api.ts` 把 `GOOGLE_GEMINI_BASE_URL`/`GEMINI_API_KEY`（+可选 `GEMINI_MODEL`）以受管块写入 shell rc（zsh/bash/fish 按 `$SHELL` 识别，Windows `setx`），幂等可清除。gemini 见 base URL 自动 `AuthType.GATEWAY`，免登录。
+- 📌 **实测硬约束**：gemini-cli 0.53.1 **已移除 .env 加载**（`~/.gemini/.env`、项目 `.env` 全不读，settings.json 无 env 字段，headless 缺配置报 "Invalid auth method selected"）——进程环境变量是唯一通路。网关必须 Gemini 原生协议（`/v1beta/`），OpenAI 中转 404。E2E：真实函数写 rc → zsh source → 真 gemini 请求命中本地假网关（path+key 全对）。
+- ✅ 新增 10 例测试（`installer-gemini-api.test.ts`），总 176。
 
 ### 2026-08-28 (v3.6.0)
 - ⚡ **codex / gemini 子代理免 MCP 冷启动**：wrapper 默认给 codex 注入 `-c mcp_servers={}`、给 gemini 注入 `--allowed-mcp-server-names __ccg_none__`。子代理用不上 MCP（Claude 才是编排者），但 CCG 自己的 `syncMcpToCodex/Gemini` 会把服务器镜像进两家配置——等于自己制造的每次调用连接税（9 server ≈ 25s，v3.3.0 同型实测；本机 3 server 实测 codex "hi" 9.2s → 7.5s）。`--with-mcp` 恢复，与 grok/kimi 影子 HOME 同一开关，new/resume/parallel 全生效。E2E 验证三形状（新会话/resume/逃生门）。
@@ -729,7 +782,9 @@ npm http fetch POST <码> https://registry.npmjs.org/-/npm/v1/oidc/token/exchang
 
 ⚠ 普通日志级别看不到这行，这是区分「workflow 配错」和「npm 后台没配」的唯一依据。
 ⚠ **provenance 签名成功 ≠ npm 认证成功** —— 那走 Sigstore，与 npm 认证是两条独立路径，极易误判。
-⚠ Node 22 自带 npm 10.x 无 OIDC 支持，workflow 里的 `npm install -g npm@latest`（需 ≥ 11.5.1）不可删。
+⚠ Node 22 自带 npm 10.x 无 OIDC 支持，workflow 里必须先升到 npm 11（`npm install -g npm@11`，需 ≥ 11.5.1）。**不要用 `npm@latest`**。
+⚠ **自 2026-07-28 起 npm 发布后要过恶意扫描才可 GET**（通常约 5 分钟，高峰可 15 分钟以上）。`+ pkg@version` 只表示已暂存。再 PUT 同一版本会 409 `Cannot publish over previously staged version`，**不要因此升版本号**。publish.yml 把这条 409 当已暂存，再轮询 `npm view` 最多 15 分钟。若更久仍 404，去查维护者邮箱是否被 hold/block。
+https://github.blog/changelog/2026-07-28-npm-publish-time-malware-scanning-and-dual-use-metadata/
 
 npm 网页的 README 有服务端渲染缓存，发布后要等一会儿才更新（无痕也绕不过）；
 想立刻确认内容用 `npm view ccg-workflow readme | head -20` 直接读 registry。

@@ -7,8 +7,10 @@ When the user's request matches trigger keywords below, automatically READ the c
 ## Security Domain (`domains/security/`) — NOT installed by default
 
 > Security domain files contain red team/pentest reference content that may trigger antivirus false positives.
-> They are NOT installed by default. To enable, manually copy from the npm package:
-> `cp -r $(npm root -g)/ccg-ros2-workflow/templates/skills/domains/security/ ~/.claude/skills/ccg/domains/security/`
+> They are NOT installed by default, and they are **not in the npm tarball**
+> (npm's publish-time scanner holds packages that ship them). To enable, copy
+> from the GitHub repo:
+> `git clone --depth 1 https://github.com/GuYu-001/ccg-ros2-workflow.git /tmp/ccg && cp -r /tmp/ccg/templates/skills/domains/security ~/.claude/skills/ccg/domains/security`
 
 | Trigger Keywords | Skill File | Description |
 |------------------|-----------|-------------|
@@ -82,6 +84,24 @@ When the user is working with a specific programming language, read the correspo
 | C / C++ | `~/.claude/skills/ccg/domains/development/cpp.md` |
 | Shell / Bash | `~/.claude/skills/ccg/domains/development/shell.md` |
 
+
+## Data Engineering Domain (`domains/data-engineering/`)
+
+| Trigger Keywords | Skill File |
+|------------------|-----------|
+| data pipeline, ETL, Airflow, Dagster, Prefect, Kafka Streams, Flink, Spark Streaming, dbt, data quality, Great Expectations, 数据管道, 流处理, 数据质量 | `~/.claude/skills/ccg/domains/data-engineering/SKILL.md` |
+
+## Infrastructure Domain (`domains/infrastructure/`)
+
+| Trigger Keywords | Skill File |
+|------------------|-----------|
+| Helm, Kustomize, Operator, CRD, GitOps, ArgoCD, Flux, IaC, Terraform, Pulumi, CDK, infrastructure as code, 基础设施即代码 | `~/.claude/skills/ccg/domains/infrastructure/SKILL.md` |
+
+## Mobile Domain (`domains/mobile/`)
+
+| Trigger Keywords | Skill File |
+|------------------|-----------|
+| iOS, Android, SwiftUI, UIKit, Jetpack Compose, Kotlin mobile, React Native, Flutter, mobile app, 移动开发, 跨平台开发 | `~/.claude/skills/ccg/domains/mobile/SKILL.md` |
 
 ## Routing Rules
 

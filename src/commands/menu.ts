@@ -11,10 +11,13 @@ import { parse as parseTOML } from 'smol-toml'
 import { version } from '../../package.json'
 import { configMcp } from './config-mcp'
 import { i18n } from '../i18n'
-import { installCodexMode, uninstallCodexMode, uninstallWorkflows } from '../utils/installer'
+import { configureGeminiCliApi, getSponsor, installCodexMode, promptSponsorMenuKey, removeGeminiCliApi, sponsorInquirerChoices, uninstallCodexMode, uninstallWorkflows } from '../utils/installer'
 import { readCcgConfig, writeCcgConfig } from '../utils/config'
 import { init } from './init'
 import { update } from './update'
+import { manageSkillsMenu } from './skills'
+import { doctor } from './doctor'
+import { promptOpencodeModel } from '../utils/model-selection'
 import { isWindows } from '../utils/platform'
 
 const execAsync = promisify(exec)
@@ -174,6 +177,8 @@ export async function showMainMenu(): Promise<void> {
         item('C', i18n.t('menu:options.installClaude'), isZh ? '安装/重装 CLI' : 'Install/reinstall CLI'),
 
         groupSep('CCG'),
+        item('S', isZh ? 'Skills 管理' : 'Manage Skills', isZh ? '按需安装、更新与移除技能' : 'Select, update and remove skills'),
+        item('V', isZh ? '环境诊断' : 'Doctor', isZh ? '检查安装模式、模型路由与技能' : 'Check modes, routing and skills'),
         item('H', i18n.t('menu:options.help'), isZh ? '查看全部斜杠命令' : 'View all slash commands'),
         item('-', i18n.t('menu:options.uninstall'), isZh ? '移除 CCG 配置' : 'Remove CCG config'),
 
@@ -215,6 +220,12 @@ export async function showMainMenu(): Promise<void> {
         break
       case 'H':
         showHelp()
+        break
+      case 'S':
+        await manageSkillsMenu()
+        break
+      case 'V':
+        await doctor()
         break
       case 'Q':
         console.log()
@@ -340,10 +351,75 @@ async function configApi(): Promise<void> {
     choices: [
       { name: `${ansis.green('●')} ${i18n.t('menu:api.officialOption')}`, value: 'official' },
       { name: `${ansis.cyan('●')} ${i18n.t('menu:api.thirdPartyOption')}`, value: 'thirdparty' },
-      { name: `${ansis.yellow('★')} ${i18n.t('menu:api.sponsorAPIMart')} ${ansis.gray('— https://go.apimart.ai/gh-ccg-workflow')}`, value: 'apimart' },
+      ...sponsorInquirerChoices(),
+      { name: `${ansis.magenta('●')} ${i18n.t('init:api.geminiCliOption')}`, value: 'gemini-cli' },
     ],
   }])
 
+  // Gemini CLI gateway lives in ~/.gemini/.env, not Claude Code's
+  // settings.json — handle it as its own flow and return early so the
+  // ANTHROPIC_* writing below never runs for this choice.
+  if (apiProvider === 'gemini-cli') {
+    const { action } = await inquirer.prompt([{
+      type: 'list',
+      name: 'action',
+      message: i18n.t('init:api.geminiCliActionPrompt'),
+      choices: [
+        { name: `${ansis.green('●')} ${i18n.t('init:api.geminiCliConfigureOption')}`, value: 'configure' },
+        { name: `${ansis.gray('○')} ${i18n.t('init:api.geminiCliRemoveOption')}`, value: 'remove' },
+      ],
+    }])
+
+    if (action === 'remove') {
+      const removed = await removeGeminiCliApi()
+      console.log()
+      console.log(removed.success
+        ? ansis.green(`  ✓ ${i18n.t('init:api.geminiCliRemoved')}`)
+        : ansis.yellow(`  ! ${removed.message}`))
+      return
+    }
+
+    console.log(`    ${ansis.yellow('!')} ${i18n.t('init:api.geminiCliProtocolHint')}`)
+    const answers = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'url',
+        message: `${i18n.t('init:api.geminiCliUrlPrompt')} ${ansis.gray(`(${i18n.t('menu:api.urlRequired')})`)}`,
+        validate: (v: string) => v.trim() !== '' || i18n.t('menu:api.enterUrl'),
+      },
+      {
+        type: 'password',
+        name: 'key',
+        message: `Gemini API Key ${ansis.gray(`(${i18n.t('menu:api.keyRequired')})`)}`,
+        mask: '*',
+        validate: (v: string) => v.trim() !== '' || i18n.t('menu:api.enterKey'),
+      },
+      {
+        type: 'input',
+        name: 'model',
+        message: i18n.t('init:api.geminiCliModelPrompt'),
+      },
+    ])
+    const result = await configureGeminiCliApi({
+      baseUrl: answers.url.trim(),
+      apiKey: answers.key.trim(),
+      model: answers.model?.trim() || undefined,
+    })
+    console.log()
+    if (result.success) {
+      console.log(ansis.green(`  ✓ ${i18n.t('init:api.geminiCliSaved')}`))
+      if (result.rcPath)
+        console.log(ansis.gray(`    ${i18n.t('common:configFile')}: ${result.rcPath}`))
+      if (result.needsReload)
+        console.log(ansis.gray(`    ${i18n.t('init:api.geminiCliReloadHint')}`))
+    }
+    else {
+      console.log(ansis.yellow(`  ! ${result.message}`))
+    }
+    return
+  }
+
+  const sponsor = getSponsor(apiProvider)
   if (apiProvider === 'official') {
     // Clear third-party config, let Claude Code use official auth
     if (!settings.env)
@@ -352,23 +428,13 @@ async function configApi(): Promise<void> {
     delete settings.env.ANTHROPIC_AUTH_TOKEN
     delete settings.env.ANTHROPIC_API_KEY
   }
-  else if (apiProvider === 'apimart') {
-    console.log()
-    console.log(`    ${ansis.yellow('★')} ${i18n.t('menu:api.sponsorAPIMartGetKey')}: ${ansis.cyan.underline('https://go.apimart.ai/gh-ccg-workflow')}`)
-    console.log()
-    const { key } = await inquirer.prompt([{
-      type: 'password',
-      name: 'key',
-      message: `APIMart API Key ${ansis.gray(`(${i18n.t('menu:api.keyRequired')})`)}`,
-      mask: '*',
-      validate: (v: string) => v.trim() !== '' || i18n.t('menu:api.enterKey'),
-    }])
-
+  else if (sponsor) {
+    const key = await promptSponsorMenuKey(sponsor)
     if (!settings.env)
       settings.env = {}
     // No /v1 suffix: Claude Code appends /v1/messages to ANTHROPIC_BASE_URL itself.
-    settings.env.ANTHROPIC_BASE_URL = 'https://api.apimart.ai'
-    settings.env.ANTHROPIC_AUTH_TOKEN = key.trim()
+    settings.env.ANTHROPIC_BASE_URL = sponsor.anthropicBaseUrl
+    settings.env.ANTHROPIC_AUTH_TOKEN = key
     delete settings.env.ANTHROPIC_API_KEY
   }
   else {
@@ -448,6 +514,10 @@ const OUTPUT_STYLES = [
 async function configModelRouting(): Promise<void> {
   const config = await readCcgConfig()
   const isZh = (config?.general?.language || 'zh-CN') === 'zh-CN'
+  if (!config) {
+    console.log(isZh ? '请先运行 ccg-ros2-workflow init 初始化配置。' : 'Run ccg-ros2-workflow init before changing routing.')
+    return
+  }
 
   console.log()
   console.log(ansis.cyan.bold(`  ${i18n.t('init:model.title')}`))
@@ -459,6 +529,7 @@ async function configModelRouting(): Promise<void> {
   const currentGeminiModel = config?.routing?.geminiModel || 'gemini-3.1-pro-preview'
   const currentGrokModel = config?.routing?.grokModel || 'grok-4.5'
   const currentKimiModel = config?.routing?.kimiModel || ''
+  const currentOpencodeModel = config?.routing?.opencodeModel || ''
 
   console.log(ansis.gray(`  ${i18n.t('init:model.currentRouting')}:`))
   console.log(`  ${ansis.cyan('Frontend:')} ${ansis.green(currentFrontend)}`)
@@ -564,7 +635,11 @@ async function configModelRouting(): Promise<void> {
   }
 
   // Check if anything changed
-  if (selectedFrontend === currentFrontend && selectedBackend === currentBackend && geminiModel === currentGeminiModel && grokModel === currentGrokModel) {
+  let opencodeModel = currentOpencodeModel
+  if (selectedFrontend === 'opencode' || selectedBackend === 'opencode') {
+    opencodeModel = await promptOpencodeModel(currentOpencodeModel, isZh)
+  }
+  if (selectedFrontend === currentFrontend && selectedBackend === currentBackend && geminiModel === currentGeminiModel && grokModel === currentGrokModel && opencodeModel === currentOpencodeModel) {
     console.log(ansis.gray(`  ${i18n.t('common:configNotModified')}`))
     return
   }
@@ -588,6 +663,7 @@ async function configModelRouting(): Promise<void> {
     config.routing.geminiModel = geminiModel
     config.routing.grokModel = grokModel
     config.routing.kimiModel = currentKimiModel
+    config.routing.opencodeModel = opencodeModel
     await writeCcgConfig(config)
   }
 
@@ -596,17 +672,21 @@ async function configModelRouting(): Promise<void> {
 
   // Reinstall templates with new config
   const spinner = ora(i18n.t('init:model.reinstalling')).start()
+  const previousExitCode = process.exitCode
   try {
-    const { execSync } = await import('node:child_process')
-    execSync('npx --yes ccg-ros2-workflow init --force --skip-prompt --skip-mcp', {
-      timeout: 300000,
-      stdio: 'pipe',
-      env: { ...process.env, CCG_UPDATE_MODE: 'true' },
-    })
+    process.exitCode = 0
+    await init({ force: true, skipPrompt: true, skipMcp: true })
+    if (process.exitCode) {
+      spinner.fail(i18n.t('init:model.reinstallFailed'))
+      return
+    }
+    process.exitCode = previousExitCode
     spinner.succeed(i18n.t('init:model.reinstallDone'))
   }
   catch {
+    process.exitCode = 1
     spinner.fail(i18n.t('init:model.reinstallFailed'))
+    return
   }
 
   console.log(ansis.gray(`  ${i18n.t('common:restartToApply')}`))

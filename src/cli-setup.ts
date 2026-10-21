@@ -9,6 +9,7 @@ import { doctor, status } from './commands/doctor'
 import { diagnoseMcp, fixMcp } from './commands/diagnose-mcp'
 import { init } from './commands/init'
 import { showMainMenu } from './commands/menu'
+import { registerSkillCommands } from './commands/skills'
 import { i18n, initI18n } from './i18n'
 import { readCcgConfig } from './utils/config'
 import { installCodexMode, uninstallCodexMode, uninstallWorkflows } from './utils/installer'
@@ -16,24 +17,24 @@ import { installCodexMode, uninstallCodexMode, uninstallWorkflows } from './util
 function customizeHelp(sections: any[]): any[] {
   sections.unshift({
     title: '',
-    body: ansis.cyan.bold(`CCG - Claude + Codex + Gemini v${version}`),
+    body: ansis.cyan.bold(`CCG-ROS2 - ROS2 Multi-Model Workflow v${version}`),
   })
 
   sections.push({
     title: ansis.yellow(i18n.t('cli:help.commands')),
     body: [
-      `  ${ansis.cyan('ccg')}              ${i18n.t('cli:help.commandDescriptions.showMenu')}`,
-      `  ${ansis.cyan('ccg init')} | ${ansis.cyan('i')}     ${i18n.t('cli:help.commandDescriptions.initConfig')}`,
-      `  ${ansis.cyan('ccg config mcp')}   ${i18n.t('cli:help.commandDescriptions.configMcp')}`,
-      `  ${ansis.cyan('ccg diagnose-mcp')} ${i18n.t('cli:help.commandDescriptions.diagnoseMcp')}`,
-      `  ${ansis.cyan('ccg fix-mcp')}      ${i18n.t('cli:help.commandDescriptions.fixMcp')}`,
-      `  ${ansis.cyan('ccg doctor')}       Check installation health`,
-      `  ${ansis.cyan('ccg status')}       Show installation overview`,
-      `  ${ansis.cyan('ccg codex-mode')}   Install/uninstall Codex-Led mode`,
-      `  ${ansis.cyan('ccg uninstall')}    Uninstall CCG (non-interactive)`,
+      `  ${ansis.cyan('ccg-ros2-workflow')}              ${i18n.t('cli:help.commandDescriptions.showMenu')}`,
+      `  ${ansis.cyan('ccg-ros2-workflow init')} | ${ansis.cyan('i')}     ${i18n.t('cli:help.commandDescriptions.initConfig')}`,
+      `  ${ansis.cyan('ccg-ros2-workflow config mcp')}   ${i18n.t('cli:help.commandDescriptions.configMcp')}`,
+      `  ${ansis.cyan('ccg-ros2-workflow diagnose-mcp')} ${i18n.t('cli:help.commandDescriptions.diagnoseMcp')}`,
+      `  ${ansis.cyan('ccg-ros2-workflow fix-mcp')}      ${i18n.t('cli:help.commandDescriptions.fixMcp')}`,
+      `  ${ansis.cyan('ccg-ros2-workflow doctor')}       Check installation health`,
+      `  ${ansis.cyan('ccg-ros2-workflow status')}       Show installation overview`,
+      `  ${ansis.cyan('ccg-ros2-workflow codex-mode')}   Install/uninstall Codex-Led mode`,
+      `  ${ansis.cyan('ccg-ros2-workflow uninstall')}    Uninstall CCG (non-interactive)`,
       '',
       ansis.gray(`  ${i18n.t('cli:help.shortcuts')}`),
-      `  ${ansis.cyan('ccg i')}            ${i18n.t('cli:help.shortcutDescriptions.quickInit')}`,
+      `  ${ansis.cyan('ccg-ros2-workflow i')}            ${i18n.t('cli:help.shortcutDescriptions.quickInit')}`,
     ].join('\n'),
   })
 
@@ -87,6 +88,8 @@ export async function setupCommands(cli: CAC): Promise<void> {
     await initI18n('zh-CN')
   }
 
+  registerSkillCommands(cli)
+
   // Default command - show menu
   cli
     .command('', i18n.t('cli:help.commandDescriptions.showMenu'))
@@ -110,6 +113,7 @@ export async function setupCommands(cli: CAC): Promise<void> {
     .option('--backend, -B <models>', i18n.t('cli:help.optionDescriptions.backendModels'))
     .option('--mode, -m <mode>', i18n.t('cli:help.optionDescriptions.collaborationMode'))
     .option('--workflows, -w <workflows>', i18n.t('cli:help.optionDescriptions.workflows'))
+    .option('--skills <names>', 'Native skills: comma-separated names, all, or none')
     .option('--install-dir, -d <path>', i18n.t('cli:help.optionDescriptions.installDir'))
     .action(async (options: CliOptions) => {
       if (options.lang) {
@@ -148,7 +152,8 @@ export async function setupCommands(cli: CAC): Promise<void> {
   // Doctor: environment health check
   cli
     .command('doctor', 'Check CCG installation health')
-    .action(async () => { await doctor() })
+    .option('--json', 'Print machine-readable diagnostic report')
+    .action(async (options) => { await doctor(options) })
 
   // Status: show current installation overview
   cli
@@ -183,7 +188,7 @@ export async function setupCommands(cli: CAC): Promise<void> {
       }
       else {
         console.error(ansis.red(`Unknown action: ${action}`))
-        console.log(ansis.gray('Usage: ccg codex-mode <install|uninstall>'))
+        console.log(ansis.gray('Usage: ccg-ros2-workflow codex-mode <install|uninstall>'))
         process.exitCode = 1
       }
     })

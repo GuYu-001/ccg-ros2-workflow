@@ -1,4 +1,5 @@
 import type { SupportedLang } from '../types'
+import type { InitOptions } from 'i18next'
 import i18next from 'i18next'
 
 export const i18n = i18next
@@ -192,12 +193,12 @@ const zhCN = {
       providerPrompt: '选择 API 提供方',
       officialOption: 'Anthropic 官方（已有账号 / Claude Pro / Max 订阅）',
       thirdPartyOption: '第三方 API 代理（自定义 URL + Key）',
-      sponsorAPIMart: 'APIMart（赞助商 · 低价 AI 网关，Claude / GPT / Gemini 一个 Key 通吃）',
-      sponsorAPIMartGetKey: '注册并获取 API Key',
-      apimartCodexPrompt: '同时把 APIMart 注册为 Codex CLI 的模型供应商？',
-      apimartCodexActivatePrompt: '立即将 Codex 默认切换到 APIMart？（选否＝仅注册，保留你现有的 Codex 账号计费）',
-      apimartCodexEnvHint: 'Codex 通过环境变量读取密钥，请加入 shell 配置：',
-      apimartCodexNotActive: '仅注册未启用 — 需要时在 ~/.codex/config.toml 设 model_provider = "apimart"',
+      sponsorOption: '{{name}}（赞助商 · {{tagline}}）',
+      sponsorGetKey: '注册并获取 API Key{{note}}',
+      sponsorCodexPrompt: '同时把 {{name}} 注册为 Codex CLI 的模型供应商？',
+      sponsorCodexActivatePrompt: '立即将 Codex 默认切换到 {{name}}？（选否＝仅注册，保留你现有的 Codex 账号计费）',
+      sponsorCodexEnvHint: 'Codex 通过环境变量读取密钥，请加入 shell 配置：',
+      sponsorCodexNotActive: '仅注册未启用 — 需要时在 ~/.codex/config.toml 设 model_provider = "{{id}}"',
       skipOption: '跳过 — 我已通过 cc-switch / 其他工具自行配置',
       skipNoticeTitle: 'API 配置已跳过，CCG 不会修改 settings.json 中的 ANTHROPIC_*',
       urlPrompt: 'API URL',
@@ -209,6 +210,17 @@ const zhCN = {
       useOfficialHint: '使用官方账号可跳过',
       leaveEmptyForOfficial: '留空使用官方',
       leaveEmptyToSkip: '留空跳过',
+      geminiCliPrompt: '同时为 Gemini CLI 配置第三方 API？（无 Google 账号也能用 gemini）',
+      geminiCliOption: 'Gemini CLI 第三方 API（无 Google 账号，走网关中转）',
+      geminiCliActionPrompt: 'Gemini CLI 网关配置',
+      geminiCliConfigureOption: '配置 / 更新网关（写入 shell 配置的环境变量）',
+      geminiCliRemoveOption: '清除网关配置（恢复 Google 账号登录）',
+      geminiCliUrlPrompt: 'Gemini 网关 Base URL',
+      geminiCliProtocolHint: '网关必须兼容 Gemini 原生协议（/v1beta/models/...），OpenAI 协议中转不可用',
+      geminiCliModelPrompt: '模型名（可选，留空用默认；部分中转要求指定）',
+      geminiCliSaved: 'Gemini CLI 网关已配置，无需 Google 登录',
+      geminiCliReloadHint: '重新打开终端（或 source 上面的文件）后生效',
+      geminiCliRemoved: 'Gemini CLI 网关配置已清除',
     },
     webui: {
       prompt: '启用 Web UI 实时输出？',
@@ -413,8 +425,6 @@ const zhCN = {
       providerPrompt: '选择 API 提供方',
       officialOption: 'Anthropic 官方（使用官方账号登录）',
       thirdPartyOption: '第三方 API 代理（自定义 URL + Key）',
-      sponsorAPIMart: 'APIMart（赞助商 · 低价 AI 网关，Claude / GPT / Gemini 一个 Key 通吃）',
-      sponsorAPIMartGetKey: '注册并获取 API Key',
       urlPrompt: 'API URL',
       urlRequired: '必填',
       keyPrompt: 'API Key',
@@ -698,12 +708,12 @@ const en: typeof zhCN = {
       providerPrompt: 'Select API provider',
       officialOption: 'Anthropic Official (existing account / Claude Pro / Max subscription)',
       thirdPartyOption: 'Third-party API proxy (custom URL + Key)',
-      sponsorAPIMart: 'APIMart (Sponsor · low-cost AI gateway — Claude / GPT / Gemini on one key)',
-      sponsorAPIMartGetKey: 'Sign up and get your API Key',
-      apimartCodexPrompt: 'Also register APIMart as a model provider for Codex CLI?',
-      apimartCodexActivatePrompt: 'Switch Codex over to APIMart now? (No = just register, keep billing on your current Codex account)',
-      apimartCodexEnvHint: 'Codex reads the key from the environment — add this to your shell profile:',
-      apimartCodexNotActive: 'Registered but not active — set model_provider = "apimart" in ~/.codex/config.toml when you want it',
+      sponsorOption: '{{name}} (Sponsor · {{tagline}})',
+      sponsorGetKey: 'Sign up and get your API Key{{note}}',
+      sponsorCodexPrompt: 'Also register {{name}} as a model provider for Codex CLI?',
+      sponsorCodexActivatePrompt: 'Switch Codex over to {{name}} now? (No = just register, keep billing on your current Codex account)',
+      sponsorCodexEnvHint: 'Codex reads the key from the environment — add this to your shell profile:',
+      sponsorCodexNotActive: 'Registered but not active — set model_provider = "{{id}}" in ~/.codex/config.toml when you want it',
       skipOption: 'Skip — I\'ve already configured API via cc-switch / other tools',
       skipNoticeTitle: 'API configuration skipped — CCG will not touch ANTHROPIC_* in settings.json',
       urlPrompt: 'API URL',
@@ -715,6 +725,17 @@ const en: typeof zhCN = {
       useOfficialHint: 'Skip if using official account',
       leaveEmptyForOfficial: 'Leave empty for official',
       leaveEmptyToSkip: 'Leave empty to skip',
+      geminiCliPrompt: 'Also configure a third-party API for Gemini CLI? (works without a Google account)',
+      geminiCliOption: 'Gemini CLI third-party API (no Google account, via gateway relay)',
+      geminiCliActionPrompt: 'Gemini CLI gateway configuration',
+      geminiCliConfigureOption: 'Configure / update gateway (writes env vars to your shell profile)',
+      geminiCliRemoveOption: 'Remove gateway config (back to Google account login)',
+      geminiCliUrlPrompt: 'Gemini gateway Base URL',
+      geminiCliProtocolHint: 'The gateway must speak the native Gemini API (/v1beta/models/...) — OpenAI-protocol relays will not work',
+      geminiCliModelPrompt: 'Model name (optional, empty = CLI default; some relays require one)',
+      geminiCliSaved: 'Gemini CLI gateway configured — no Google login needed',
+      geminiCliReloadHint: 'Takes effect in a new terminal (or after sourcing the file above)',
+      geminiCliRemoved: 'Gemini CLI gateway config removed',
     },
     webui: {
       prompt: 'Enable Web UI real-time output?',
@@ -919,8 +940,6 @@ const en: typeof zhCN = {
       providerPrompt: 'Select API provider',
       officialOption: 'Anthropic Official (use official account login)',
       thirdPartyOption: 'Third-party API proxy (custom URL + Key)',
-      sponsorAPIMart: 'APIMart (Sponsor · low-cost AI gateway — Claude / GPT / Gemini on one key)',
-      sponsorAPIMartGetKey: 'Sign up and get your API Key',
       urlPrompt: 'API URL',
       urlRequired: 'Required',
       keyPrompt: 'API Key',
@@ -1017,7 +1036,9 @@ const en: typeof zhCN = {
 
 export async function initI18n(lang: SupportedLang = 'zh-CN'): Promise<void> {
   if (!i18n.isInitialized) {
-    await i18n.init({
+    // Newer compatible i18next releases must not add banners to CLI JSON output.
+    const options: InitOptions & { showSupportNotice?: boolean } = {
+      showSupportNotice: false,
       lng: lang,
       fallbackLng: 'en',
       resources: {
@@ -1027,7 +1048,8 @@ export async function initI18n(lang: SupportedLang = 'zh-CN'): Promise<void> {
       interpolation: {
         escapeValue: false,
       },
-    })
+    }
+    await i18n.init(options)
   }
   else if (i18n.language !== lang) {
     await i18n.changeLanguage(lang)

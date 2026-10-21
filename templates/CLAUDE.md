@@ -200,7 +200,9 @@
 
 纯知识型（`knowledge` 类型），触发关键词时 Claude 自动读取对应文件获取域专业知识（规则见 `rules/ccg-skill-routing.md`）。
 
-#### security/（6 篇）
+#### security/（6 篇，v3.6.7 起不进 npm tarball）
+
+> 文件仍在 git。npm 包不含此目录（发布时扫描会 hold）。需要时从 GitHub 拷到 `~/.claude/skills/ccg/domains/security/`。
 
 | 文件 | 触发关键词 |
 |------|-----------|
@@ -325,7 +327,7 @@ templates/prompts/codex/           # 目录整体
 templates/prompts/gemini/*.md      # 7 个文件（逐一列出）
 templates/prompts/claude/          # 目录整体
 templates/output-styles/           # 目录整体
-templates/skills/                  # 目录整体（含所有域知识 + ROS2 专属域）
+templates/skills/<子目录白名单>     # 含六个 ROS2 域；不含 domains/security/ 与已排除技能
 templates/rules/                   # 目录整体
 ```
 

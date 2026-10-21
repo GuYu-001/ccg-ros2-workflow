@@ -4,10 +4,12 @@ import ansis from 'ansis'
 import fs from 'fs-extra'
 import { basename, join } from 'pathe'
 import { getLegacyCommandIds, getWorkflowById } from './installer-data'
-import { configureApiMartForCodex, removeApiMartFromCodex } from './installer-codex-api'
-import { PACKAGE_ROOT, injectConfigVariables, replaceHomePathsInTemplate } from './installer-template'
+import { configureAllSponsorsForCodex, removeAllSponsorsFromCodex } from './installer-codex-api'
+import { PACKAGE_ROOT, injectConfigVariables, injectHookConfig, replaceHomePathsInTemplate } from './installer-template'
 import { readCcgConfig } from './config'
 import { installSkillCommands } from './skill-registry'
+import { syncSkills, installedNames, removeSkills } from './skill-manager'
+import { generateNativeSkillRules } from './skill-activation'
 import { version as packageVersion } from '../../package.json'
 
 // ═══════════════════════════════════════════════════════
@@ -29,11 +31,30 @@ export type { WorkflowPreset } from './installer-data'
 export { injectConfigVariables } from './installer-template'
 
 export {
-  APIMART_CODEX_PROVIDER,
-  APIMART_CODEX_PROVIDER_ID,
+  configureAllSponsorsForCodex,
   configureApiMartForCodex,
+  configurePackyCodeForCodex,
+  configureSponsorForCodex,
+  removeAllSponsorsFromCodex,
   removeApiMartFromCodex,
+  removePackyCodeFromCodex,
+  removeSponsorFromCodex,
 } from './installer-codex-api'
+
+export {
+  SPONSORS,
+  getSponsor,
+  promptSponsorInit,
+  promptSponsorMenuKey,
+  sponsorInquirerChoices,
+} from './sponsors'
+export type { CodexProviderSpec, SponsorGateway } from './sponsors'
+
+export {
+  configureGeminiCliApi,
+  GEMINI_ENV_MANAGED_KEYS,
+  removeGeminiCliApi,
+} from './installer-gemini-api'
 
 export {
   installAceTool,
@@ -91,6 +112,8 @@ interface InstallConfig {
   liteMode: boolean
   mcpProvider: string
   skipImpeccable?: boolean
+  skillsProfile?: string[]
+  skillsMode?: 'legacy' | 'native'
 }
 
 interface InstallContext {
@@ -380,6 +403,23 @@ async function installSkillFiles(ctx: InstallContext): Promise<void> {
   }
 
   try {
+    const nativeOptions = {
+      target: 'claude' as const,
+      nativeDir: join(ctx.installDir, 'skills'),
+      storeDir: join(ctx.installDir, '.ccg-skills'),
+    }
+    if (ctx.config.skillsMode === 'legacy') {
+      const selected = await installedNames(nativeOptions)
+      if (selected.length) await removeSkills(selected, nativeOptions)
+    }
+    if (ctx.config.skillsProfile !== undefined) {
+      const selected = await syncSkills({
+        ...nativeOptions, names: ctx.config.skillsProfile,
+        templatesDir: skillsTemplateDir,
+      })
+      ctx.result.installedSkills = selected.length
+      return
+    }
     // Migration: move old v1.7.73 layout into skills/ccg/ namespace
     const oldSkillsRoot = join(ctx.installDir, 'skills')
     const ccgLegacyItems = ['tools', 'orchestration', 'SKILL.md', 'run_skill.js']
@@ -409,9 +449,11 @@ async function installSkillFiles(ctx: InstallContext): Promise<void> {
       errorOnExist: false,
     })
 
-    // Remove security domain files — contains red team/pentest reference content
-    // that triggers antivirus/corporate security tool false positives.
-    // Users who need it can manually copy from templates/skills/domains/security/.
+    // Drop red-team / pentest notes even when installing from a git checkout.
+    // They are also excluded from the npm tarball (v3.6.7) — npm's publish-time
+    // scanner holds packages that ship them. Copy from GitHub if you need them:
+    //   git clone --depth 1 https://github.com/GuYu-001/ccg-ros2-workflow.git /tmp/ccg
+    //   cp -r /tmp/ccg/templates/skills/domains/security ~/.claude/skills/ccg/domains/security
     const securityDir = join(skillsDestDir, 'domains', 'security')
     if (await fs.pathExists(securityDir)) {
       await fs.remove(securityDir)
@@ -462,6 +504,7 @@ async function installSkillFiles(ctx: InstallContext): Promise<void> {
  * already exists in installer-data.ts to avoid conflicts with complex multi-model commands.
  */
 async function installSkillGeneratedCommands(ctx: InstallContext): Promise<void> {
+  if (ctx.config.skillsProfile !== undefined) return
   const skillsTemplateDir = join(ctx.templateDir, 'skills')
   const skillsInstallDir = join(ctx.installDir, 'skills', 'ccg')
   const commandsDir = join(ctx.installDir, 'commands', 'ccg')
@@ -534,12 +577,13 @@ export async function installCodexMode(): Promise<{ success: boolean, message: s
       await fs.copy(configSrc, configDest)
     }
 
-    // Make APIMart available as a Codex model provider. Registration only —
-    // `model_provider` is left alone, so this changes no behaviour and switching
-    // later is a one-line edit. Unconditional and silent by design: this function
-    // is also the non-interactive `ccg codex-mode install` entry point used by
-    // CI and scripts, so it must never grow a prompt.
-    await configureApiMartForCodex(false)
+    // Make sponsored gateways available as Codex model providers. Registration
+    // only — `model_provider` is left alone, so this changes no behaviour and
+    // switching later is a one-line edit. Unconditional and silent by design:
+    // this function is also the non-interactive `ccg-ros2-workflow codex-mode install` entry
+    // point used by CI and scripts, so it must never grow a prompt.
+    // Walks SPONSORS — adding a gateway does not require a change here.
+    await configureAllSponsorsForCodex()
 
     const agentsSrc = join(codexTemplateDir, 'agents')
     if (await fs.pathExists(agentsSrc)) {
@@ -641,11 +685,11 @@ export async function uninstallCodexMode(): Promise<{ success: boolean, removed:
     }
 
     // config.toml — never delete (user may have custom settings), but do take
-    // back the one table CCG added. Leaving a dangling [model_providers.apimart]
-    // behind is exactly the uninstall residue fixed in v3.1.3.
-    const apimartCleanup = await removeApiMartFromCodex()
-    if (apimartCleanup.success && apimartCleanup.configPath)
-      removed.push('~/.codex/config.toml [model_providers.apimart]')
+    // back the tables CCG added. Leaving a dangling [model_providers.*] behind
+    // is exactly the uninstall residue fixed in v3.1.3.
+    const sponsorCleanup = await removeAllSponsorsFromCodex()
+    for (const id of sponsorCleanup.removed)
+      removed.push(`~/.codex/config.toml [model_providers.${id}]`)
     skipped.push('~/.codex/config.toml (preserved — may contain user settings)')
 
     // Clean up empty dirs
@@ -712,6 +756,12 @@ async function installRuleFiles(ctx: InstallContext): Promise<void> {
       join(ctx.templateDir, 'rules'),
       join(ctx.installDir, 'rules'),
     )
+    if (ctx.config.skillsProfile !== undefined) {
+      const rules = generateNativeSkillRules(ctx.config.skillsProfile, ctx.installDir)
+      for (const file of ['ccg-skills.md', 'ccg-skill-routing.md']) {
+        await fs.writeFile(join(ctx.installDir, 'rules', file), `${rules}\n`, 'utf-8')
+      }
+    }
     if (installed.length > 0) ctx.result.installedRules = true
   }
   catch (error) {
@@ -950,11 +1000,24 @@ async function installHookScripts(ctx: InstallContext): Promise<void> {
   await fs.ensureDir(hooksDestDir)
 
   try {
+    const boundary = join(hooksDestDir, 'package.json')
+    let metadata: Record<string, unknown> = {}
+    if (await fs.pathExists(boundary)) {
+      if ((await fs.lstat(boundary)).isSymbolicLink()) throw new Error('Hook package metadata is a symlink; preserved')
+      try {
+        const current = await fs.readJson(boundary)
+        if (!current || typeof current !== 'object' || Array.isArray(current)) throw new Error('Invalid package metadata')
+        metadata = current
+      }
+      catch { throw new Error('Invalid Hook package metadata; preserved') }
+    }
+    await fs.writeJson(boundary, { ...metadata, private: true, type: 'commonjs' }, { spaces: 2 })
     for (const file of HOOK_FILES) {
       const src = join(hooksSrcDir, file)
       const dest = join(hooksDestDir, file)
       if (await fs.pathExists(src)) {
-        await fs.copy(src, dest, { overwrite: true })
+        const content = await fs.readFile(src, 'utf-8')
+        await fs.writeFile(dest, injectHookConfig(content, ctx.config, ctx.installDir), 'utf-8')
       }
     }
   }
@@ -1040,10 +1103,16 @@ export async function installWorkflows(
       frontend?: { models?: string[], primary?: string }
       backend?: { models?: string[], primary?: string }
       review?: { models?: string[] }
+      geminiModel?: string
+      grokModel?: string
+      kimiModel?: string
+      opencodeModel?: string
     }
     liteMode?: boolean
     mcpProvider?: string
     skipImpeccable?: boolean
+    skillsProfile?: string[]
+    skillsMode?: 'legacy' | 'native'
   },
 ): Promise<InstallResult> {
   const ctx: InstallContext = {
@@ -1059,6 +1128,8 @@ export async function installWorkflows(
       liteMode: config?.liteMode || false,
       mcpProvider: config?.mcpProvider || 'fast-context',
       skipImpeccable: config?.skipImpeccable || false,
+      skillsProfile: config?.skillsMode === 'legacy' ? undefined : config?.skillsProfile,
+      skillsMode: config?.skillsMode,
     },
     templateDir: join(PACKAGE_ROOT, 'templates'),
     result: {
@@ -1112,6 +1183,7 @@ export async function installWorkflows(
     ctx.result.success = false
   }
 
+  if (ctx.result.errors.length > 0) ctx.result.success = false
   ctx.result.configPath = join(installDir, 'commands', 'ccg')
   return ctx.result
 }
@@ -1149,6 +1221,21 @@ export async function uninstallWorkflows(installDir: string, options?: { preserv
     errors: [],
   }
 
+  try {
+    const skillOptions = {
+      target: 'claude' as const,
+      nativeDir: join(installDir, 'skills'),
+      storeDir: join(installDir, '.ccg-skills'),
+    }
+    const selected = await installedNames(skillOptions)
+    if (selected.length) await removeSkills(selected, skillOptions)
+    result.removedSkills.push(...selected.map(name => `ccg-${name}`))
+  }
+  catch (error) {
+    result.errors.push(`Failed to remove managed native skills: ${error}`)
+    result.success = false
+  }
+
   const commandsDir = join(installDir, 'commands', 'ccg')
   const agentsDir = join(installDir, 'agents', 'ccg')
   const skillsDir = join(installDir, 'skills', 'ccg')
@@ -1177,7 +1264,7 @@ export async function uninstallWorkflows(installDir: string, options?: { preserv
   // Remove CCG skills directory only (skills/ccg/) — preserves user's own skills
   if (await fs.pathExists(skillsDir)) {
     try {
-      result.removedSkills = await collectSkillNames(skillsDir)
+      result.removedSkills.push(...await collectSkillNames(skillsDir))
       await fs.remove(skillsDir)
     }
     catch (error) {

@@ -117,12 +117,12 @@ function normalizeAllowedTools(value: string | undefined): string[] {
   return tools.filter(t => TOOL_NAME_RE.test(t))
 }
 
-function normalizeSkillRecord(skillsDir: string, skillDir: string, meta: Record<string, string>): SkillMeta | null {
+function normalizeSkillRecord(skillsDir: string, skillDir: string, meta: Record<string, string>, native = false): SkillMeta | null {
   const relPath = relative(skillsDir, skillDir)
   const scriptEntries = listScriptEntries(skillDir)
 
   // Skip if more than 1 script (ambiguous)
-  if (scriptEntries.length > 1) return null
+  if (scriptEntries.length > 1 && !native) return null
 
   const name = meta.name?.trim()
   if (!name || !NAME_SLUG_RE.test(name)) return null
@@ -148,6 +148,35 @@ function normalizeSkillRecord(skillsDir: string, skillDir: string, meta: Record<
     skillPath: join(skillDir, 'SKILL.md'),
     scriptPath: scriptEntries[0] || null,
   }
+}
+
+/** Native catalog includes skills with multiple scripts, but never the aggregate root or security notes. */
+export function collectNativeSkills(skillsDir: string): SkillMeta[] {
+  const skills: SkillMeta[] = []
+  const names = new Set<string>()
+  function walk(dir: string): void {
+    const rel = relative(skillsDir, dir).split(sep).join('/')
+    if (rel === 'domains/security' || rel.startsWith('domains/security/')) return
+    const stat = fs.lstatSync(dir)
+    if (stat.isSymbolicLink()) throw new Error(`Template symlink is not supported: ${dir}`)
+    const path = join(dir, 'SKILL.md')
+    if (rel && fs.existsSync(path)) {
+      if (fs.lstatSync(path).isSymbolicLink()) throw new Error(`Template symlink is not supported: ${path}`)
+      const meta = parseFrontmatter(fs.readFileSync(path, 'utf8'))
+      const skill = meta && normalizeSkillRecord(skillsDir, dir, meta, true)
+      if (!skill) throw new Error(`Invalid skill metadata: ${path}`)
+      if (names.has(skill.name)) throw new Error(`Duplicate skill slug: ${skill.name}`)
+      names.add(skill.name)
+      skills.push(skill)
+    }
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      if (SKIP_NAMES.has(entry.name) || ['scripts', 'agents', 'references', 'refs'].includes(entry.name)) continue
+      if (entry.isSymbolicLink()) throw new Error(`Template symlink is not supported: ${join(dir, entry.name)}`)
+      if (entry.isDirectory()) walk(join(dir, entry.name))
+    }
+  }
+  walk(skillsDir)
+  return skills.sort((a, b) => a.name.localeCompare(b.name))
 }
 
 // ═══════════════════════════════════════════════════════

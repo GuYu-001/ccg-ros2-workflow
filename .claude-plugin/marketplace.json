@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "CCG-ROS2 collaboration: install skills natively via Claude Code plugins, or the full workflow with npx ccg-ros2-workflow.",
-    "version": "3.0.0"
+    "version": "3.7.2-ros2.0"
   },
   "plugins": [
     {
       "name": "ccg",
       "source": ".",
       "description": "Six ROS2 domain skills, engineering references, scrapling, verify-* quality gates, and gen-docs. Invoked as /ccg:<skill>.",
-      "version": "3.0.0",
+      "version": "3.7.2-ros2.0",
       "category": "workflow",
       "keywords": [
         "skills",

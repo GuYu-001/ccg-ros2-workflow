@@ -1,5 +1,5 @@
 # CCG Codex Project Configuration
-# Installed by: npx ccg-workflow (menu → X. Codex Mode)
+# Installed by: npx ccg-ros2-workflow (menu → X. Codex Mode)
 #
 # Codex merges this after user-level config when the project is trusted.
 # To trust: add under [projects] in ~/.codex/config.toml:

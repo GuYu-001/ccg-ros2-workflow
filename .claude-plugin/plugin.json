@@ -1,7 +1,7 @@
 {
   "name": "ccg",
   "description": "CCG-ROS2 skills bundle: six ROS2 domains, engineering references, web scraping, and built-in quality gates. Skills only; install the full workflow with npx ccg-ros2-workflow.",
-  "version": "3.0.0",
+  "version": "3.7.2-ros2.0",
   "author": {
     "name": "fengshao1227",
     "url": "https://github.com/fengshao1227"

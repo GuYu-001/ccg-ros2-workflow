@@ -13,14 +13,20 @@ export {
   getConfigPath,
 } from './utils/config'
 export {
+  configureAllSponsorsForCodex,
   configureApiMartForCodex,
+  configurePackyCodeForCodex,
+  configureSponsorForCodex,
   getWorkflowConfigs,
   getWorkflowById,
   installWorkflows,
   installAceTool,
   installAceToolRs,
   installCodexMode,
+  removeAllSponsorsFromCodex,
   removeApiMartFromCodex,
+  removePackyCodeFromCodex,
+  removeSponsorFromCodex,
   uninstallCodexMode,
   uninstallWorkflows,
   uninstallAceTool,
@@ -35,3 +41,7 @@ export {
   checkForUpdates,
   compareVersions,
 } from './utils/version'
+
+// Native skill catalog and managed selection lifecycle.
+export { getSkillCatalog, listSkills, installedNames, installSkills, updateSkills, removeSkills, syncSkills, resolveSkillPaths } from './utils/skill-manager'
+export type { SkillManagerOptions, SkillTarget, SkillListEntry } from './utils/skill-manager'

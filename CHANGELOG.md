@@ -50,6 +50,167 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 
+## [3.7.2] - 2026-10-18
+
+### ✨ 新功能
+
+- **x6.ai 成为赞助商，并可直接用作 API 提供方** — 中英文 README 赞助区新增 x6.ai Banner + 介绍，位于 PackyCode、APIMart 之下。`init` Step 1 与菜单 API 配置新增 x6.ai 选项，自动填 `ANTHROPIC_BASE_URL=https://api.x6.ai`（**不带** `/v1`），用户只填 Key。
+- **Codex CLI 接入 x6.ai** — `codex-mode install` 静默注册 `[model_providers.x6ai]`（`base_url=https://api.x6.ai/v1`，**带** `/v1`；`env_key=X6AI_API_KEY`）。注册与启用分离，启用默认否；卸载只摘自己那张表。
+
+### 🗑️ 移除
+
+- **Gamma Remover 下架** — README Banner 与 `assets/sponsors/gamma-remover.webp` 移除。
+
+## [3.7.1] - 2026-10-12
+
+### 🐛 修复
+
+- **全新 npm 安装的 JSON stdout**：兼容依赖范围中新版 i18next 默认打印 support notice；初始化显式关闭该提示，避免 `skills catalog/list --json`、`doctor --json` 与 `--version` 输出被赞助 banner 污染。修复使用官方初始化开关，保留原翻译和日志行为。
+
+## [3.7.0] - 2026-10-12
+
+### ✨ 新功能
+
+- **Skills 按需安装与管理**：`ccg skills catalog/list/install/update/remove`，支持 Claude Code 和 Codex 原生入口及 JSON 清单；菜单新增 S. Skills 管理、V. 环境诊断。原生入口为 `ccg-<slug>`，只包含所选技能的 SKILL.md，完整脚本、参考文件和共享库保存在 immutable 缓存。
+- **安全的技能生命周期**：独占写锁、归属 manifest、内容 digest 和 atomic 更新；拒绝未知路径、外部链接/目录冲突和损坏归属信息。移除只关闭受管入口，缓存和用户私有技能保留。
+- **初始化的技能选择**：兼容全量、核心六项、自定义 checkbox；支持 `--skills all`、`none` 和逗号名单。更新与重装沿用 manifest 最新选择，删除后不会恢复旧配置中的技能；显式兼容模式可持久保持。
+- **`doctor --json`**：稳定 schemaVersion/checks/status/detail/remediation/计数和失败退出码 1；实际识别 Claude/Codex/双模式/Skills-only，包含审查模型路由，准确检查五个 Hook 与注册处理器及受管技能健康度。
+
+### 🐛 修复
+
+- **模型动作 Hook 原样安装路由占位符**：用安全 JSON 绑定配置和安装目录；双模型动作使用真实选定后端及具体模型参数，同一后端只调用一次，纯 Claude 配置使用原生 Agent。旧知识片段限制 8000 字符，native 模式按需加载而不重复注入。
+- **Standalone 技能切换未刷新 Hook/规则**：管理操作立即刷新新 Hook 的模式字段和受管规则 block，保留原主体与用户规则定制；旧或损坏内容保持并给重装指引。
+- **ESM 项目中的 CommonJS 脚本静默失败**：HookRoot 与原生资源缓存设立模块边界，脚本实际加载共享依赖。
+- **OpenCode/DeepSeek 指定模型重装丢失（关联 #164）**：初始化与模型菜单提供 provider/model 输入，更新和重装保留已配置型号。继续使用现有 OpenCode backend，不创建新直连 API agent 或接管认证。
+- **更新将安装失败当成功**：任何安装错误使初始化退出非零并停止后续配置，更新子进程可按失败恢复备份；模型菜单复用当前本地初始化实现。
+
+### 🔄 变更
+
+- 保持未选择 native 通路的老全量安装兼容；native 管理不擅自删除旧目录或用户定制。两类入口的调用名称分别为 `/ccg:<name>` 与 `/ccg-<name>`（Codex 用 `$ccg-<name>`）。
+- README 双语同步按需安装、诊断和 OpenCode/DeepSeek 接法；无需猜厂商模型 ID，先通过 OpenCode 查询实际配置目录。
+
+## [3.6.8] - 2026-10-12
+
+### 🐛 修复
+
+- **新版 dsh 无法导入 CCG（#163 / #165）**：删除已经移除的 `settingsNamespace` / `deepEqualJson` 导入。配置卡通过 Loader-owned volatile Config 和官方 SettingsForms 写入各 profile 的 `cordis.patch.yml`，支持实时更新、重启恢复和 revision 冲突拒绝。
+- **新版设置卡消失**：迁移到 `settings.plugins.tab` 与 `dsh-client-ui-renderer`；在「设置 → 内置插件 → CCG 角色矩阵」显示，保留模型群和队友条。冲突后刷新最新配置并保留用户实际修改。
+- **alpha 委派接口变更**：兼容 rc2 的 `start` / `startContinuable` 和 alpha 的 `startActivation`。模型群使用 caller 交付并检查 `stopReason`，成功、失败、取消都清理；队友使用 parent 完成通知，保持文件所有权和后续消息。
+- **队友状态**：从 `listDescendants` 读取直接子级活动，目录身份仍用于清理过期所有权。
+- **安装器**：包管理器接收目标 DSH_HOME 和独立参数，改为 `link:` 指向稳定源码副本，避免 pnpm 复用过期的 `file:` 内容快照；Windows 支持 cmd shim 并拒绝 shell 扩展字符。链接失败不再声称已安装成功。
+
+### 🔄 变更
+
+- `dsh-ccg` 升至 0.5.0，支持 dsh `0.2.0-rc.2` 与 `0.2.1-alpha.2`；不再支持旧 `0.1.x`。旧环境先升级 dsh，CCG 更新后重新运行 `npx ccg-workflow@latest dsh install` 并重启。
+- 修正插件 README 中未发布的独立 npm 安装命令和旧全局 settings 示例，补齐独立测试依赖与两代官方插槽运行时契约测试。
+- 新增两版官方 dsh 运行时的 CI 测试矩阵，npm 发布必须先通过该兼容检查。
+
+### 验证
+
+- 主包 210 项测试（完整复跑使用 `--testTimeout=15000`）、typecheck、build；插件两版官方运行时各 138 项测试及语法检查。
+- 两版实际安装与重装、源码一致性、内置浏览器卡片、配置保存/冲突/重启恢复、单角色/双模型群/队友及重启后同子级继续消息，均接本地模拟 provider 验证。旧 0.4.7 的 settings 配置已在隔离升级环境验证导入与原文件保留。
+- Windows 的 cmd 调用契约有单测，尚未在 Windows 实机验证；未调用付费厂商 API。
+
+## [3.6.7] - 2026-09-15
+
+### 🐛 修复
+
+- **npm 扫描 hold：tarball 不再含红队/渗透笔记。** 3.6.5 / 3.6.6 的 PUT 都成功（`+ ccg-workflow@…`，OIDC 201），随后 `npm view` 对 owner 也 404，再 PUT 同一版本 409 `previously staged`。安装器本来就不把 `domains/security/` 装进用户目录（杀软误报），但 `package.json` 的 `files` 写了整棵 `templates/skills/`，`.npmignore` 挡不住已经在 `files` 里的目录。现改成按子目录白名单，`domains/security/` 不进包。文件仍在 git。需要的人从 GitHub 拷。
+
+## [3.6.6] - 2026-09-15
+
+> ⚠ 此版本 **同样从未出现在 npm registry**。PUT 202 后扫描未放行，号作废。不要再发 3.6.6。
+
+### 🔄 变更
+
+- **重发 3.6.5 的内容。** 3.6.5 的第一次 `npm publish` 打印了 `+ ccg-workflow@3.6.5`，随后同一版本的 PUT 全部 409 `Cannot publish over previously staged version "3.6.5"`，而 `npm view` / tarball / attestations 对 owner 也一直 404。版本号被 npm 内部占住、对外不可装。3.6.6 是同一份代码（PackyCode 赞助商 + `sponsors.ts` 表 + npm 11 钉死 + 暂存 409 当已接受）。不要再发 3.6.5。
+
+## [3.6.5] - 2026-09-15
+
+> ⚠ 此版本 **从未出现在 npm registry**。CI 收下暂存后扫描未放行，号作废。功能以 3.6.7 为准。
+
+### ✨ 新功能
+
+- **PackyCode 成为赞助商，并可直接用作 API 提供方** — 中英文 README 顶部新增 PackyCode Banner + 介绍，位置在 APIMart 之上。`init` Step 1 与菜单的 API 配置新增 PackyCode 选项，选中后自动填入 Base URL（`https://cf.api.fan`，**不带** `/v1`），用户只需粘贴 Key。注册链接带联盟参数 `aff=m21P`。
+- **Codex CLI 也能走 PackyCode** — 同一份 `installer-codex-api.ts` 新增 `[model_providers.packycode]`（`base_url = https://cf.api.fan/v1`，**带** `/v1`，`wire_api = responses`，`env_key = PACKYCODE_API_KEY`）。`ccg codex-mode install` 静默注册（保持非交互），`init` 选 PackyCode 时另问是否接 Codex。**注册与启用分离，启用默认否**——翻 `model_provider` 会把用户全部 Codex 请求从订阅改道到按量计费，安装器不该替人默默决定。卸载连带摘除该表与悬空 `model_provider`，且不误伤 APIMart。
+- **赞助商表抽成 `src/utils/sponsors.ts`** — 一家赞助商 = 列表里一个对象。`init` Step 1、菜单 API 配置、Codex 静默注册、卸载全部遍历这张表；i18n 只留一套 `sponsorOption` / `sponsorGetKey` / `sponsorCodex*` 模板。再加一家只改这一处 + README Banner，不再复制 init/menu/i18n 分支。
+
+### 🐛 修复
+
+- **两个 Base URL 极易写反，已分别锁死** — 与 APIMart 同一条铁律：Claude Code 的 `ANTHROPIC_BASE_URL` = `https://cf.api.fan`（不带 `/v1`）；Codex 的 `base_url` = `https://cf.api.fan/v1`（带 `/v1`）。取值来自 [PackyAPI 官方文档](https://docs.packyapi.com/docs/cli/2-claude.html)。写反表现为静默 404。
+
+### ✅ 测试
+
+- `installer-codex-api.test.ts` 改测注册表 + 通用 API：每家 Claude 基址无 `/v1`、Codex 带 `/v1`、默认不激活、用户配置无损、摘一家不误伤另一家、`configureAll` / `removeAll` 往返零残留。旧的 `configureApiMartForCodex` 包装仍有一例防回归。
+
+## [3.6.4] - 2026-09-03
+
+### 🐛 修复
+
+- **dsh-ccg 在新版 DeepSeek Harness 上整个 Web UI 打不开**（[#162](https://github.com/fengshao1227/ccg-workflow/issues/162)）：
+  插件配置页把 `settings.plugin.item` 插槽从 `list`（按 `id` 排序）**改声明为 `keyed`**
+  （按卡片所编辑的 settings 命名空间派发），而插槽注册缺了它那个 kind 要求的选项就会
+  **抛异常**——异常不是「少个卡片」，是整条 loader entry 失败，浏览器停在
+  `Failed to load plugins / dsh-ccg`，**面板视图和团队条一起没了，整个界面是死的**。
+  现在注册同时带 `key` 和 `id`：两种 kind 各读各的、互相忽略对方的，一份注册两边都活。
+  ⚠ 顺带一提，新版 harness 已经把**全部** settings 命名空间发给浏览器（旧版是白名单，
+  第三方命名空间不在其中）——这正是插槽改为 keyed 的原因。
+- **`ccg doctor` 永远报告 `✗ Binary Not found`**（[#161](https://github.com/fengshao1227/ccg-workflow/issues/161)，
+  感谢 @MjiaAndy 的完整定位）：`dist/cli.mjs` 是 ES module 且没有 `createRequire` shim，
+  而 `execSafe()` 里用的是 CommonJS `require('node:child_process')` —— ESM 作用域里
+  `require` 根本不存在，抛出的 `ReferenceError` 被 `try/catch` 吞掉后返回 `null`，
+  调用方一律读作「没装」。**全平台复现，重装无用**。影响面比报告的更大：binary、
+  opencode、kimi、grok 四项检测，加上 `ccg status` 的版本检查，**6 处调用全废**。
+- **`ccg dsh install` 不认 `DSH_HOME`**（自测时发现）：harness 自己就是靠这个环境变量
+  指向别处的 home，而安装器只认 `~/.dsh`。设了该变量的用户会得到一次「成功」，
+  插件却装进了一个没有任何东西会去启动的 home。
+
+### ✅ 测试
+
+- 新增 **3 组回归测试**（主包 191 → 197，插件 112 → 116）：
+  `esm-only.test.ts` 扫描 `src/**` 拦截 CommonJS 全局（`require` / `module.exports` /
+  未自行推导的 `__dirname`）；`installer-dsh.test.ts` 补 `DSH_HOME` 两例；
+  插件侧 `client-slots.test.mjs` 把三个插槽注册钉死，并**用真实的 slots 运行时**
+  验证同一份注册在 `keyed` 与 `list` 两种声明下都能注册、且拆掉任一半都会抛。
+- 修复经**实机验证**：在独立 `DSH_HOME` 下用 dsh `0.1.1-rc.2` 复现出与报告一模一样的
+  报错页，换上修复版后界面正常启动、CCG 卡片正常渲染、console 零报错。
+
+## [3.6.3] - 2026-08-29
+
+### 🐛 修复
+
+- **`/ccg:codex-exec` 自 v3.6.0 起被自己的性能优化打断**：该命令的全部前提是「Claude 不做代码检索，{{BACKEND_PRIMARY}} 全权执行 —— MCP 搜索、文档查询、代码检索、实现、测试」，它的载荷里明确要求子代理调用 ace-tool / context7 / grok-search。而 v3.6.0 让 wrapper 默认给子代理禁用 MCP（codex 注入 `-c mcp_servers={}`），**没有任何模板传 `--with-mcp`** —— 于是子代理被要求去用一批它根本看不到的工具，而且**不报错**，只会检索不到然后照样往下写。
+  现在该命令的三处**执行者**调用带上 `--with-mcp`；**审核**调用（只读 git diff、明令不改文件）与**修正**调用（按 file:line 改）保持不带，不白付启动开销。
+- **新增 3 例回归测试**（`subagent-mcp.test.ts`，总 188 → 191）。两半分别住在 Go wrapper 和 Markdown 模板里，除了测试没有任何东西能把它们连起来 —— 默认值在一个文件里改了，另一个文件里的假设无声失效。
+
+## [3.6.2] - 2026-08-29
+
+### ✨ 新功能
+
+- **CCG 现在也跑在 DeepSeek Harness 上** —— `dsh-ccg/` 随包一起发，
+  `ccg dsh install` 一条命令装进 harness profile，菜单里也加了 `D. DeepSeek Harness`。
+  七个角色委派工具各跑各的模型；任一角色挂多个模型就成为**模型群**（同一份简报、
+  独立作答、答案在对话流里并排渲染）；`ccg_team` 可把角色雇成**常驻队友**
+  （独占自己的文件、撞车直接拒绝、每次雇人先请用户确认）。不依赖任何外部 CLI，
+  每一跳都是 provider API 请求。
+- **`ccg dsh <install|uninstall|list>`**：非交互命令，`--profile <name>` 可指定单个
+  配置档，不加则装进找到的全部。
+
+### 🔄 变更
+
+- `package.json` 的 `files` 新增 7 条 `dsh-ccg/` 白名单（不含 `test/`），
+  npm 包多 27 个文件。
+- `src/utils/installer-dsh.ts` 新模块 + 12 个单测（总数 176 → 188）。
+
+## [3.6.1] - 2026-08-28
+
+### ✨ 新功能
+
+- **帮配 Gemini CLI 第三方 API（无 Google 账号可用）**：`init` Step 1 末尾与菜单「API 配置」新增 Gemini CLI 网关选项。填网关 Base URL + Key（+可选模型名）即可，CCG 将 `GOOGLE_GEMINI_BASE_URL` / `GEMINI_API_KEY` 以受管块写入 shell 配置（zsh/bash/fish 自动识别；Windows 走 `setx`），gemini 见到该变量自动进入 gateway 认证，无需 Google 登录。菜单侧支持一键清除恢复。
+- ⚠ **两个实测得出的硬约束**：① 网关必须兼容 Gemini 原生协议（`/v1beta/models/...:streamGenerateContent`），OpenAI 协议中转会 404；② gemini-cli 0.53.1 已**不再读取任何 `.env` 文件**（`~/.gemini/.env` 与项目 `.env` 均失效，settings.json 也无相关字段）——环境变量是唯一通路，故落盘 shell 配置。旧版靠 `~/.gemini/.env` 配置过的用户升级后会静默失效，可用本功能重配。
+
+---
+
 ## [3.6.0] - 2026-08-28
 
 ### ✨ 新功能

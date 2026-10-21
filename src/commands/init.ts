@@ -7,9 +7,12 @@ import { homedir } from 'node:os'
 import { join } from 'pathe'
 import { i18n, initI18n } from '../i18n'
 import { createDefaultConfig, ensureCcgDir, getCcgDir, readCcgConfig, writeCcgConfig } from '../utils/config'
-import { configureApiMartForCodex, getAllCommandIds, getCoreCommandIds, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, showBinaryDownloadWarning, syncMcpToCodex, syncMcpToGemini, writeFastContextPrompt } from '../utils/installer'
+import { configureGeminiCliApi, configureSponsorForCodex, getAllCommandIds, getCoreCommandIds, getSponsor, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, promptSponsorInit, showBinaryDownloadWarning, sponsorInquirerChoices, syncMcpToCodex, syncMcpToGemini, writeFastContextPrompt } from '../utils/installer'
 import { isWindows } from '../utils/platform'
 import { migrateToV1_4_0, needsMigration } from '../utils/migration'
+import { promptOpencodeModel } from '../utils/model-selection'
+import { PACKAGE_ROOT } from '../utils/installer-template'
+import { getSkillCatalog, installedNames, resolveSkillPaths, SKILL_MANIFEST_FILE } from '../utils/skill-manager'
 
 /**
  * Auto-approve codeagent-wrapper Bash commands in settings.json.
@@ -231,6 +234,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
   let geminiModel = 'gemini-3.1-pro-preview'
   let grokModel = 'grok-4.5'
   let kimiModel = ''
+  let opencodeModel = ''
   const mode: CollaborationMode = 'smart'
   let selectedWorkflows = getCoreCommandIds()
   let installMode: 'v3' | 'legacy' = 'v3'
@@ -244,6 +248,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       geminiModel = existingConfig.routing.geminiModel || 'gemini-3.1-pro-preview'
       grokModel = existingConfig.routing.grokModel || 'grok-4.5'
       kimiModel = existingConfig.routing.kimiModel || ''
+      opencodeModel = existingConfig.routing.opencodeModel || ''
     }
     // Preserve install mode: if existing install has legacy commands, keep them
     if (existingConfig?.workflows?.installed) {
@@ -260,6 +265,41 @@ export async function init(options: InitOptions = {}): Promise<void> {
   // Performance mode selection
   let liteMode = false
   let skipImpeccable = false
+  let skillsProfile: string[] | undefined
+  let selectedSkillsMode: 'legacy' | 'native' | undefined
+  const skillPaths = resolveSkillPaths({
+    target: 'claude',
+    templatesDir: join(PACKAGE_ROOT, 'templates', 'skills'),
+    ...(options.installDir ? { nativeDir: join(options.installDir, 'skills'), storeDir: join(options.installDir, '.ccg-skills') } : {}),
+  })
+  const skillCatalog = getSkillCatalog(skillPaths)
+  const coreSkills = ['gen-docs', 'verify-security', 'verify-quality', 'verify-change', 'verify-module', 'multi-agent']
+  const requestedSkills = options.skills === undefined
+    ? undefined
+    : options.skills.split(',').map(name => name.trim()).filter(Boolean)
+  if (requestedSkills !== undefined) {
+    const unknown = requestedSkills.filter(name => !['all', 'none'].includes(name) && !skillCatalog.some(skill => skill.name === name))
+    if (!requestedSkills.length || unknown.length || (requestedSkills.length > 1 && requestedSkills.some(name => ['all', 'none'].includes(name)))) {
+      throw new Error(`Invalid Skills selection: ${options.skills}. Use all, none, or catalog names.`)
+    }
+  }
+  const requestedProfile = requestedSkills?.[0] === 'all'
+    ? skillCatalog.map(skill => skill.name)
+    : requestedSkills?.[0] === 'none' ? [] : requestedSkills && [...new Set(requestedSkills)]
+  const savedSkillsConfig = await readCcgConfig()
+  selectedSkillsMode = savedSkillsConfig?.performance?.skillsMode
+  skillsProfile = selectedSkillsMode === 'legacy' ? undefined : savedSkillsConfig?.performance?.skillsProfile
+  if (selectedSkillsMode === undefined && skillsProfile !== undefined)
+    selectedSkillsMode = 'native'
+  if (requestedSkills === undefined && selectedSkillsMode !== 'legacy'
+    && await fs.pathExists(join(skillPaths.storeDir, SKILL_MANIFEST_FILE))) {
+    skillsProfile = await installedNames(skillPaths)
+    selectedSkillsMode = 'native'
+  }
+  if (requestedSkills !== undefined) {
+    skillsProfile = requestedProfile
+    selectedSkillsMode = 'native'
+  }
 
   // MCP Tool Selection
   let mcpProvider = 'fast-context'
@@ -281,11 +321,15 @@ export async function init(options: InitOptions = {}): Promise<void> {
   // Claude Code API configuration
   let apiUrl = ''
   let apiKey = ''
-  // APIMart also speaks the OpenAI wire protocol, so it can back Codex CLI too.
-  // Applied during the install phase, not mid-step — the step machine allows
-  // going back or cancelling, and side effects must not survive that.
-  let apimartWireCodex = false
-  let apimartActivateCodex = false
+  // Sponsored gateways also speak the OpenAI wire protocol, so they can back
+  // Codex CLI too. Applied during the install phase, not mid-step — the step
+  // machine allows going back or cancelling, and side effects must not survive that.
+  let sponsorId = ''
+  let sponsorWireCodex = false
+  let sponsorActivateCodex = false
+  let geminiCliBaseUrl = ''
+  let geminiCliKey = ''
+  let geminiCliModel = ''
 
   // ═══════════════════════════════════════════════════════
   // Non-interactive mode (--skip-prompt): preserve existing settings
@@ -328,6 +372,8 @@ export async function init(options: InitOptions = {}): Promise<void> {
         grokModel = existingConfig.routing.grokModel
       if (existingConfig.routing.kimiModel)
         kimiModel = existingConfig.routing.kimiModel
+      if (existingConfig.routing.opencodeModel)
+        opencodeModel = existingConfig.routing.opencodeModel
     }
     if (existingConfig?.performance?.liteMode !== undefined) {
       liteMode = existingConfig.performance.liteMode
@@ -347,7 +393,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
         choices: [
           { name: `${ansis.green('●')} ${i18n.t('init:api.officialOption')}`, value: 'official' },
           { name: `${ansis.cyan('●')} ${i18n.t('init:api.thirdPartyOption')}`, value: 'thirdparty' },
-          { name: `${ansis.yellow('★')} ${i18n.t('init:api.sponsorAPIMart')} ${ansis.gray('— https://go.apimart.ai/gh-ccg-workflow')}`, value: 'apimart' },
+          ...sponsorInquirerChoices(),
           { name: `${ansis.gray('○')} ${i18n.t('init:api.skipOption')}`, value: 'skip' },
           ...navSentinels(canGoBack),
         ],
@@ -361,49 +407,22 @@ export async function init(options: InitOptions = {}): Promise<void> {
       // Clear stale values before collecting fresh input
       apiUrl = ''
       apiKey = ''
-      apimartWireCodex = false
-      apimartActivateCodex = false
+      sponsorId = ''
+      sponsorWireCodex = false
+      sponsorActivateCodex = false
+      geminiCliBaseUrl = ''
+      geminiCliKey = ''
+      geminiCliModel = ''
 
-      if (apiProvider === 'apimart') {
-        // APIMart serves the native Anthropic Messages protocol at POST /v1/messages,
-        // and Claude Code appends /v1/messages to ANTHROPIC_BASE_URL itself — so the
-        // base must NOT carry a /v1 suffix (that is the OpenAI-SDK base URL instead).
-        apiUrl = 'https://api.apimart.ai'
-        console.log()
-        console.log(`    ${ansis.yellow('★')} ${i18n.t('init:api.sponsorAPIMartGetKey')}: ${ansis.cyan.underline('https://go.apimart.ai/gh-ccg-workflow')}`)
-        console.log()
-        const { key } = await inquirer.prompt([{
-          type: 'password',
-          name: 'key',
-          message: `APIMart API Key ${ansis.gray(`(${i18n.t('init:api.keyRequired')})`)}`,
-          mask: '*',
-          validate: (v: string) => v.trim() !== '' || i18n.t('init:api.enterKey'),
-        }])
-        apiKey = key?.trim() || ''
-
-        // The same account can also back Codex CLI, which speaks the OpenAI
-        // protocol — note its base_url KEEPS the /v1 suffix, unlike above.
-        const { wire } = await inquirer.prompt([{
-          type: 'confirm',
-          name: 'wire',
-          message: i18n.t('init:api.apimartCodexPrompt'),
-          default: true,
-        }])
-        apimartWireCodex = wire
-
-        if (apimartWireCodex) {
-          // Activation is asked separately and defaults to NO: flipping
-          // model_provider reroutes every Codex request off the user's existing
-          // subscription onto pay-as-you-go billing. That is not a decision an
-          // installer should make quietly on someone's behalf.
-          const { activate } = await inquirer.prompt([{
-            type: 'confirm',
-            name: 'activate',
-            message: i18n.t('init:api.apimartCodexActivatePrompt'),
-            default: false,
-          }])
-          apimartActivateCodex = activate
-        }
+      const sponsor = getSponsor(apiProvider)
+      if (sponsor) {
+        // anthropicBaseUrl has no /v1: Claude Code appends /v1/messages itself.
+        apiUrl = sponsor.anthropicBaseUrl
+        sponsorId = sponsor.id
+        const picked = await promptSponsorInit(sponsor)
+        apiKey = picked.apiKey
+        sponsorWireCodex = picked.wireCodex
+        sponsorActivateCodex = picked.activateCodex
       }
       else if (apiProvider === 'thirdparty') {
         const apiAnswers = await inquirer.prompt([
@@ -429,6 +448,43 @@ export async function init(options: InitOptions = {}): Promise<void> {
         console.log(`    ${ansis.gray('○')} ${i18n.t('init:api.skipNoticeTitle')}`)
       }
       // 'official' leaves apiUrl/apiKey empty — will use OAuth login
+
+      // Independent of the Claude Code choice above: users without a Google
+      // account can point Gemini CLI at a third-party gateway. Two env vars in
+      // ~/.gemini/.env are all it takes — GOOGLE_GEMINI_BASE_URL flips the CLI
+      // into gateway auth by itself, no OAuth involved.
+      const { wireGeminiCli } = await inquirer.prompt([{
+        type: 'confirm',
+        name: 'wireGeminiCli',
+        message: i18n.t('init:api.geminiCliPrompt'),
+        default: false,
+      }])
+      if (wireGeminiCli) {
+        console.log(`    ${ansis.yellow('!')} ${i18n.t('init:api.geminiCliProtocolHint')}`)
+        const answers = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'url',
+            message: `${i18n.t('init:api.geminiCliUrlPrompt')} ${ansis.gray(`(${i18n.t('init:api.urlRequired')})`)}`,
+            validate: (v: string) => v.trim() !== '' || i18n.t('init:api.enterUrl'),
+          },
+          {
+            type: 'password',
+            name: 'key',
+            message: `Gemini API Key ${ansis.gray(`(${i18n.t('init:api.keyRequired')})`)}`,
+            mask: '*',
+            validate: (v: string) => v.trim() !== '' || i18n.t('init:api.enterKey'),
+          },
+          {
+            type: 'input',
+            name: 'model',
+            message: i18n.t('init:api.geminiCliModelPrompt'),
+          },
+        ])
+        geminiCliBaseUrl = answers.url?.trim() || ''
+        geminiCliKey = answers.key?.trim() || ''
+        geminiCliModel = answers.model?.trim() || ''
+      }
       return 'next'
     }
 
@@ -477,6 +533,10 @@ export async function init(options: InitOptions = {}): Promise<void> {
 
       frontendModels = [selectedFrontend]
       backendModels = [selectedBackend]
+
+      if (selectedFrontend === 'opencode' || selectedBackend === 'opencode') {
+        opencodeModel = await promptOpencodeModel(opencodeModel, language === 'zh-CN')
+      }
 
       if (selectedFrontend === 'gemini' || selectedBackend === 'gemini') {
         const { selectedGeminiModel } = await inquirer.prompt([{
@@ -812,6 +872,40 @@ export async function init(options: InitOptions = {}): Promise<void> {
         selectedWorkflows = getCoreCommandIds()
         skipImpeccable = true
       }
+      if (requestedSkills === undefined) {
+        const { skillsMode } = await inquirer.prompt([{
+          type: 'list',
+          name: 'skillsMode',
+          message: language === 'zh-CN' ? '原生 Skills 安装方式' : 'Native Skills installation',
+          choices: [
+            { name: language === 'zh-CN' ? '保留兼容安装（原有 Skills 体系）' : 'Keep the legacy Skills installation', value: 'legacy' },
+            { name: language === 'zh-CN' ? '核心质量关卡 + 多 Agent（6 项）' : 'Core quality gates + multi-agent (6 skills)', value: 'core' },
+            { name: language === 'zh-CN' ? '按需选择（可全部取消）' : 'Choose individual skills (can leave empty)', value: 'custom' },
+          ],
+          default: skillsProfile === undefined ? 'legacy' : 'custom',
+        }])
+        if (skillsMode === 'legacy') {
+          skillsProfile = undefined
+        }
+        else if (skillsMode === 'core') {
+          skillsProfile = coreSkills.filter(name => skillCatalog.some(skill => skill.name === name))
+        }
+        else {
+          const { selectedSkills } = await inquirer.prompt([{
+            type: 'checkbox',
+            name: 'selectedSkills',
+            message: language === 'zh-CN' ? '选择原生 Skills' : 'Select native Skills',
+            choices: skillCatalog.map(skill => ({
+              name: `${skill.name} — ${skill.description}`,
+              value: skill.name,
+              checked: skillsProfile?.includes(skill.name) ?? false,
+            })),
+          }])
+          skillsProfile = selectedSkills
+        }
+        // Persist an explicit legacy choice so the next update keeps it.
+        selectedSkillsMode = skillsMode === 'legacy' ? 'legacy' : 'native'
+      }
       return 'next'
     }
 
@@ -841,6 +935,9 @@ export async function init(options: InitOptions = {}): Promise<void> {
       if ((frontendModels[0] === 'kimi' || backendModels[0] === 'kimi') && kimiModel) {
         console.log(`  ${ansis.cyan(i18n.t('init:summary.kimiModel'))}   ${ansis.gray(kimiModel)}`)
       }
+      if (frontendModels[0] === 'opencode' || backendModels[0] === 'opencode') {
+        console.log(`  ${ansis.cyan('OpenCode model:')} ${ansis.gray(opencodeModel || (language === 'zh-CN' ? 'OpenCode 默认' : 'OpenCode default'))}`)
+      }
       console.log(`  ${ansis.cyan(i18n.t('init:summary.commandCount'))}  ${ansis.yellow(workflowsCount.toString())}`)
       const mcpSummary = (() => {
         if (mcpProvider === 'fast-context')
@@ -853,6 +950,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       })()
       console.log(`  ${ansis.cyan(i18n.t('init:summary.mcpTool'))}      ${mcpSummary}`)
       console.log(`  ${ansis.cyan(i18n.t('init:summary.webUI'))}        ${liteMode ? ansis.gray(i18n.t('init:summary.disabled')) : ansis.green(i18n.t('init:summary.enabled'))}`)
+      console.log(`  ${ansis.cyan('Native Skills:')} ${skillsProfile === undefined ? (language === 'zh-CN' ? '兼容安装' : 'Legacy installation') : skillsProfile.join(', ') || (language === 'zh-CN' ? '无' : 'None')}`)
       if (wantGrokSearch) {
         console.log(`  ${ansis.cyan('grok-search')}    ${tavilyKey ? ansis.green('✓') : ansis.yellow(`(${i18n.t('init:summary.pendingConfig')})`)}`)
       }
@@ -965,6 +1063,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
     geminiModel,
     grokModel,
     kimiModel,
+    opencodeModel,
   }
 
   // Summary + confirmation handled by runSummaryStep() inside the state
@@ -1029,6 +1128,8 @@ export async function init(options: InitOptions = {}): Promise<void> {
       mcpProvider,
       liteMode,
       skipImpeccable,
+      skillsProfile,
+      skillsMode: selectedSkillsMode,
     })
 
     // Save config FIRST - ensure it's created even if installation fails
@@ -1041,7 +1142,16 @@ export async function init(options: InitOptions = {}): Promise<void> {
       liteMode,
       mcpProvider,
       skipImpeccable,
+      skillsProfile,
+      skillsMode: selectedSkillsMode,
     })
+
+    if (!result.success) {
+      spinner.fail(ansis.red(i18n.t('init:installFailed')))
+      result.errors.forEach(error => console.log(`    ${ansis.red('✗')} ${error}`))
+      process.exitCode = 1
+      return
+    }
 
     // Install selected MCP tools (multiple can be installed)
     spinner.succeed(ansis.green(i18n.t('init:installSuccess')))
@@ -1129,23 +1239,42 @@ export async function init(options: InitOptions = {}): Promise<void> {
       console.log(`    ${ansis.green('✓')} API ${ansis.gray(`→ ${settingsPath}`)}`)
     }
 
-    // Register APIMart as a Codex model provider (~/.codex/config.toml).
-    // Separate from the block above because Codex speaks OpenAI, not Anthropic:
+    // Register the chosen sponsored gateway as a Codex model provider.
+    // Separate from the ANTHROPIC_* write because Codex speaks OpenAI:
     // its base_url keeps the /v1 suffix that ANTHROPIC_BASE_URL must omit.
-    if (apimartWireCodex) {
-      const codexApi = await configureApiMartForCodex(apimartActivateCodex)
+    if (sponsorWireCodex && sponsorId) {
+      const picked = getSponsor(sponsorId)
+      const codexApi = await configureSponsorForCodex(sponsorId, sponsorActivateCodex)
       console.log()
-      if (codexApi.success) {
+      if (codexApi.success && picked) {
+        const copy = { name: picked.name, id: picked.id }
         console.log(`    ${ansis.green('✓')} Codex ${ansis.gray(`→ ${codexApi.configPath}`)}`)
         // env_key auth: the key lives in the environment, never in config.toml,
         // so we never clobber the user's existing ~/.codex/auth.json login.
-        console.log(`      ${ansis.gray(i18n.t('init:api.apimartCodexEnvHint'))}`)
-        console.log(`      ${ansis.cyan(`export APIMART_API_KEY="${apiKey.slice(0, 6)}..."`)}`)
+        console.log(`      ${ansis.gray(i18n.t('init:api.sponsorCodexEnvHint', copy))}`)
+        console.log(`      ${ansis.cyan(`export ${picked.codex.env_key}="${apiKey.slice(0, 6)}..."`)}`)
         if (!codexApi.activated)
-          console.log(`      ${ansis.gray(i18n.t('init:api.apimartCodexNotActive'))}`)
+          console.log(`      ${ansis.gray(i18n.t('init:api.sponsorCodexNotActive', copy))}`)
       }
       else {
         console.log(`    ${ansis.yellow('!')} ${codexApi.message}`)
+      }
+    }
+
+    // Gemini CLI third-party gateway — for users without a Google account.
+    // gemini auto-selects gateway auth on seeing GOOGLE_GEMINI_BASE_URL, but
+    // 0.53.1 only reads the process environment (its .env loading is gone),
+    // so the variables land in the user's shell profile.
+    if (geminiCliBaseUrl && geminiCliKey) {
+      const geminiApi = await configureGeminiCliApi({ baseUrl: geminiCliBaseUrl, apiKey: geminiCliKey, model: geminiCliModel || undefined })
+      console.log()
+      if (geminiApi.success) {
+        console.log(`    ${ansis.green('✓')} ${i18n.t('init:api.geminiCliSaved')}${geminiApi.rcPath ? ansis.gray(` → ${geminiApi.rcPath}`) : ''}`)
+        if (geminiApi.needsReload)
+          console.log(`      ${ansis.gray(i18n.t('init:api.geminiCliReloadHint'))}`)
+      }
+      else {
+        console.log(`    ${ansis.yellow('!')} ${geminiApi.message}`)
       }
     }
 
@@ -1405,5 +1534,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
   catch (error) {
     spinner.fail(ansis.red(i18n.t('init:installFailed')))
     console.error(error)
+    process.exitCode = 1
   }
 }

@@ -1,9 +1,46 @@
-import { readdirSync, readFileSync } from 'node:fs'
+import { copyFileSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { afterAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import fs from 'fs-extra'
-import { getAllCommandIds, getWorkflowById, getWorkflowConfigs, injectConfigVariables, installWorkflows, uninstallWorkflows } from '../installer'
+import { getAllCommandIds, getWorkflowById, getWorkflowConfigs, injectConfigVariables, installWorkflows, uninstallWorkflows, verifyBinaryVersion } from '../installer'
+
+const fixture = vi.hoisted(() => ({ asset: '', downloads: [] as { url: string, destination: string }[] }))
+vi.mock('node:child_process', async (original) => {
+  const actual = await original<typeof import('node:child_process')>()
+  return { ...actual, execSync: vi.fn((command: string, options?: import('node:child_process').ExecSyncOptions) => {
+    if (command.startsWith('curl ')) {
+      const match = command.match(/ -o "([^"]+)" "(https:\/\/[^"\s]+)"$/)
+      if (!match || !fixture.asset) throw new Error('Unexpected fixture download request')
+      fixture.downloads.push({ destination: match[1], url: match[2] })
+      copyFileSync(fixture.asset, match[1])
+      return Buffer.alloc(0)
+    }
+    const output = actual.execSync(command, options)
+    // Windows uses a runnable Node PE fixture. Verify execution for real, then
+    // normalize its identity; this checks installation, not the real Go binary.
+    return process.platform === 'win32' && /codeagent-wrapper\.exe" --version$/.test(command)
+      ? Buffer.from('codeagent-wrapper version 5.15.0\n') : output
+  }) }
+})
+let assetDirectory: string
+beforeAll(async () => {
+  assetDirectory = await fs.mkdtemp(join(tmpdir(), 'ccg-binary-fixture-'))
+  fixture.asset = join(assetDirectory, 'wrapper-asset')
+  if (process.platform === 'win32') await fs.copy(process.execPath, fixture.asset)
+  else await fs.writeFile(fixture.asset, '#!/usr/bin/env node\nconsole.log("codeagent-wrapper version 5.15.0")\n', { mode: 0o600 })
+  vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('Installer tests must not use live HTTP'))))
+})
+afterAll(async () => { vi.unstubAllGlobals(); await fs.remove(assetDirectory) })
+
+/** Preinstall a matching runnable fixture for tests whose purpose is not downloading. */
+async function installWithFixture(...args: Parameters<typeof installWorkflows>) {
+  const destination = join(args[1], 'bin', process.platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper')
+  await fs.ensureDir(join(args[1], 'bin'))
+  await fs.copyFile(fixture.asset, destination)
+  if (process.platform !== 'win32') await fs.chmod(destination, 0o755)
+  return installWorkflows(...args)
+}
 
 // Helper: find package root
 function findPackageRoot(): string {
@@ -230,7 +267,7 @@ describe.skip('installWorkflows E2E — mcpProvider="contextweaver"', () => {
   })
 
   it('installs all workflows without errors', async () => {
-    const result = await installWorkflows(getAllCommandIds(), tmpDir, true, {
+    const result = await installWithFixture(getAllCommandIds(), tmpDir, true, {
       mcpProvider: 'contextweaver',
     })
     expect(result.success).toBe(true)
@@ -262,7 +299,7 @@ describe('uninstallWorkflows E2E', () => {
 
   it('installs then uninstalls cleanly', async () => {
     // First install
-    const installResult = await installWorkflows(getAllCommandIds(), tmpDir, true, {
+    const installResult = await installWithFixture(getAllCommandIds(), tmpDir, true, {
       mcpProvider: 'ace-tool',
     })
     expect(installResult.success).toBe(true)
@@ -299,6 +336,7 @@ describe('installWorkflows — binary installation', () => {
   })
 
   it('installs codeagent-wrapper binary for current platform', async () => {
+    const before = fixture.downloads.length
     const result = await installWorkflows(['workflow'], tmpDir, true, {
       mcpProvider: 'skip',
     })
@@ -307,7 +345,14 @@ describe('installWorkflows — binary installation', () => {
     expect(result.binPath).toBeTruthy()
 
     const binaryName = process.platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper'
-    expect(fs.existsSync(join(result.binPath!, binaryName))).toBe(true)
+    const installed = join(result.binPath!, binaryName)
+    expect(fs.existsSync(installed)).toBe(true)
+    expect(await fs.readFile(installed)).toEqual(await fs.readFile(fixture.asset))
+    expect(fixture.downloads.slice(before)).toHaveLength(1)
+    expect(fixture.downloads.at(-1)?.destination).toBe(installed)
+    expect(fixture.downloads.at(-1)?.url).toMatch(/\/codeagent-wrapper-(darwin|linux|windows)-(amd64|arm64)(?:\.exe)?$/)
+    if (process.platform !== 'win32') expect((await fs.stat(installed)).mode & 0o777).toBe(0o755)
+    expect(await verifyBinaryVersion(tmpDir)).toBe(true)
   })
 })
 
@@ -321,8 +366,8 @@ describe('installWorkflows — prompts installation', () => {
     await fs.remove(tmpDir)
   })
 
-  it('installs codex, gemini, and claude prompts', async () => {
-    const result = await installWorkflows(getAllCommandIds(), tmpDir, true, {
+  it('installs codex, gemini, and claude prompts', { timeout: 30_000 }, async () => {
+    const result = await installWithFixture(getAllCommandIds(), tmpDir, true, {
       mcpProvider: 'skip',
     })
     expect(result.success).toBe(true)
@@ -357,8 +402,8 @@ describe('skills namespace isolation', () => {
     await fs.remove(tmpDir)
   })
 
-  it('installs skills under skills/ccg/ namespace', async () => {
-    const result = await installWorkflows(['workflow'], tmpDir, true, {
+  it('installs skills under skills/ccg/ namespace', { timeout: 30_000 }, async () => {
+    const result = await installWithFixture(['workflow'], tmpDir, true, {
       mcpProvider: 'skip',
     })
     expect(result.success).toBe(true)
@@ -368,6 +413,11 @@ describe('skills namespace isolation', () => {
     expect(fs.existsSync(join(tmpDir, 'skills', 'ccg', 'SKILL.md'))).toBe(true)
     expect(fs.existsSync(join(tmpDir, 'skills', 'ccg', 'tools'))).toBe(true)
     expect(fs.existsSync(join(tmpDir, 'skills', 'ccg', 'orchestration'))).toBe(true)
+
+    // Red-team notes stay in git, never land in the user install (AV false positives
+    // + npm publish-time scanner). Other domain knowledge still installs.
+    expect(fs.existsSync(join(tmpDir, 'skills', 'ccg', 'domains', 'security'))).toBe(false)
+    expect(fs.existsSync(join(tmpDir, 'skills', 'ccg', 'domains', 'ai'))).toBe(true)
   })
 
   it('uninstall only removes skills/ccg/, preserves user skills', async () => {
@@ -408,7 +458,7 @@ describe('skills namespace isolation', () => {
     await fs.writeFile(join(oldSkills, 'brainstorming', 'SKILL.md'), '# User Brainstorming')
 
     // Install triggers migration
-    const result = await installWorkflows(['workflow'], migrateDir, true, {
+    const result = await installWithFixture(['workflow'], migrateDir, true, {
       mcpProvider: 'skip',
     })
     expect(result.success).toBe(true)

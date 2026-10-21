@@ -23,34 +23,58 @@
 
 ## ♥️ Sponsor
 
+[![PackyCode](assets/sponsors/packycode.png)](https://www.packyapi.ai/register?aff=m21P)
+
+Thanks to [PackyCode](https://www.packyapi.ai/register?aff=m21P) for sponsoring this project! PackyCode is a stable, high-throughput API gateway for leading models — one domain, one key, automatic failover, 97% availability. Dedicated high-speed routes for Codex and Claude Code. Pay in RMB 1:1 with no FX markup or top-up fees; new users get a first-charge discount plus $1 in free credits, and eligible groups start from 20% of list price. [Sign up here](https://www.packyapi.ai/register?aff=m21P) to get started.
+
+> 💡 PackyCode also exposes an Anthropic-compatible endpoint, so it can serve as your API provider for Claude Code itself — run `npx ccg-ros2-workflow`, pick PackyCode at Step 1, and paste your key.
+
+---
+
 [![APIMart](assets/sponsors/apimart.jpg)](https://go.apimart.ai/gh-ccg-workflow)
 
 Thanks to [APIMart](https://go.apimart.ai/gh-ccg-workflow) for sponsoring this project! APIMart is a low-cost API platform for AI image & video generation — GPT-Image-2 from $0.006/image, 160+ images per dollar. One async API covers both image and video: submit a task, get an ID, fetch results via polling or callback. Batch tens of thousands of images without timeouts, switch models without changing code. Pay-as-you-go with no monthly fee — [sign up here](https://go.apimart.ai/gh-ccg-workflow) to get started.
 
-> 💡 APIMart also exposes an Anthropic-compatible endpoint, so it can serve as your API provider for Claude Code itself — run `npx ccg-workflow`, pick APIMart at Step 1, and paste your key.
+> 💡 APIMart also exposes an Anthropic-compatible endpoint, so it can serve as your API provider for Claude Code itself — run `npx ccg-ros2-workflow`, pick APIMart at Step 1, and paste your key.
 
 ---
 
-[![Gamma Remover](assets/sponsors/gamma-remover.webp)](https://gammaremover.com/)
+[![x6.ai](assets/sponsors/x6ai.png)](https://x6.ai)
 
-[Gamma Remover](https://gammaremover.com/) — Free browser-local Gamma watermark remover for PDF & PPTX. No signup, instant results, 100% private. Your files never leave your device.
+[x6.ai](https://x6.ai): One API key for every major model. Official-key and proxy channels, up to 90% off, free credits on sign-up. Pay with Alipay, Google Pay, Apple Pay, Visa or Mastercard.
+
+> 💡 x6.ai also exposes an Anthropic-compatible endpoint, so it can serve as your API provider for Claude Code itself — run `npx ccg-ros2-workflow`, pick x6.ai at Step 1, and paste your key.
 
 ---
 
-## 🧩 Also by the author
+## Choose the skills you use (v3.7.0)
 
-**[DSH Marketplace](https://dshmarketplace.dev/)** — a directory of [DeepSeek Harness plugins](https://dshmarketplace.dev/plugins). 2,500+ indexed across 14 categories, bilingual EN / 中文.
-
-Not a sponsor — same author as CCG, built out of a plain annoyance: DSH plugins are multiplying fast, but figuring out what one does, whether it still installs, and what the command actually is meant opening one GitHub README after another. So the install commands here are put through a throwaway container first. **A plugin only gets a check mark if it really installs — and if it can't, the listing says why** (buried in a monorepo subdirectory, never published to npm, and so on). A verified index, not another awesome list.
+Install native skills independently, or select them during the CCG setup wizard. Each selected skill gets a `ccg-` entry; its scripts and references live in a versioned source cache.
 
 ```bash
-dsh plugin --profile web add dshmarketplace-plugin   # browse the store from inside DSH
-npx dshmarketplace-cli add owner/repo                # install any plugin from your shell
+npx ccg-ros2-workflow skills catalog
+npx ccg-ros2-workflow skills install verify-quality ros2-control
+npx ccg-ros2-workflow skills list --installed --json
+npx ccg-ros2-workflow skills update
+npx ccg-ros2-workflow skills remove ros2-control
+# Codex native skills
+npx ccg-ros2-workflow skills install verify-quality --target codex
+# Configure the framework with a saved selection
+npx ccg-ros2-workflow init --skills verify-quality,verify-security
+npx ccg-ros2-workflow doctor --json
 ```
 
-There is also a [Python SDK](https://github.com/DshMarketPlace/dshmarketplace-py) and a [public API](https://dshmarketplace.dev/api-docs). Early days — bug reports and plugin submissions are very welcome on [GitHub](https://github.com/DshMarketPlace).
+Claude Code uses `/ccg-verify-quality`; Codex uses `$ccg-verify-quality`. The manager exposes only selected entries, keeps supporting resources together, refuses ownership conflicts and preserves edited caches. The menu has **S. Manage Skills** and **V. Doctor**. Reinstalling retains the latest selection; `--skills all` selects the catalog and `--skills none` selects none. Existing full installations remain available as compatibility mode.
 
----
+`doctor --json` returns a versioned report with check IDs, status, remediation, and failure/warning counts. It detects the actual Claude/Codex/Skills-only mode, validates the selected backends (including review routes), Hook registrations and managed skills. Failures exit with code 1. Version and filesystem checks establish configuration health; they do not call a model or prove vendor API access.
+
+Standalone Codex mode checks its own CLI, configuration and installed files. Missing shared Claude routing is optional; missing external delegation tools are reported as warnings with setup instructions.
+
+Model-action Hooks now follow the configured routes and concrete model IDs, avoid duplicate calls to one backend, and use native Agents for pure Claude setups. Native mode uses on-demand skill discovery; legacy knowledge excerpts have a fixed size limit.
+
+### Use an OpenCode worker, including DeepSeek
+
+Configure your provider in OpenCode with `/connect`, then query `opencode models` (or `opencode models deepseek`) for its actual model IDs. In CCG's model menu choose **OpenCode** and enter that `provider/model`. Keep Claude Code as the coordinator; the worker runs through the existing wrapper. CCG preserves the chosen model when changing routing, reinstalling or updating, and does not manage the provider credentials.
 
 ## What is CCG-ROS2?
 
@@ -221,6 +245,8 @@ Skills are invoked as `/ccg:<skill>`. No npx, no binary. The multi-model command
 npx ccg-ros2-workflow                          # Interactive menu
 npx ccg-ros2-workflow init                     # 4-step install wizard
 npx ccg-ros2-workflow doctor                   # Environment health check
+npx ccg-ros2-workflow doctor --json            # Machine-readable health report
+npx ccg-ros2-workflow skills list              # Catalog and native selection
 npx ccg-ros2-workflow status                   # Installation overview
 npx ccg-ros2-workflow codex-mode install       # Install Codex-Led mode
 npx ccg-ros2-workflow codex-mode uninstall     # Uninstall Codex-Led mode
@@ -235,7 +261,9 @@ npx ccg-ros2-workflow diagnose-mcp             # Diagnose MCP issues
 ~/.claude/
 ├── commands/ccg/          # Slash commands
 ├── hooks/ccg/             # Hook scripts (5 files)
-├── skills/ccg/            # Quality gates + 100+ domain knowledge
+├── skills/ccg/            # Legacy bundled skills
+├── skills/ccg-<slug>      # Selected native skill entries
+├── .ccg-skills/           # Native selection manifest and resource cache
 ├── rules/                 # Auto-trigger rules
 ├── .ccg/
 │   ├── config.toml        # Model routing, MCP, performance
@@ -264,7 +292,7 @@ npx ccg-ros2-workflow uninstall  # Clean uninstall
 
 ## Credits
 
-- [cexll/myclaude](https://github.com/cexll/myclaude) — codeagent-wrapper inspiration
+- [stellarlinkco/myclaude](https://github.com/stellarlinkco/myclaude) — codeagent-wrapper inspiration
 - [UfoMiao/zcf](https://github.com/UfoMiao/zcf) — Git tools reference
 - [mindfold-ai/Trellis](https://github.com/mindfold-ai/Trellis) — Hook-based workflow state patterns
 - [ace-tool](https://linux.do/t/topic/1344562) — MCP code retrieval
@@ -305,4 +333,4 @@ MIT
 
 ---
 
-v3.6.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.7.2-ros2.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)
