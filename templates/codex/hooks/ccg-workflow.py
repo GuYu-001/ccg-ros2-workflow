@@ -11,6 +11,7 @@ import json
 import os
 import sys
 import glob
+import re
 import subprocess
 from pathlib import Path
 from datetime import datetime
@@ -27,6 +28,34 @@ _TERMINAL_STATUSES = frozenset({
 
 def _is_terminal_status(status):
     return str(status or "").strip().lower() in _TERMINAL_STATUSES
+
+
+_SECURITY_RISK_KEYWORDS = (
+    "auth", "login", "password", "token", "secret", "crypto",
+    "encrypt", "migration", "schema", "permission", "admin",
+)
+_ROS2_RISK_PATTERN = re.compile(
+    r"(?<![a-z0-9])(?:"
+    r"motor|actuator|ros2_control|emergency[\s_.-]*stop|e[\s_.-]*stop|estop|safety|watchdog|"
+    r"realtime|real[\s_.-]*time|control[\s_.-]*loop|"
+    r"socketcan|cansend|can(?:[0-9]+|[\s_.-]+(?:bus|write|send|frame|interface|socket))|"
+    r"serial[\s_.-]+(?:write|send|port)|tty(?:usb|acm|s)?[0-9*]*|"
+    r"(?:joint|velocity|effort|torque|position|acceleration)[\s_.-]*limits?|"
+    r"(?:max|min)[\s_.-]*(?:velocity|effort|torque|position|acceleration)"
+    r")(?![a-z0-9])|"
+    r"电机|执行器|急停|安全|实时(?:循环|控制)|串口|"
+    r"参数.{0,8}(?:上限|限幅)",
+    re.IGNORECASE,
+)
+
+
+def _has_high_risk(text):
+    # Split camelCase identifiers without treating ordinary prose "can" as CAN I/O.
+    normalized = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", str(text or "")).lower()
+    return (
+        any(keyword in normalized for keyword in _SECURITY_RISK_KEYWORDS)
+        or bool(_ROS2_RISK_PATTERN.search(normalized))
+    )
 
 
 def find_project_root():
@@ -54,7 +83,7 @@ def get_active_task(root):
         if not os.path.isfile(task_file):
             continue
         try:
-            with open(task_file) as f:
+            with open(task_file, encoding="utf-8") as f:
                 task = json.load(f)
             if not _is_terminal_status(task.get("status")):
                 task["_dir"] = os.path.join(tasks_dir, name)
@@ -76,35 +105,33 @@ def detect_progress(root):
     }
     try:
         status = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=root, capture_output=True, text=True, timeout=5
+            ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+            cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=2
         )
-        lines = [l for l in status.stdout.strip().split("\n") if l.strip()]
-        signals["dirty_count"] = len(lines)
-        signals["has_dirty_files"] = len(lines) > 0
-
-        risk_patterns = ["auth", "login", "password", "token", "secret", "crypto",
-                         "encrypt", "migration", "schema", "permission", "admin"]
-        for line in lines:
-            fname = line[3:].strip().lower()
-            if any(p in fname for p in risk_patterns):
+        records = iter(status.stdout.split("\0"))
+        for record in records:
+            if not record:
+                continue
+            signals["dirty_count"] += 1
+            paths = [record[3:]]
+            # Porcelain -z emits destination then source for renames/copies.
+            if "R" in record[:2] or "C" in record[:2]:
+                paths.append(next(records, ""))
+            if any(_has_high_risk(path) for path in paths):
                 signals["high_risk_files"] = True
-                break
+        signals["has_dirty_files"] = signals["dirty_count"] > 0
 
         if signals["has_dirty_files"]:
-            diff = subprocess.run(
-                ["git", "diff", "--stat"],
-                cwd=root, capture_output=True, text=True, timeout=5
-            )
-            for dline in diff.stdout.strip().split("\n"):
-                if "insertion" in dline or "deletion" in dline:
-                    parts = dline.split(",")
-                    for p in parts:
-                        p = p.strip()
-                        if "insertion" in p:
-                            signals["changed_lines"] += int(p.split()[0])
-                        elif "deletion" in p:
-                            signals["changed_lines"] += int(p.split()[0])
+            for scope in ([], ["--cached"]):
+                diff = subprocess.run(
+                    ["git", "diff", "--no-ext-diff", "--no-textconv", "--no-color", "--unified=0"] + scope,
+                    cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=2
+                )
+                for line in diff.stdout.splitlines():
+                    if line.startswith(("+", "-")) and not line.startswith(("+++", "---")):
+                        signals["changed_lines"] += 1
+                        if _has_high_risk(line[1:]):
+                            signals["high_risk_files"] = True
     except Exception:
         pass
     return signals
@@ -166,10 +193,13 @@ def build_guidance(task, progress, root):
         parts.append("")
         parts.append("⛔ Review phase: call BOTH the frontend model (--backend {{FRONTEND_PRIMARY}}) AND Claude (--backend claude) with reviewer role. Two models, not one.")
 
-    # High-risk files detected
-    if progress["high_risk_files"] and phase not in ("review", "completed"):
+    # Task intent must warn before risky files exist, including on a clean tree.
+    task_risk = str(task.get("risk", "")).strip().lower() == "high"
+    task_intent = " ".join(str(task.get(key, "")) for key in ("title", "id"))
+    if (progress["high_risk_files"] or task_risk or _has_high_risk(task_intent)) and phase not in ("review", "completed"):
         parts.append("")
-        parts.append("⚠️ High-risk files detected (auth/db/crypto). External model security review is REQUIRED before delivery.")
+        parts.append("⚠️ High-risk change detected (auth/db/crypto or ROS2 hardware/safety). External model safety/security review is REQUIRED before delivery.")
+        parts.append("For ROS2, inspect motor/actuator control, emergency stops, real-time loops, CAN/serial writes and parameter safety limits. Physical activation, device writes and host permission changes need explicit user approval; never weaken an emergency stop.")
 
     # Has dirty files but hasn't run tests
     if progress["has_dirty_files"] and not progress["has_test_output"]:

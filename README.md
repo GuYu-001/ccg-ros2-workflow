@@ -82,7 +82,9 @@ Configure your provider in OpenCode with `/connect`, then query `opencode models
 
 ### ROS2 Focus
 
-The default target is **ROS2 Humble** on physical robots. Six built-in domains cover `ros2-upper-app`, `ros2-perception`, `ros2-control`, `ros2-navigation`, `ros2-manipulation`, and `ros2-hardware`. ROS2 prompts address node boundaries, messages, QoS, lifecycle, hardware safety, and simulation-based verification.
+The default target is **ROS2 Humble** on physical robots; the engine checks the project's actual distribution and workspace. `/ccg:go` reads `package.xml`, colcon package topology, launch files, parameters and interfaces, then maps `perception`, `control`, `navigation`, `manipulation`, `hardware` and `upper-app` to the corresponding `ros2-*` skills. Native mode loads only selected, discovered skills; compatibility mode uses the bundled resources.
+
+Across all seven model backends, **backend** means C++ `rclcpp`, drivers, real-time control and `ros2_control`; **frontend** means Python `rclpy`, launch, parameters, RViz/Gazebo and Nav2/MoveIt configuration. The [52-role inventory](./docs/ros2-prompt-inventory.md) records every prompt and its consumers. Roles cover package boundaries, `.msg/.srv/.action`, Topic/Service/Action and QoS compatibility, lifecycle, executors/callback groups, tf2 and hardware safety.
 
 One command. Describe what you want. The engine handles the rest.
 
@@ -103,18 +105,30 @@ npx ccg-ros2-workflow    # Install in 60 seconds
 ```
 You: /ccg:go add a lifecycle-managed motor controller
 
-CCG Engine:
-  1. Reads project context (git status, tech stack, file structure)
-  2. Classifies: feature / L complexity / low-level control / high risk
-  3. Selects strategy: full-collaborate
-  4. Creates .ccg/tasks/add-motor-controller/task.json
-  5. Launches configured model analysis (Codex + Antigravity by default)
-  6. Produces plan → HARD STOP for your approval
-  7. Spawns Agent Teams Builders for parallel implementation
-  8. Runs quality gates + dual-model cross-review
-  9. Reports results
+Entry:
+  Reads git/project context + package.xml/colcon/launch/interfaces
+  Classifies feature / L complexity / control / high risk
+  Creates task.json and selects full-collaborate
 
-Every turn, a hook injects:
+full-collaborate: seven stages
+  1. Research and context analysis
+  2. Multi-model solution design
+  3. Detailed plan → HARD STOP for your approval and execution-mode choice
+  4. Implementation using the approved mode
+  5. Iterative cross-review and fixes
+  6. Final software validation
+  7. Hardware deployment preparation → record outcome, confirm and archive
+```
+
+At plan approval, you choose Agent Teams or external-model Builders; the engine does not silently choose a team. `guided-develop` also has seven stages: requirements, context, model analysis, plan approval, implementation, verification with iterative review, and deployment preparation. Its implementation choice is Claude or external-model Builders. The five other code-changing strategies keep their compact phases and call the same ROS2 validation/deployment checks before completion.
+
+ROS2 software gates run `colcon build`, `colcon test`, `colcon test-result --verbose` and relevant `launch_testing` in an isolated or simulated configuration. Deployment preparation covers a dry-run/simulation-default deployment script, read-only hardware dependency checks, Gazebo validation when available, and delivery/rollback instructions. Missing ROS/SDK, required simulation resources or hardware is recorded as **blocked / not run**, never passed. Simulation does not establish real-robot safety.
+
+Physical activation, motor motion, CAN/serial writes, host permission changes and changes to safety limits require separate explicit approval. A prepared deployment is not a claim that a robot is live. Non-ROS2 tasks or an explicit deployment opt-out record `deployment.status: "skipped"` and still archive normally; skipped deployment never skips required software validation.
+
+Every turn, a hook injects the task breadcrumb:
+
+```text
   <ccg-state>
   Task: add-motor-controller (in_progress)
   Strategy: full-collaborate
@@ -130,8 +144,8 @@ The engine auto-selects the right strategy based on task type and complexity:
 |----------|------|:---:|:---:|
 | `direct-fix` | Simple bug, single file | — | — |
 | `quick-implement` | Small feature, clear scope | — | — |
-| `guided-develop` | Medium feature, needs planning | Single | — |
-| `full-collaborate` | Complex feature, multi-module | Dual parallel | ✓ |
+| `guided-develop` | Medium feature, needs planning | Dual analysis/review | — |
+| `full-collaborate` | Complex feature, multi-module | Dual parallel | User-selected |
 | `debug-investigate` | Complex bug, unknown cause | Dual diagnosis | — |
 | `refactor-safely` | Code restructuring | Dual review | — |
 | `deep-research` | Technical research | Dual exploration | — |
@@ -139,7 +153,7 @@ The engine auto-selects the right strategy based on task type and complexity:
 | `review-audit` | Code review | Dual cross-review | — |
 | `git-action` | commit, rollback, branches | — | — |
 
-Simple tasks run fast with zero overhead. Complex tasks get the full engine.
+Small tasks use compact workflows. ROS2 safety checks apply even to one-line changes.
 
 ## Core Features
 
@@ -179,6 +193,8 @@ Medium+ complexity tasks get a persistent directory:
 | `/ccg:verify-change` | Doc sync check |
 | `/ccg:verify-module` | Module structure check |
 | `/ccg:gen-docs` | Auto-generate README + DESIGN |
+
+ROS2 code changes also use the shared software and deployment gates above. The Codex workflow Hook flags motor/actuator control, emergency stops, real-time loops, CAN/serial writes and safety limits from task intent, changed paths and staged/unstaged diffs. These reminders require independent safety review; they do not replace a hardware safety system.
 
 ### 100+ Domain Knowledge Files
 
@@ -268,7 +284,7 @@ npx ccg-ros2-workflow diagnose-mcp             # Diagnose MCP issues
 ├── .ccg/
 │   ├── config.toml        # Model routing, MCP, performance
 │   ├── engine/            # 10 strategy files + model router
-│   └── prompts/           # Expert prompts (codex/gemini/claude)
+│   └── prompts/           # 52 role prompts across seven model backends
 └── bin/codeagent-wrapper  # Multi-model bridge (Go binary)
 ```
 

@@ -75,4 +75,73 @@ describe('Codex mode hook lifecycle', () => {
     const context = JSON.parse(output).hookSpecificOutput.additionalContext
     expect(context).toContain(`.ccg/spec/${domain}/index.md`)
   })
+
+  async function runRiskHook(options: { file?: string, title?: string, content?: string, staged?: boolean, risk?: string, renameFrom?: string }) {
+    expect((await installCodexMode()).success).toBe(true)
+    const project = join(testHome.path, 'robot')
+    await fs.outputJson(join(project, '.ccg/tasks/test/task.json'), {
+      title: options.title || 'Update robot package',
+      status: 'in_progress', complexity: 'S', currentPhase: 'implementation', risk: options.risk || 'low',
+    })
+    execFileSync('git', ['init', '-q'], { cwd: project })
+    if (options.content || options.renameFrom) {
+      await fs.outputFile(join(project, options.renameFrom || options.file || 'src/node.cpp'), 'const int value = 1;\n')
+      execFileSync('git', ['add', '.'], { cwd: project })
+      execFileSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'baseline'], { cwd: project })
+      if (options.renameFrom) execFileSync('git', ['mv', options.renameFrom, options.file!], { cwd: project })
+      else await fs.writeFile(join(project, options.file || 'src/node.cpp'), options.content!)
+      if (options.staged) execFileSync('git', ['add', '.'], { cwd: project })
+    }
+    else if (options.file) {
+      await fs.outputFile(join(project, options.file), 'placeholder\n')
+    }
+    const output = execFileSync('python3', [join(testHome.path, '.codex/hooks/ccg-workflow.py')], {
+      cwd: project, encoding: 'utf8',
+      env: { ...process.env, CODEX_PROJECT_DIR: project, CODEX_AGENT_TYPE: '', CODEX_FORK_TURNS: '' },
+    })
+    return JSON.parse(output).hookSpecificOutput.additionalContext as string
+  }
+
+  it.each(['src/motor_driver.cpp', 'src/actuator.cpp', 'src/emergency_stop.cpp', 'src/realtime_loop.cpp', 'src/can_write.cpp', 'src/serial_write.cpp', 'config/velocity_limits.yaml', 'src/急停.cpp'])(
+    'requires safety review for the installed hook risk path %s',
+    async (file) => {
+      const context = await runRiskHook({ file })
+      expect(context).toContain('High-risk')
+      expect(context).toContain('review is REQUIRED')
+    },
+  )
+
+  it.each([false, true])('detects ROS2 safety content in a neutral filename (staged=%s)', async (staged) => {
+    const context = await runRiskHook({ content: 'max_velocity = 100.0; // change safe limit\n', staged })
+    expect(context).toContain('High-risk')
+    expect(context).toContain('review is REQUIRED')
+  })
+
+  it('uses the task intent before risky hardware files have been created', async () => {
+    const context = await runRiskHook({ title: '修改电机参数安全上限并写入串口' })
+    expect(context).toContain('High-risk')
+  })
+
+  it('honors an explicit high risk task even for a neutral title', async () => {
+    const context = await runRiskHook({ risk: 'high' })
+    expect(context).toContain('High-risk')
+  })
+
+  it('recognizes the risky source of a rename with spaces in both paths', async () => {
+    const context = await runRiskHook({ file: 'src/plain node.cpp', renameFrom: 'src/motor driver.cpp' })
+    expect(context).toContain('High-risk')
+    expect(context).not.toContain('no files changed')
+  })
+
+  it('recognizes camelCase safety limits but not scan or cancel identifiers', async () => {
+    expect(await runRiskHook({ content: 'const double maxVelocity = 100.0;\n' })).toContain('High-risk')
+    await fs.remove(join(testHome.path, 'robot'))
+    expect(await runRiskHook({ content: 'const int scanCount = 1; // cancel pending scan\n' })).not.toContain('High-risk')
+  })
+
+  it('retains auth risk detection without treating ordinary can prose as CAN writes', async () => {
+    expect(await runRiskHook({ file: 'src/auth.cpp' })).toContain('High-risk')
+    await fs.remove(join(testHome.path, 'robot'))
+    expect(await runRiskHook({ file: 'docs/overview.md', title: 'We can improve package documentation' })).not.toContain('High-risk')
+  })
 })

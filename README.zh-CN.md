@@ -82,7 +82,9 @@ Claude Code 使用 `/ccg-verify-quality`，Codex 使用 `$ccg-verify-quality`。
 
 ### ROS2 专项能力
 
-默认面向实体机器人的 **ROS2 Humble**。内置六个领域技能：`ros2-upper-app`、`ros2-perception`、`ros2-control`、`ros2-navigation`、`ros2-manipulation`、`ros2-hardware`，覆盖节点边界、消息接口、QoS、生命周期、硬件安全与仿真验证。
+默认面向实体机器人的 **ROS2 Humble**，执行时以项目实际发行版和工作空间为准。`/ccg:go` 读取 `package.xml`、colcon 包拓扑、launch、参数和接口，将 `perception`、`control`、`navigation`、`manipulation`、`hardware`、`upper-app` 映射到对应 `ros2-*` 技能。原生模式只加载已选择且可发现的技能，兼容模式读取全量资源。
+
+七个模型后端统一采用 ROS2 分工：**backend 底层控制**负责 C++ `rclcpp`、驱动、实时控制和 `ros2_control`；**frontend 上层应用**负责 Python `rclpy`、launch、参数、RViz/Gazebo 和 Nav2/MoveIt 配置。[52 个角色提示词清单](./docs/ros2-prompt-inventory.md) 列出了全部文件及引用方。角色覆盖 package 边界、`.msg/.srv/.action`、Topic/Service/Action 与 QoS 兼容性、生命周期、executor/callback group、tf2 和硬件安全。
 
 一条命令，描述你要做什么，引擎自动处理一切。
 
@@ -103,18 +105,30 @@ npx ccg-ros2-workflow    # 60 秒安装
 ```
 你: /ccg:go 添加带生命周期管理的电机控制器
 
-CCG 引擎:
-  1. 读取项目上下文（git 状态、技术栈、文件结构）
-  2. 分类：功能 / L 复杂度 / 底层控制 / 高风险
-  3. 选择策略：full-collaborate（全协作）
-  4. 创建 .ccg/tasks/add-motor-controller/task.json
-  5. 启动已配置模型分析（默认 Codex + Antigravity）
-  6. 生成计划 → 硬停等你审批
-  7. 派生 Agent Teams Builder 并行实施
-  8. 运行质量关卡 + 双模型交叉审查
-  9. 报告结果
+入口:
+  读取 git/项目上下文 + package.xml/colcon/launch/接口
+  分类：功能 / L 复杂度 / control / 高风险
+  创建 task.json，选择 full-collaborate
 
-每一轮，Hook 自动注入：
+full-collaborate 七阶段:
+  1. 研究与上下文分析
+  2. 多模型方案构思
+  3. 详细规划 → 硬停，等待你审批并选择实施模式
+  4. 按批准模式实施
+  5. 迭代交叉审查与修复
+  6. 最终软件验收
+  7. 硬件部署准备 → 记录结果、确认后归档
+```
+
+计划审批时由你选择 Agent Teams 或外部模型 Builder，引擎不会默选团队。`guided-develop` 同样为七阶段：需求增强、上下文检索、多模型分析、计划审批、实施、含迭代审查的验证、硬件部署准备；实施可选 Claude 或外部模型 Builder。其余五个改代码策略保留精简阶段，在完成前调用同一套 ROS2 验证和部署检查。
+
+ROS2 软件质量门在硬件隔离或仿真配置下执行 `colcon build`、`colcon test`、`colcon test-result --verbose` 和相关 `launch_testing`。部署准备包含默认 dry-run/仿真的部署脚本、只读硬件依赖检查、资源具备时的 Gazebo 验证、交付与回滚说明。缺少 ROS/SDK、必需仿真资源或硬件时标记 **blocked / not run**，不得记作通过；仿真不证明真机安全。
+
+真机激活、电机动作、CAN/串口写、主机权限和安全上限变更均须另行明确授权。部署准备完成不代表机器人已上线。非 ROS2 任务或用户明确跳过部署时记录 `deployment.status: "skipped"`，仍正常归档；跳过部署不等于跳过必需的软件验证。
+
+每一轮，Hook 注入任务状态：
+
+```text
   <ccg-state>
   任务: add-motor-controller (进行中)
   策略: full-collaborate
@@ -130,8 +144,8 @@ CCG 引擎:
 |------|---------|:---:|:---:|
 | `direct-fix` | 简单 bug，单文件 | — | — |
 | `quick-implement` | 小功能，范围明确 | — | — |
-| `guided-develop` | 中等功能，需要规划 | 单模型 | — |
-| `full-collaborate` | 复杂功能，跨模块 | 双模型并行 | ✓ |
+| `guided-develop` | 中等功能，需要规划 | 双模型分析/审查 | — |
+| `full-collaborate` | 复杂功能，跨模块 | 双模型并行 | 用户选择 |
 | `debug-investigate` | 复杂 bug，原因未知 | 双模型诊断 | — |
 | `refactor-safely` | 代码重构 | 双模型审查 | — |
 | `deep-research` | 技术调研 | 双模型探索 | — |
@@ -139,7 +153,7 @@ CCG 引擎:
 | `review-audit` | 代码审查 | 双模型交叉审查 | — |
 | `git-action` | commit、rollback、分支 | — | — |
 
-简单任务零开销快速执行。复杂任务调动全部引擎能力。
+小任务采用精简流程；即使只改一行，ROS2 安全检查也适用。
 
 ## 核心能力
 
@@ -179,6 +193,8 @@ CCG 引擎:
 | `/ccg:verify-change` | 文档同步检查 |
 | `/ccg:verify-module` | 模块结构检查 |
 | `/ccg:gen-docs` | 自动生成 README + DESIGN |
+
+ROS2 代码变更还须执行上述共用软件与部署质量门。Codex 工作流 Hook 根据任务意图、变更路径和暂存/未暂存差异识别电机/执行器控制、急停、实时循环、CAN/串口写及安全限位，要求独立安全审查。这些提醒不能代替硬件安全系统。
 
 ### 100+ 域知识秘典
 
@@ -268,7 +284,7 @@ npx ccg-ros2-workflow diagnose-mcp             # 诊断 MCP 问题
 ├── .ccg/
 │   ├── config.toml        # 模型路由、MCP、性能配置
 │   ├── engine/            # 10 个策略文件 + 模型路由器
-│   └── prompts/           # 专家提示词（codex/gemini/claude）
+│   └── prompts/           # 七个模型后端的 52 个角色提示词
 └── bin/codeagent-wrapper  # 多模型桥接（Go 二进制）
 ```
 
