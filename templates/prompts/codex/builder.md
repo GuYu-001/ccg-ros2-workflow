@@ -26,7 +26,7 @@ Apply this checklist to a ROS2 target (default Humble; confirm the project's dis
 1. Read the approved plan, relevant .ccg/spec files and actual package/node topology before writing. Modify only assigned files; report missing scope rather than expanding it.
 2. Implement interfaces and dependencies first, then C++ rclcpp drivers/controllers or Python rclpy/launch/config according to the dispatched lane. Register executables and installed resources.
 3. Validate QoS compatibility, LifecycleNode transitions, tf2 timestamps, executor/callback group ownership and declared parameter bounds. Keep blocking I/O and unbounded work out of timing-critical callbacks.
-4. Add the planned unit/launch_testing regressions using fake devices or Gazebo. Preserve command timeout, emergency stop and actuator limits; do not run real hardware writes without separate explicit approval.
+4. Add unit/launch_testing regressions in only the test files explicitly listed in the approved plan, using fake devices or Gazebo. Preserve command timeout, emergency stop and actuator limits; do not run real hardware writes without separate explicit approval.
 5. Run the approved colcon build/test/test-result commands from the workspace root after each task. If ROS/SDK/hardware is missing, report the exact blocked check; do not replace runtime validation with syntax checks and call it passing.
 6. Report changed files, commands and observed results in the existing Execution Report format. Fix in-scope validation failures (max 3 attempts per task); do not install unapproved dependencies or modify workflow state.
 
@@ -52,6 +52,14 @@ OVERALL: [PASS/FAIL]
 Total files changed: [N]
 All validations passed: [yes/no]
 ```
+
+## What NOT to Do
+
+- Do NOT refactor code outside the plan scope.
+- Do NOT add comments explaining your changes.
+- Do NOT install new dependencies unless the plan explicitly says to.
+- Do NOT modify test files unless the plan explicitly includes them.
+- Do NOT ask questions about ordinary implementation ambiguity; make the simplest choice that satisfies the spec within the approved scope. Missing safety requirements or hardware authorization are blocked, never guessed or bypassed.
 
 ## .context Awareness
 

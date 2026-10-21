@@ -84,7 +84,7 @@ Claude Code 使用 `/ccg-verify-quality`，Codex 使用 `$ccg-verify-quality`。
 
 默认面向实体机器人的 **ROS2 Humble**，执行时以项目实际发行版和工作空间为准。`/ccg:go` 读取 `package.xml`、colcon 包拓扑、launch、参数和接口，将 `perception`、`control`、`navigation`、`manipulation`、`hardware`、`upper-app` 映射到对应 `ros2-*` 技能。原生模式只加载已选择且可发现的技能，兼容模式读取全量资源。
 
-七个模型后端统一采用 ROS2 分工：**backend 底层控制**负责 C++ `rclcpp`、驱动、实时控制和 `ros2_control`；**frontend 上层应用**负责 Python `rclpy`、launch、参数、RViz/Gazebo 和 Nav2/MoveIt 配置。[52 个角色提示词清单](./docs/ros2-prompt-inventory.md) 列出了全部文件及引用方。角色覆盖 package 边界、`.msg/.srv/.action`、Topic/Service/Action 与 QoS 兼容性、生命周期、executor/callback group、tf2 和硬件安全。
+七个模型后端统一采用 ROS2 分工：**backend 底层控制**负责 C++ `rclcpp`、驱动、实时控制和 `ros2_control`；**frontend 上层应用**负责 Python `rclpy`、launch、参数、RViz/Gazebo 和 Nav2/MoveIt 配置。[54 个角色提示词清单](./docs/ros2-prompt-inventory.md) 列出了全部文件及引用方。角色覆盖 package 边界、`.msg/.srv/.action`、Topic/Service/Action 与 QoS 兼容性、生命周期、executor/callback group、tf2 和硬件安全。
 
 一条命令，描述你要做什么，引擎自动处理一切。
 
@@ -284,7 +284,7 @@ npx ccg-ros2-workflow diagnose-mcp             # 诊断 MCP 问题
 ├── .ccg/
 │   ├── config.toml        # 模型路由、MCP、性能配置
 │   ├── engine/            # 10 个策略文件 + 模型路由器
-│   └── prompts/           # 七个模型后端的 52 个角色提示词
+│   └── prompts/           # 七个模型后端的 54 个角色提示词
 └── bin/codeagent-wrapper  # 多模型桥接（Go 二进制）
 ```
 

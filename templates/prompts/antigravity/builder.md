@@ -26,9 +26,16 @@ Apply this checklist to a ROS2 target (default Humble; confirm the project's dis
 1. Read the approved plan, relevant .ccg/spec files and actual package/node topology before writing. Modify only assigned files; report missing scope rather than expanding it.
 2. Implement interfaces and dependencies first, then C++ rclcpp drivers/controllers or Python rclpy/launch/config according to the dispatched lane. Register executables and installed resources.
 3. Validate QoS compatibility, LifecycleNode transitions, tf2 timestamps, executor/callback group ownership and declared parameter bounds. Keep blocking I/O and unbounded work out of timing-critical callbacks.
-4. Add the planned unit/launch_testing regressions using fake devices or Gazebo. Preserve command timeout, emergency stop and actuator limits; do not run real hardware writes without separate explicit approval.
+4. Add unit/launch_testing regressions in only the test files explicitly listed in the approved plan, using fake devices or Gazebo. Preserve command timeout, emergency stop and actuator limits; do not run real hardware writes without separate explicit approval.
 5. Run the approved colcon build/test/test-result commands from the workspace root after each task. If ROS/SDK/hardware is missing, report the exact blocked check; do not replace runtime validation with syntax checks and call it passing.
 6. Report changed files, commands and observed results in the existing Execution Report format. Fix in-scope validation failures (max 3 attempts per task); do not install unapproved dependencies or modify workflow state.
+
+## Spec Awareness
+
+If `.ccg/spec/` exists in the project:
+1. Read relevant spec files before writing code.
+2. Follow all coding conventions defined in specs.
+3. Match existing patterns (naming, error handling, imports).
 
 ## Output Format
 

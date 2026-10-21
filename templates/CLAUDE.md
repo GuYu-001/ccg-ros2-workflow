@@ -2,7 +2,7 @@
 
 > [根目录](../CLAUDE.md) > **templates**
 
-**Last Updated**: 2026-04-10
+**Last Updated**: 2026-10-21
 
 ---
 
@@ -11,7 +11,7 @@
 `templates/` 是 CCG Workflow 的"弹药库"。所有安装到用户 `~/.claude/` 的素材都从这里出发，经过 `src/utils/installer.ts` 模板变量替换后写入目标位置。职责涵盖：
 
 - **29 个斜杠命令** + **7 个子智能体**（→ `~/.claude/commands/ccg/` + `~/.claude/agents/ccg/`）
-- **19 个专家提示词**（Claude / Codex / Gemini 三组，→ `~/.claude/.ccg/prompts/`）
+- **54 个专家提示词**（Antigravity / Claude / Codex / Gemini / Grok / Kimi / OpenCode 七组，→ `~/.claude/.ccg/prompts/`）
 - **100+ 技能文件**（质量关卡 + 10 大域知识秘典 + 6 个 ROS2 专属域 + 工具，→ `~/.claude/skills/ccg/`）
 - **2 个全局规则**（→ `~/.claude/rules/`）
 - **8 种输出风格**（→ `~/.claude/output-styles/`，由菜单命令安装）
@@ -26,9 +26,13 @@
 |------|--------|------|----------|
 | `commands/` | 29 `.md` | 斜杠命令模板 | `~/.claude/commands/ccg/` |
 | `commands/agents/` | 7 `.md` | 子智能体定义 | `~/.claude/agents/ccg/` |
-| `prompts/claude/` | 6 `.md` | Claude 专家提示词 | `~/.claude/.ccg/prompts/claude/` |
-| `prompts/codex/` | 6 `.md` | Codex 专家提示词 | `~/.claude/.ccg/prompts/codex/` |
-| `prompts/gemini/` | 7 `.md` | Gemini 专家提示词 | `~/.claude/.ccg/prompts/gemini/` |
+| `prompts/antigravity/` | 8 `.md` | Antigravity ROS2 角色提示词 | `~/.claude/.ccg/prompts/antigravity/` |
+| `prompts/claude/` | 7 `.md` | Claude ROS2 角色提示词 | `~/.claude/.ccg/prompts/claude/` |
+| `prompts/codex/` | 7 `.md` | Codex ROS2 角色提示词 | `~/.claude/.ccg/prompts/codex/` |
+| `prompts/gemini/` | 8 `.md` | Gemini ROS2 角色提示词 | `~/.claude/.ccg/prompts/gemini/` |
+| `prompts/grok/` | 8 `.md` | Grok ROS2 角色提示词 | `~/.claude/.ccg/prompts/grok/` |
+| `prompts/kimi/` | 8 `.md` | Kimi ROS2 角色提示词 | `~/.claude/.ccg/prompts/kimi/` |
+| `prompts/opencode/` | 8 `.md` | OpenCode ROS2 角色提示词 | `~/.claude/.ccg/prompts/opencode/` |
 | `skills/` | 100+ | 技能文件（质量关卡 + 域知识 + 工具） | `~/.claude/skills/ccg/` |
 | `rules/` | 2 `.md` | 全局规则（质量关卡触发 + 域知识路由） | `~/.claude/rules/` |
 | `output-styles/` | 8 `.md` | 输出风格（邪修/专业/猫娘/大小姐等） | `~/.claude/output-styles/`（菜单安装） |
@@ -125,43 +129,50 @@
 
 ---
 
-## prompts/（19 个专家提示词）
+## prompts/（54 个专家提示词，七组）
 
-专家提示词在 `codeagent-wrapper` 调用时通过 `--prompt-file` 注入，赋予模型特定领域角色。三组提示词覆盖相同角色，但针对各自模型的指令格式和上下文差异做了优化。
+专家提示词通过载荷中的 `ROLE_FILE` 供 `codeagent-wrapper` 读取；Claude 原生 Agent 使用内联角色要求，不递归调用 Claude CLI。七组均有 analyzer/architect/builder/debugger/optimizer/reviewer/tester；其余五组另有 frontend 角色。安装器逐组复制 `.md`，完整清单及调用方见[角色提示词清单](../docs/ros2-prompt-inventory.md)。
 
-### claude/（6 个）
+### claude/（7 个）
 
 | 文件 | 角色 |
 |------|------|
 | `analyzer.md` | Claude 技术分析专家 |
 | `architect.md` | Claude 系统架构师 |
+| `builder.md` | Claude 原生 Agent ROS2 实施工程师 |
 | `debugger.md` | Claude 调试诊断专家 |
 | `optimizer.md` | Claude 性能优化专家 |
 | `reviewer.md` | Claude 代码审查员 |
 | `tester.md` | Claude 测试工程师 |
 
-### codex/（6 个）
+### codex/（7 个）
 
 | 文件 | 角色 |
 |------|------|
 | `analyzer.md` | Codex 底层控制技术分析 |
 | `architect.md` | Codex 底层控制架构师 |
+| `builder.md` | Codex ROS2 实施工程师 |
 | `debugger.md` | Codex 底层控制调试专家 |
 | `optimizer.md` | Codex 底层控制性能优化 |
 | `reviewer.md` | Codex 底层控制代码审查 |
 | `tester.md` | Codex 底层控制测试工程师 |
 
-### gemini/（7 个，比 claude/codex 多 `frontend.md`）
+### gemini/（8 个，比 claude/codex 多 `frontend.md`）
 
 | 文件 | 角色 |
 |------|------|
 | `analyzer.md` | Gemini 全栈技术分析 |
 | `architect.md` | Gemini 上层应用架构师 |
+| `builder.md` | Gemini ROS2 实施工程师 |
 | `debugger.md` | Gemini 上层应用调试专家 |
-| `frontend.md` | Gemini 上层应用开发专家（Gemini 专属） |
+| `frontend.md` | Gemini 上层应用开发专家 |
 | `optimizer.md` | Gemini 上层应用性能优化 |
 | `reviewer.md` | Gemini 上层应用代码审查 |
 | `tester.md` | Gemini 上层应用测试工程师 |
+
+### antigravity/、grok/、kimi/、opencode/（各 8 个）
+
+各组均包含 `analyzer.md`、`architect.md`、`builder.md`、`debugger.md`、`frontend.md`、`optimizer.md`、`reviewer.md`、`tester.md`，覆盖 ROS2 分析、架构、实施、调试、上层应用、优化、审查和测试。backend/frontend 是任务视角，不由模型品牌限定能力。
 
 ---
 
@@ -324,8 +335,12 @@ dist/                              # TypeScript 编译产物
 templates/commands/*.md            # 29 个命令（逐一列出，无通配）
 templates/commands/agents/         # 7 个子智能体（目录整体）
 templates/prompts/codex/           # 目录整体
-templates/prompts/gemini/*.md      # 7 个文件（逐一列出）
+templates/prompts/gemini/*.md      # 8 个文件（逐一列出，含 builder）
 templates/prompts/claude/          # 目录整体
+templates/prompts/antigravity/     # 目录整体
+templates/prompts/grok/            # 目录整体
+templates/prompts/kimi/            # 目录整体
+templates/prompts/opencode/        # 目录整体
 templates/output-styles/           # 目录整体
 templates/skills/<子目录白名单>     # 含六个 ROS2 域；不含 domains/security/ 与已排除技能
 templates/rules/                   # 目录整体

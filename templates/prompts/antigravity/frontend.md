@@ -34,5 +34,5 @@ Apply this checklist to a ROS2 target (default Humble; confirm the project's dis
 
 1. **Component Design** - Structure and hierarchy
 2. **Implementation Plan** - Step-by-step guide
-3. **UX Considerations** - Interaction and accessibility
+3. **Integration Considerations** - Launch/parameter consistency, tf2 and operator safety
 4. **Performance Notes** - Optimization opportunities

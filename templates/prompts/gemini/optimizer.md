@@ -37,7 +37,7 @@ Apply this checklist to a ROS2 target (default Humble; confirm the project's dis
 ### Current Issues
 | Issue | Impact | Difficulty | Expected Improvement |
 |-------|--------|------------|---------------------|
-| [issue] | High | Low | -1.5s LCP |
+| [callback queueing] | High | Low | [target: reduce sensor-to-command p95 latency by 5 ms; measure to confirm] |
 
 ### Optimization Plan
 1. [Quick win with highest impact]

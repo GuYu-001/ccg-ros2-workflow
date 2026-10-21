@@ -45,7 +45,7 @@ Apply this checklist to a ROS2 target (default Humble; confirm the project's dis
 1. **Analysis** - Current architecture assessment
 2. **Architecture Decision** - Key design choices with rationale
 3. **Implementation Plan** - Step-by-step with pseudo-code
-4. **Considerations** - Performance, accessibility, maintainability notes
+4. **Considerations** - Timing, hardware safety, integration and maintainability notes
 
 ## .context Awareness
 

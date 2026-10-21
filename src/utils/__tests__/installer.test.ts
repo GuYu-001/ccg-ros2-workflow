@@ -366,12 +366,12 @@ describe('installWorkflows — prompts installation', () => {
     await fs.remove(tmpDir)
   })
 
-  it('installs codex, gemini, and claude prompts', { timeout: 30_000 }, async () => {
+  it('installs prompts and a builder role for all seven selectable backends', { timeout: 30_000 }, async () => {
     const result = await installWithFixture(getAllCommandIds(), tmpDir, true, {
       mcpProvider: 'skip',
     })
     expect(result.success).toBe(true)
-    expect(result.installedPrompts.length).toBeGreaterThan(0)
+    expect(result.installedPrompts).toHaveLength(54)
 
     // Check model directories exist
     const promptsDir = join(tmpDir, '.ccg', 'prompts')
@@ -389,6 +389,10 @@ describe('installWorkflows — prompts installation', () => {
     const grokFiles = readdirSync(join(promptsDir, 'grok')).filter(f => f.endsWith('.md'))
     expect(grokFiles.length).toBeGreaterThanOrEqual(7)
     expect(grokFiles).toContain('builder.md')
+    for (const backend of ['antigravity', 'claude', 'codex', 'gemini', 'grok', 'kimi', 'opencode']) {
+      expect(result.installedPrompts).toContain(`${backend}/builder`)
+      expect(await fs.readFile(join(promptsDir, backend, 'builder.md'), 'utf8')).toContain('ROS2 implementation engineer')
+    }
   })
 })
 

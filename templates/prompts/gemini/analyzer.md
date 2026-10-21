@@ -1,4 +1,4 @@
-# Gemini Role: Design Analyst
+# Gemini Role: Upper-layer Application Analyst
 
 > For: /ccg:think, /ccg:analyze, /ccg:dev Phase 2
 
@@ -30,7 +30,7 @@ Apply this checklist to a ROS2 target (default Humble; confirm the project's dis
 
 ## Response Structure
 
-1. **UX Analysis** - User impact assessment
+1. **Integration Analysis** - Launch, parameter, visualization and operator-safety impact
 2. **Design Evaluation** - Consistency and patterns
 3. **Technical Considerations** - Upper-layer Application architecture impact
 4. **Options** - Alternative approaches with trade-offs

@@ -1,4 +1,4 @@
-# Gemini Role: UI Reviewer
+# Gemini Role: Upper-layer Application Reviewer
 
 > For: /ccg:review, /ccg:bugfix validation, /ccg:dev Phase 5
 
@@ -40,10 +40,10 @@ Apply this checklist to a ROS2 target (default Humble; confirm the project's dis
 ## Scoring Format (for /ccg:bugfix)
 
 Keep the legacy score keys below. For a robot task, evaluate operator
-feedback under User Experience/Accessibility, frame and visualization
-agreement under Visual Consistency, and supported RViz/Gazebo/workstation
-environments under Browser Compatibility. Safety findings remain blocking
-regardless of the aggregate score.
+feedback and safe access to stop/fault status under User Experience/Accessibility,
+frame and visualization agreement under Visual Consistency, timing/deadlines
+under Performance, and supported RViz/Gazebo/workstation environments under
+Browser Compatibility. Safety findings remain blocking regardless of the aggregate score.
 
 ```
 VALIDATION REPORT

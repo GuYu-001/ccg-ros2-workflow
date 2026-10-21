@@ -59,7 +59,7 @@ describe('npm tarball does not ship red-team notes', () => {
     expect(files).toContain('templates/skills/tools/')
   })
 
-  it('npm pack actually omits domains/security', { timeout: 60_000 }, () => {
+  it('npm pack includes routed builders and ROS2 skills without excluded notes', { timeout: 60_000 }, () => {
     const out = execSync('npm pack --dry-run --json --ignore-scripts', {
       cwd: ROOT,
       encoding: 'utf8',
@@ -73,6 +73,9 @@ describe('npm tarball does not ship red-team notes', () => {
     expect(packed).toContain('templates/skills/tools/verify-security/SKILL.md')
     for (const name of ['ros2-upper-app', 'ros2-perception', 'ros2-control', 'ros2-navigation', 'ros2-manipulation', 'ros2-hardware']) {
       expect(packed).toContain(`templates/skills/domains/${name}/SKILL.md`)
+    }
+    for (const backend of ['antigravity', 'claude', 'codex', 'gemini', 'grok', 'kimi', 'opencode']) {
+      expect(packed).toContain(`templates/prompts/${backend}/builder.md`)
     }
     expect(packed.filter(p => /^(?:dsh-ccg\/|templates\/skills\/(?:bt-panel\/|seo-page-builder\/|adsense-site-auditor\/|impeccable\/|domains\/(?:seo|frontend-design)\/))/.test(p))).toEqual([])
   })

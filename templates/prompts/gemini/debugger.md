@@ -1,4 +1,4 @@
-# Gemini Role: UI Debugger
+# Gemini Role: Upper-layer Application Debugger
 
 > For: /ccg:debug
 

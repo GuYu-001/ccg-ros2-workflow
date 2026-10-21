@@ -84,7 +84,7 @@ Configure your provider in OpenCode with `/connect`, then query `opencode models
 
 The default target is **ROS2 Humble** on physical robots; the engine checks the project's actual distribution and workspace. `/ccg:go` reads `package.xml`, colcon package topology, launch files, parameters and interfaces, then maps `perception`, `control`, `navigation`, `manipulation`, `hardware` and `upper-app` to the corresponding `ros2-*` skills. Native mode loads only selected, discovered skills; compatibility mode uses the bundled resources.
 
-Across all seven model backends, **backend** means C++ `rclcpp`, drivers, real-time control and `ros2_control`; **frontend** means Python `rclpy`, launch, parameters, RViz/Gazebo and Nav2/MoveIt configuration. The [52-role inventory](./docs/ros2-prompt-inventory.md) records every prompt and its consumers. Roles cover package boundaries, `.msg/.srv/.action`, Topic/Service/Action and QoS compatibility, lifecycle, executors/callback groups, tf2 and hardware safety.
+Across all seven model backends, **backend** means C++ `rclcpp`, drivers, real-time control and `ros2_control`; **frontend** means Python `rclpy`, launch, parameters, RViz/Gazebo and Nav2/MoveIt configuration. The [54-role inventory](./docs/ros2-prompt-inventory.md) records every prompt and its consumers. Roles cover package boundaries, `.msg/.srv/.action`, Topic/Service/Action and QoS compatibility, lifecycle, executors/callback groups, tf2 and hardware safety.
 
 One command. Describe what you want. The engine handles the rest.
 
@@ -284,7 +284,7 @@ npx ccg-ros2-workflow diagnose-mcp             # Diagnose MCP issues
 ├── .ccg/
 │   ├── config.toml        # Model routing, MCP, performance
 │   ├── engine/            # 10 strategy files + model router
-│   └── prompts/           # 52 role prompts across seven model backends
+│   └── prompts/           # 54 role prompts across seven model backends
 └── bin/codeagent-wrapper  # Multi-model bridge (Go binary)
 ```
 

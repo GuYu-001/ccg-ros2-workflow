@@ -2,17 +2,18 @@
 
 The installer copies `templates/prompts/<backend>/*.md` to
 `~/.claude/.ccg/prompts/<backend>/`. The wrapper reads each `ROLE_FILE` before
-dispatch. This inventory records all 52 existing files; filenames and output
-contracts remain stable.
+dispatch. This inventory records all 54 files across seven backends. The 52
+original filenames and output contracts remain stable; Gemini and Claude
+builders fill the previously missing configurable execution roles.
 
 ## Files
 
 Each name below is relative to `templates/prompts/`.
 
 - `antigravity/`: `analyzer.md`, `architect.md`, `builder.md`, `debugger.md`, `frontend.md`, `optimizer.md`, `reviewer.md`, `tester.md`.
-- `claude/`: `analyzer.md`, `architect.md`, `debugger.md`, `optimizer.md`, `reviewer.md`, `tester.md`.
+- `claude/`: `analyzer.md`, `architect.md`, `builder.md`, `debugger.md`, `optimizer.md`, `reviewer.md`, `tester.md`.
 - `codex/`: `analyzer.md`, `architect.md`, `builder.md`, `debugger.md`, `optimizer.md`, `reviewer.md`, `tester.md`.
-- `gemini/`: `analyzer.md`, `architect.md`, `debugger.md`, `frontend.md`, `optimizer.md`, `reviewer.md`, `tester.md`.
+- `gemini/`: `analyzer.md`, `architect.md`, `builder.md`, `debugger.md`, `frontend.md`, `optimizer.md`, `reviewer.md`, `tester.md`.
 - `grok/`: `analyzer.md`, `architect.md`, `builder.md`, `debugger.md`, `frontend.md`, `optimizer.md`, `reviewer.md`, `tester.md`.
 - `kimi/`: `analyzer.md`, `architect.md`, `builder.md`, `debugger.md`, `frontend.md`, `optimizer.md`, `reviewer.md`, `tester.md`.
 - `opencode/`: `analyzer.md`, `architect.md`, `builder.md`, `debugger.md`, `frontend.md`, `optimizer.md`, `reviewer.md`, `tester.md`.
@@ -32,7 +33,7 @@ Role-specific callers, in addition to that dynamic router:
 
 - `analyzer.md`: engine `full-collaborate`, `guided-develop`, `deep-research`; legacy `analyze`, `backend`, `frontend`, `workflow`, `plan`, `feat`, `team-plan`, `team-research`.
 - `architect.md`: engine `full-collaborate`; legacy `backend`, `frontend`, `workflow`, `plan`, `execute`, `feat`, `team`.
-- `builder.md`: engine `full-collaborate`, `guided-develop` when an external executor is selected. Claude uses native Agents; Gemini has no builder file.
+- `builder.md`: engine `full-collaborate`, `guided-develop` resolve `{{BACKEND_PRIMARY}}/builder.md` when an executor is selected. All seven selectable backends now have this role. Gemini follows the normal wrapper path. Claude follows the model-router's native Agent policy and can inline `claude/builder.md`; adding the file does not enable recursive Claude CLI calls.
 - `debugger.md`: engine `debug-investigate`; legacy `debug`.
 - `optimizer.md`: engine `optimize-measure`; legacy `optimize`.
 - `reviewer.md`: engine `full-collaborate`, `guided-develop`, `refactor-safely`, `review-audit`; legacy `backend`, `frontend`, `workflow`, `review`, `execute`, `codex-exec`, `feat`, `team`, `team-review`.
@@ -54,4 +55,7 @@ Python `rclpy`, launch, parameters, RViz/Gazebo and Nav2/MoveIt integration.
 Non-builder roles retain their read-only and patch/report-only contracts.
 Builders retain scoped write access. Antigravity's report-only formats,
 Claude's integration view, reviewer score fields, and all template
-variables are retained. No missing role files are synthesized or renamed.
+variables are retained. All seven builders restrict regression edits to test
+files explicitly named in the approved plan; the original no-comment,
+no-unplanned-tests and simple-choice constraints remain. Safety requirements or
+authorization must never be guessed. No original role files are renamed.

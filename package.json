@@ -51,6 +51,7 @@
     "templates/prompts/codex/",
     "templates/prompts/gemini/analyzer.md",
     "templates/prompts/gemini/architect.md",
+    "templates/prompts/gemini/builder.md",
     "templates/prompts/gemini/debugger.md",
     "templates/prompts/gemini/frontend.md",
     "templates/prompts/gemini/optimizer.md",

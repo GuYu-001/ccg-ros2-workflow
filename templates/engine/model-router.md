@@ -30,9 +30,9 @@ Read ~/.claude/.ccg/config.toml
 | 原外部模型角色 | 纯 CC 模式替代 |
 |---------------|---------------|
 | backend 模型分析 | `Agent(subagent_type: "general-purpose")`，prompt 内联 `~/.claude/.ccg/prompts/claude/analyzer.md` 的角色要求 |
-| frontend 模型分析 | 同上，但用不同视角（前端/UX）——**两个 Agent 必须在同一条消息中 spawn 才是真并行** |
+| frontend 模型分析 | 同上，但用不同视角（上层应用/launch/仿真）——**两个 Agent 必须在同一条消息中 spawn 才是真并行** |
 | 双模型交叉审查 | spawn 两个 reviewer Agent，各自独立审查后由主控综合 |
-| Builder 模式实施 | `team-*` Agent 或 `general-purpose` Agent 并行写代码，按文件范围隔离 |
+| Builder 模式实施 | `team-*` Agent 或 `general-purpose` Agent 内联 `~/.claude/.ccg/prompts/claude/builder.md`，并行写代码、按文件范围隔离 |
 
 - 交叉验证的价值来自**独立上下文 + 不同视角**，而不是不同厂商的模型。每个 Agent 都在干净上下文中启动，因此纯 CC 模式仍保留多视角交叉验证的核心收益。
 - 优点：零外部依赖、无 CLI 冷启动开销、无需登录任何第三方账号。
@@ -84,7 +84,7 @@ Read ~/.claude/.ccg/config.toml
 
 **Builder 模式**（用户选择时，backend 模型全权写代码）：
 - backend 模型 + `$BACKEND/builder.md` — **有完整写权限**，直接写代码到文件系统
-- 支持任意已配置的 backend 模型（`codex` / `grok` / `kimi` / `opencode` / `antigravity`），Claude token 消耗极低
+- 支持任意已配置的外部 backend 模型（`codex` / `grok` / `kimi` / `opencode` / `antigravity` / `gemini`），Claude token 消耗极低；Gemini 仍为非推荐选项
 - backend 为 `claude` 时改用 Agent Teams（见第 1b 节）
 - Claude 监控进度，审查产出，必要时接管
 - 适用于 M-L 复杂度、低中风险的明确实施任务
