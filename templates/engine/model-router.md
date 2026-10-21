@@ -31,7 +31,7 @@ Read ~/.claude/.ccg/config.toml
 | 任务领域 | 推荐模型 | 角色提示词 |
 |---------|---------|-----------|
 | 架构设计 | backend 模型 | `$BACKEND/architect.md` |
-| ROS2系统集成 设计 | frontend 模型 | `$FRONTEND/architect.md` |
+| ROS2 系统集成设计 | frontend 模型 | `$FRONTEND/architect.md` |
 | 全栈 | 双模型并行 | 各用对应 architect |
 
 ### 审查阶段（始终双模型交叉验证）

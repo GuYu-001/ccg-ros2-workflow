@@ -1,6 +1,6 @@
 ---
 name: typescript
-description: TypeScript/JavaScript 开发。前底层控制、Node.js、React、Vue。当用户提到 TypeScript、JavaScript、Node、React、Vue、Next.js 时使用。
+description: TypeScript/JavaScript 开发。前后端、Node.js、React、Vue。当用户提到 TypeScript、JavaScript、Node、React、Vue、Next.js 时使用。
 ---
 
 # 📜 符箓秘典 · TypeScript/JavaScript

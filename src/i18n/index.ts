@@ -148,8 +148,8 @@ const zhCN = {
       aceToolPaid: 'Augment 官方',
       aceToolRsPaid: '更轻量',
       skipLater: '稍后手动配置',
-      skipTokenPrompt: '是否跳过 Token 配置？（可稍后运行 npx ccg config mcp 配置）',
-      skipKeyPrompt: '是否跳过 API Key 配置？（可稍后运行 npx ccg config mcp 配置）',
+      skipTokenPrompt: '是否跳过 Token 配置？（可稍后运行 npx ccg-ros2-workflow config mcp 配置）',
+      skipKeyPrompt: '是否跳过 API Key 配置？（可稍后运行 npx ccg-ros2-workflow config mcp 配置）',
       tokenSkipped: '已跳过 Token 配置',
       keySkipped: '已跳过 API Key 配置',
       notInstalled: '未安装',
@@ -366,7 +366,7 @@ const zhCN = {
     },
     help: {
       title: 'CCG 命令 (v3):',
-      hint: '使用 /ccg:go 描述任务，AI 自动选择最佳策略。更多信息: npx ccg --help',
+      hint: '使用 /ccg:go 描述任务，AI 自动选择最佳策略。更多信息: npx ccg-ros2-workflow --help',
       sections: {
         engine: '智能引擎:',
         opsx: 'OpenSpec 规范驱动:',
@@ -559,7 +559,7 @@ const en: typeof zhCN = {
     },
   },
   init: {
-    welcome: 'Welcome to CCG-ROS2-ROS2 Multi-Model Collaboration System',
+    welcome: 'Welcome to CCG-ROS2 Multi-Model Collaboration System',
     subtitle: 'Multi-Model Collaboration Workflow',
     selectLanguage: 'Select language / 选择语言',
     selectFrontendModels: 'Select models for frontend tasks (multi-select)',
@@ -640,8 +640,8 @@ const en: typeof zhCN = {
       aceToolPaid: 'Augment official',
       aceToolRsPaid: 'Lighter weight',
       skipLater: 'Configure later',
-      skipTokenPrompt: 'Skip Token configuration? (run npx ccg config mcp later)',
-      skipKeyPrompt: 'Skip API Key configuration? (run npx ccg config mcp later)',
+      skipTokenPrompt: 'Skip Token configuration? (run npx ccg-ros2-workflow config mcp later)',
+      skipKeyPrompt: 'Skip API Key configuration? (run npx ccg-ros2-workflow config mcp later)',
       tokenSkipped: 'Token configuration skipped',
       keySkipped: 'API Key configuration skipped',
       notInstalled: 'not installed',
@@ -858,7 +858,7 @@ const en: typeof zhCN = {
     },
     help: {
       title: 'CCG Commands (v3):',
-      hint: 'Use /ccg:go to describe your task, AI auto-routes to the best strategy. More info: npx ccg --help',
+      hint: 'Use /ccg:go to describe your task, AI auto-routes to the best strategy. More info: npx ccg-ros2-workflow --help',
       sections: {
         engine: 'Smart Engine:',
         opsx: 'OpenSpec Spec-Driven:',

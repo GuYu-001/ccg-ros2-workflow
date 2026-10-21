@@ -36,7 +36,7 @@ export async function diagnoseMcp(): Promise<void> {
   if (isWindows() && issues.some(i => i.includes('not properly wrapped'))) {
     console.log()
     console.log(ansis.yellow('  💡 Tip: Run the following command to fix Windows MCP configuration:'))
-    console.log(ansis.gray('     npx ccg fix-mcp'))
+    console.log(ansis.gray('     npx ccg-ros2-workflow fix-mcp'))
   }
 
   console.log()
@@ -80,7 +80,7 @@ export async function fixMcp(): Promise<void> {
     console.log(ansis.green('  ✅ Windows MCP configuration fixed'))
     console.log()
     console.log(ansis.gray('  Run diagnostics again to verify:'))
-    console.log(ansis.gray('     npx ccg diagnose-mcp'))
+    console.log(ansis.gray('     npx ccg-ros2-workflow diagnose-mcp'))
     console.log()
   }
   catch (error) {

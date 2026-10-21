@@ -116,7 +116,7 @@
 | 文件 | name | 描述 |
 |------|------|------|
 | `planner.md` | `planner` | 📋 任务规划师：使用 WBS 方法论分解功能需求为可执行任务 |
-| `ui-ux-designer.md` | `ui-ux-designer` | 🎨 UI/UX 设计师：为上层应用功能生成页面结构、组件拆分和交互流程设计 |
+| `system-integrator.md` | `system-integrator` | 🤖 ROS2 系统集成设计师：为 ROS2 功能生成节点架构、Topic/Service 设计和消息流程 |
 | `init-architect.md` | `init-architect` | 🏗 自适应初始化：根级简明 + 模块级详尽，分阶段遍历并回报覆盖率 |
 | `get-current-datetime.md` | `get-current-datetime` | 🕐 执行日期命令并仅返回原始输出（无格式、无说明、无并行） |
 | `team-architect.md` | `team-architect` | 🏗 架构师：扫描代码库，综合多模型分析，输出架构蓝图和文件分配矩阵（v1.8.3+） |
