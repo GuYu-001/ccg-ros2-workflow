@@ -2,6 +2,7 @@ import { execFileSync, execSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import fs from 'fs-extra'
+import { parse as parseToml } from 'smol-toml'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { installCodexMode, uninstallCodexMode } from '../installer'
 
@@ -19,6 +20,32 @@ describe('Codex mode hook lifecycle', () => {
 
   afterEach(async () => {
     await fs.remove(testHome.path)
+  })
+
+  it('does not add unsolicited model providers to a fresh installation', async () => {
+    expect((await installCodexMode()).success).toBe(true)
+    const config = parseToml(await fs.readFile(join(testHome.path, '.codex', 'config.toml'), 'utf8'))
+    expect(config.model_providers).toBeUndefined()
+    expect(config.model_provider).toBeUndefined()
+  })
+
+  it('preserves custom model providers and activation byte-for-byte through install and uninstall', async () => {
+    const configPath = join(testHome.path, '.codex', 'config.toml')
+    const config = `# User-owned provider configuration
+model_provider = "custom"
+model = "custom-model"
+
+[model_providers.custom]
+name = "Custom gateway"
+base_url = "https://gateway.example.test/v1"
+env_key = "CUSTOM_API_KEY"
+wire_api = "responses"
+`
+    await fs.outputFile(configPath, config)
+    expect((await installCodexMode()).success).toBe(true)
+    expect(await fs.readFile(configPath, 'utf8')).toBe(config)
+    expect((await uninstallCodexMode()).success).toBe(true)
+    expect(await fs.readFile(configPath, 'utf8')).toBe(config)
   })
 
   it('runs the installed UserPromptSubmit command', async () => {

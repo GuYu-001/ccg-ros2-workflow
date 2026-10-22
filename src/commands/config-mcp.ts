@@ -69,9 +69,9 @@ async function handleCodeRetrieval(): Promise<void> {
     name: 'tool',
     message: '选择代码检索工具',
     choices: [
-      { name: `ace-tool ${ansis.green('(推荐)')} ${ansis.gray('- 代码检索（enhance_prompt 已不可用）')}`, value: 'ace-tool' },
-      { name: `ace-tool-rs ${ansis.green('(推荐)')} ${ansis.gray('- Rust 版本')}`, value: 'ace-tool-rs' },
-      { name: `fast-context ${ansis.green('(推荐)')} ${ansis.gray('- Windsurf Fast Context（免费/低成本）')}`, value: 'fast-context' },
+      { name: `ace-tool ${ansis.gray('- 代码检索（enhance_prompt 已不可用）')}`, value: 'ace-tool' },
+      { name: `ace-tool-rs ${ansis.gray('- Rust 版本')}`, value: 'ace-tool-rs' },
+      { name: `fast-context ${ansis.gray('- Windsurf Fast Context')}`, value: 'fast-context' },
       { name: `ContextWeaver ${ansis.gray('- 本地混合搜索（需硅基流动 API Key）')}`, value: 'contextweaver' },
       new inquirer.Separator(),
       { name: `${ansis.gray('返回')}`, value: 'cancel' },
@@ -98,7 +98,6 @@ async function handleInstallAceTool(isRs: boolean): Promise<void> {
   console.log()
   console.log(ansis.cyan(`📖 获取 ${toolName} 访问方式：`))
   console.log(`   ${ansis.gray('•')} ${ansis.cyan('官方服务')}: ${ansis.underline('https://augmentcode.com/')}`)
-  console.log(`   ${ansis.gray('•')} ${ansis.cyan('第三方中转')} ${ansis.green('(推荐)')}: ${ansis.underline('https://acemcp.heroman.wtf/')}`)
   console.log(`   ${ansis.gray('⚠')} ${ansis.yellow('注意')}: enhance_prompt 已不可用，search_context 代码检索正常`)
   console.log()
 
@@ -131,7 +130,7 @@ async function handleInstallContextWeaver(): Promise<void> {
   console.log(ansis.cyan(`📖 获取硅基流动 API Key：`))
   console.log(`   ${ansis.gray('1.')} 访问 ${ansis.underline('https://siliconflow.cn/')} 注册账号`)
   console.log(`   ${ansis.gray('2.')} 进入控制台 → API 密钥 → 创建密钥`)
-  console.log(`   ${ansis.gray('3.')} 新用户有免费额度，Embedding + Rerank 完全够用`)
+  console.log(`   ${ansis.gray('3.')} 确认密钥可调用所需的 Embedding 和 Rerank 模型`)
   console.log()
 
   const { apiKey } = await inquirer.prompt([{
@@ -264,8 +263,8 @@ async function handleGrokSearch(): Promise<void> {
   console.log()
 
   console.log(ansis.cyan('  📖 获取 API Keys：'))
-  console.log(`     Tavily: ${ansis.underline('https://www.tavily.com/')} ${ansis.gray('(免费额度 1000次/月)')}`)
-  console.log(`     Firecrawl: ${ansis.underline('https://www.firecrawl.dev/')} ${ansis.gray('(注册即送额度)')}`)
+  console.log(`     Tavily: ${ansis.underline('https://www.tavily.com/')} ${ansis.gray('(需要 API Key)')}`)
+  console.log(`     Firecrawl: ${ansis.underline('https://www.firecrawl.dev/')} ${ansis.gray('(需要 API Key)')}`)
   console.log(`     Grok API: ${ansis.gray('需自行部署 grok2api（可选）')}`)
   console.log()
 
@@ -344,7 +343,7 @@ async function handleAuxiliary(): Promise<void> {
 
     if (mcp.requiresApiKey) {
       console.log(ansis.cyan(`📖 获取 ${mcp.name} API Key：`))
-      console.log(`   访问 ${ansis.underline('https://exa.ai/')} 注册获取（有免费额度）`)
+      console.log(`   访问 ${ansis.underline('https://exa.ai/')} 获取 API Key`)
       console.log()
 
       const { apiKey } = await inquirer.prompt([{

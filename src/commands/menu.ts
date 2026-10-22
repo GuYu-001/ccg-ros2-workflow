@@ -11,7 +11,7 @@ import { parse as parseTOML } from 'smol-toml'
 import { version } from '../../package.json'
 import { configMcp } from './config-mcp'
 import { i18n } from '../i18n'
-import { configureGeminiCliApi, getSponsor, installCodexMode, promptSponsorMenuKey, removeGeminiCliApi, sponsorInquirerChoices, uninstallCodexMode, uninstallWorkflows } from '../utils/installer'
+import { configureGeminiCliApi, installCodexMode, removeGeminiCliApi, uninstallCodexMode, uninstallWorkflows } from '../utils/installer'
 import { readCcgConfig, writeCcgConfig } from '../utils/config'
 import { init } from './init'
 import { update } from './update'
@@ -351,7 +351,6 @@ async function configApi(): Promise<void> {
     choices: [
       { name: `${ansis.green('●')} ${i18n.t('menu:api.officialOption')}`, value: 'official' },
       { name: `${ansis.cyan('●')} ${i18n.t('menu:api.thirdPartyOption')}`, value: 'thirdparty' },
-      ...sponsorInquirerChoices(),
       { name: `${ansis.magenta('●')} ${i18n.t('init:api.geminiCliOption')}`, value: 'gemini-cli' },
     ],
   }])
@@ -419,22 +418,12 @@ async function configApi(): Promise<void> {
     return
   }
 
-  const sponsor = getSponsor(apiProvider)
   if (apiProvider === 'official') {
     // Clear third-party config, let Claude Code use official auth
     if (!settings.env)
       settings.env = {}
     delete settings.env.ANTHROPIC_BASE_URL
     delete settings.env.ANTHROPIC_AUTH_TOKEN
-    delete settings.env.ANTHROPIC_API_KEY
-  }
-  else if (sponsor) {
-    const key = await promptSponsorMenuKey(sponsor)
-    if (!settings.env)
-      settings.env = {}
-    // No /v1 suffix: Claude Code appends /v1/messages to ANTHROPIC_BASE_URL itself.
-    settings.env.ANTHROPIC_BASE_URL = sponsor.anthropicBaseUrl
-    settings.env.ANTHROPIC_AUTH_TOKEN = key
     delete settings.env.ANTHROPIC_API_KEY
   }
   else {

@@ -13,11 +13,10 @@
 > 完整变更历史请查看 [CHANGELOG.md](./CHANGELOG.md)
 
 ### 2026-10-18 (v3.7.2)
-- ✨ **x6.ai 赞助商**：README Banner（置于 PackyCode / APIMart 之下）+ `init` Step 1 / 菜单 API 配置新选项，`ANTHROPIC_BASE_URL=https://api.x6.ai`（**不带** `/v1`）。Codex `[model_providers.x6ai]`，`base_url=https://api.x6.ai/v1`（**带** `/v1`），`env_key=X6AI_API_KEY`，注册与启用分离。只在 `src/utils/sponsors.ts` 加了一项，其余全部遍历注册表。
-- 🗑️ **Gamma Remover 下架**：README Banner 与 `assets/sponsors/gamma-remover.webp` 移除。
+- 历史 API 预设已移除；当前仅保留官方认证与用户自定义端点。
 
 ### 2026-10-12 (v3.7.1)
-- 🐛 **新装 CLI 的 JSON 输出**：显式关闭兼容 i18next 新版的 support notice，避免赞助 banner 污染 `skills --json`、`doctor --json` 和版本输出。
+- 🐛 **新装 CLI 的 JSON 输出**：显式关闭兼容 i18next 新版的 support notice，避免额外提示污染 `skills --json`、`doctor --json` 和版本输出。
 
 ### 2026-10-12 (v3.7.0)
 - ✨ **Skills 按需管理**：新增 `ccg skills catalog/list/install/update/remove` 与菜单 S；Claude/Codex 原生 `ccg-*` 入口，immutable source cache、归属清单、写锁、事务回滚；脚本与参考依赖保留，入口只暴露所选技能。
@@ -39,10 +38,7 @@
 - 🔄 **重发 3.6.5。** 3.6.5 被 npm 暂存后从未 GET 得到（PUT 409 previously staged，owner 也 404）。功能与 3.6.5 相同。**此号同样未上线。**
 
 ### 2026-09-15 (v3.6.5)
-- ✨ **PackyCode 赞助商**：README Banner（置于 APIMart 之上）+ `init` Step 1 / 菜单 API 配置新选项。自动填 `ANTHROPIC_BASE_URL=https://cf.api.fan`（**不带** `/v1`），用户只填 Key。注册链接 `https://www.packyapi.ai/register?aff=m21P`。
-- ✨ **Codex CLI 接入 PackyCode**：`[model_providers.packycode]`，`base_url=https://cf.api.fan/v1`（**带** `/v1`），`env_key=PACKYCODE_API_KEY`。注册与启用分离，启用默认否。`codex-mode install` 静默注册；卸载只摘自己那张表，不误伤 APIMart。
-- ✨ **赞助商表 `src/utils/sponsors.ts`**：一家一个对象。init / 菜单 / Codex 注册 / 卸载全遍历它，再加一家只改这一处 + README Banner。
-- ✅ `installer-codex-api.test.ts` 改测注册表 + 通用 API。
+- 此版本的历史 API 预设及对应专用测试不再随本项目提供。
 
 ### 2026-09-03 (v3.6.4)
 - 🐛 **dsh-ccg 让新版 harness 的整个 Web UI 打不开**（#162）：插件配置页把 `settings.plugin.item` 从 `list` 改声明为 `keyed`（按卡片编辑的 settings 命名空间派发）。**插槽注册缺了它那个 kind 要求的选项会抛异常，而异常吃掉的是整条 loader entry** —— 不是少个卡片，是设置卡片 + 面板视图 + 团队条一起没，页面只剩 `Failed to load plugins`。修法是一份注册**同时带 `key` 和 `id`**：两种 kind 各读各的、忽略对方的。⚠ 新版 harness 已把**全部** settings 命名空间发给浏览器（`settings.describe({redactSecrets:true})` 不再过白名单）——这正是插槽改 keyed 的动机，也意味着第三方插件的卡片终于能被派发到。
@@ -78,11 +74,7 @@
 - 🐛 **脱敏**：`bt-panel` 文档内真实宝塔 API 密钥、面板公网 IP、客户项目路径全部占位符化。
 
 ### 2026-08-26 (v3.5.0)
-- ✨ **APIMart 赞助商集成**：中英 README 顶部 Banner（置于 Gamma Remover 之上），`init` Step 1 与菜单 API 配置新增 APIMart 选项，自动填 Base URL，用户只填 Key。
-- ✨ **Codex CLI 接入 APIMart**：新增 `src/utils/installer-codex-api.ts`，把 APIMart 写成 `~/.codex/config.toml` 的 `[model_providers.apimart]`。`codex-mode install` 静默注册（保持非交互），`init` 选 APIMart 时另问是否接 Codex。**注册与启用分离，启用默认否**——翻 `model_provider` 会把用户全部 Codex 请求从订阅改道到按量计费，安装器不该替人默认决定。合并沿用 `syncMcpToCodex()` 的原子写法，用户配置无损；卸载连带摘除该表与悬空 `model_provider`。
-- 🐛 **两个 Base URL 极易写反，已分处锁死**：Claude Code 的 `ANTHROPIC_BASE_URL` = `https://api.apimart.ai`（**不带** `/v1`，CC 自己拼 `/v1/messages`）；Codex 的 `base_url` = `https://api.apimart.ai/v1`（**带** `/v1`，OpenAI 协议）。写反表现为静默 404。
-- 🔄 **302.AI 赞助结束**：Banner、init/菜单选项、i18n 文案、`assets/sponsors/302.ai*.jpg` 全部移除。
-- ✅ **新增 9 例测试**（`installer-codex-api.test.ts`），生成的配置已过 `codex --strict-config`（codex-cli 0.149.0）实测。
+- **发布流程**：改用 npm Trusted Publishing (OIDC)，发布前检查类型、测试、构建及版本一致性。
 
 ### 2026-08-12 (v3.4.0)
 - ✨ **OpenCode CLI 后端**：第七个模型选项。`opencode run --format json`，`-m provider/model`，`-s <sessionID>` 恢复。parser 的 opencode 分支靠 `sessionID`（大写 D，与 Gemini 的 `sessionId` 不撞）+ 嵌套 `part` 识别。
@@ -162,13 +154,11 @@
 - 🐛 **Windows Gemini 多行参数截断**（#129）：Windows 上 cmd.exe 截断多行 `-p` 参数，改用 stdin pipe；binary `5.9.0` → `5.10.0`
 
 ### 2026-04-03 (v2.1.12)
-- ✨ **302.AI 赞助商集成**（#126）：init + 菜单 API 配置新增 302.AI 选项，自动填入 baseUrl，CLI 显示返现链接
-- ✨ **README 赞助商 Banner**：中英文 README 顶部新增 302.AI 可点击 Banner + 产品介绍
+- 此版本的历史 API 预设不再随本项目提供。
 
 ### 2026-03-31 (v2.1.11)
 - 🐛 **更新后 MCP 提示词显示未配置**（#124）：`update` 无条件传 `--skip-mcp` 导致 `mcpProvider` 被覆盖，修复为从已有配置恢复
 - ✨ **Impeccable 命令可选安装**（#125）：init 新增 confirm 提示，20 个前端设计命令默认不安装
-- ✨ **X (Twitter) 社区入口**：README 加 `@CCG_Workflow` 徽章 + demo 推文 + Contact 区
 
 ### 2026-03-31 (v2.1.1)
 - 🐛 **Skill Registry 命令 frontmatter 修复**：`generateCommandContent()` 生成的 27 个 command 文件补上 YAML frontmatter，修复 CC 命令索引级联失败
@@ -213,7 +203,7 @@
 - 🔄 **Binary 版本升级**：`5.8.0` → `5.9.0`
 
 ### 2026-03-25 (v1.7.92)
-- ✨ **初始化交互重构**：3 步流程（API 提供方 → MCP 多选 → 性能模式），赞助商预留位，MCP 多选共存
+- ✨ **初始化交互重构**：3 步流程（API 提供方 → MCP 多选 → 性能模式），MCP 多选共存
 - 🐛 **第三方 API 修复**：`ANTHROPIC_API_KEY` → `ANTHROPIC_AUTH_TOKEN`，修复 `/login` 问题
 - 🐛 **Gemini CLI stdin 修复**：`-p -` → `-p "任务文本"`，修复 Gemini 无法调用
 
@@ -288,13 +278,13 @@
 ### 2026-03-09 (v1.7.73)
 - ✨ **`/ccg:codex-exec` 命令**：第 26 个斜杠命令，Codex 全权执行 + 多模型审核，Claude token 极低消耗
 - ✨ **Skills 体系**：6 个原生 skill（verify-security/quality/change/module + gen-docs + multi-agent）
-- ✨ **context7 MCP 自动安装**：免费库文档查询，无需 API Key
+- ✨ **context7 MCP 自动安装**：库文档查询，无需 API Key
 - ✨ **Codex MCP 同步**：`syncMcpToCodex()` 镜像同步到 `~/.codex/config.toml`
 - 🐛 **修复 `--skip-mcp` / 安装卸载路径 / 模板替换 / 计数 / 失败反馈**
 
 ### 2026-03-09 (v1.7.70)
 - ✨ **菜单 UI 大改版**：ASCII Art Logo + 双线边框 + 编号快捷键 + CJK 宽度感知对齐
-- 🔄 **MCP 推荐调整**：ace-tool 恢复为默认推荐（`enhance_prompt` 已不可用），中转推荐 https://acemcp.heroman.wtf/
+- 🔄 **MCP 默认选项调整**：ace-tool 恢复为默认选项（`enhance_prompt` 已不可用）
 - 🗑️ **仓库清理**：移除 11 个临时/缓存文件，更新 `.gitignore`
 
 ### 2026-03-09 (v1.7.69)

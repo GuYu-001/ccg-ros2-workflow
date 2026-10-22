@@ -14,12 +14,13 @@ const mocks = vi.hoisted(() => ({
   spinnerFailed: vi.fn(),
   spinnerSucceeded: vi.fn(),
   installMcp: vi.fn(),
+  writeSettings: vi.fn(),
 }))
 
 vi.mock('inquirer', () => ({ default: { prompt: mocks.prompt, Separator: class {} } }))
 vi.mock('fs-extra', async () => {
   const actual = await vi.importActual<{ default: typeof import('fs-extra') }>('fs-extra')
-  return { default: { ...actual.default, pathExists: mocks.pathExists, writeJSON: vi.fn() } }
+  return { default: { ...actual.default, pathExists: mocks.pathExists, writeJSON: mocks.writeSettings } }
 })
 vi.mock('ora', () => ({
   default: () => ({ start() { return this }, succeed: mocks.spinnerSucceeded, fail: mocks.spinnerFailed }),
@@ -32,21 +33,18 @@ vi.mock('../config', async () => ({
   writeCcgConfig: mocks.writeConfig,
   ensureCcgDir: vi.fn(),
 }))
-vi.mock('../installer', () => ({
+vi.mock('../installer', async () => ({
+  ...await vi.importActual<typeof import('../installer')>('../installer'),
   getCoreCommandIds: () => ['go'],
   getAllCommandIds: () => ['go', 'plan'],
   installWorkflows: mocks.install,
-  sponsorInquirerChoices: () => [],
   showBinaryDownloadWarning: vi.fn(),
   configureGeminiCliApi: vi.fn(),
-  configureSponsorForCodex: vi.fn(),
-  getSponsor: vi.fn(),
   installAceTool: vi.fn(),
   installAceToolRs: vi.fn(),
   installContextWeaver: vi.fn(),
   installFastContext: vi.fn(),
   installMcpServer: mocks.installMcp,
-  promptSponsorInit: vi.fn(),
   syncMcpToCodex: vi.fn(),
   syncMcpToGemini: vi.fn(),
   writeFastContextPrompt: vi.fn(),
@@ -90,19 +88,50 @@ afterEach(() => {
 
 function answerInitQuestions(overrides: Record<string, any> = {}) {
   mocks.prompt.mockImplementation(async (questions: any[]) => {
-    const name = questions[0].name
     const answers: Record<string, any> = {
       apiProvider: 'skip', wireGeminiCli: false,
+      url: 'https://gateway.example.test', key: 'custom-test-key',
       selectedFrontend: 'codex', selectedBackend: 'opencode',
       selectedOpencodeModel: questions[0].default,
       perfMode: 'standard', versionMode: 'v3', skillsMode: 'legacy', action: 'confirm',
       ...overrides,
     }
-    if (!(name in answers))
-      throw new Error(`Unexpected prompt: ${name}`)
-    return { [name]: answers[name] }
+    return Object.fromEntries(questions.map((question) => {
+      if (!(question.name in answers))
+        throw new Error(`Unexpected prompt: ${question.name}`)
+      return [question.name, answers[question.name]]
+    }))
   })
 }
+
+describe('API configuration during init', () => {
+  it('offers only official authentication, a custom API, skip and navigation', async () => {
+    answerInitQuestions()
+    await init({ skipMcp: true, force: true, installDir: '/tmp/ccg-init-test' })
+    const question = mocks.prompt.mock.calls.flatMap(([questions]) => questions).find(q => q.name === 'apiProvider')
+    expect(question.choices.filter((choice: any) => choice.value).map((choice: any) => choice.value)).toEqual([
+      'official', 'thirdparty', 'skip', '__ccg_cancel__',
+    ])
+  })
+
+  it('persists an explicitly supplied custom API URL and key', async () => {
+    answerInitQuestions({ apiProvider: 'thirdparty' })
+    await init({ skipMcp: true, force: true, installDir: '/tmp/ccg-init-test' })
+    const write = mocks.writeSettings.mock.calls.find(([, settings]) => settings.env?.ANTHROPIC_BASE_URL)
+    expect(write?.[0]).toBe('/tmp/ccg-init-test/settings.json')
+    expect(write?.[1].env).toMatchObject({
+      ANTHROPIC_BASE_URL: 'https://gateway.example.test',
+      ANTHROPIC_AUTH_TOKEN: 'custom-test-key',
+    })
+  })
+
+  it.each(['official', 'skip'])('does not write API credentials when choosing %s', async (apiProvider) => {
+    answerInitQuestions({ apiProvider })
+    await init({ skipMcp: true, force: true, installDir: '/tmp/ccg-init-test' })
+    const writes = mocks.writeSettings.mock.calls.map(([, settings]) => settings.env)
+    expect(writes.every(env => !env?.ANTHROPIC_BASE_URL && !env?.ANTHROPIC_AUTH_TOKEN)).toBe(true)
+  })
+})
 
 describe('OpenCode configuration during init', () => {
   it('preserves the model during a non-interactive reinstall and injects it into execution templates', async () => {

@@ -7,7 +7,7 @@ import { homedir } from 'node:os'
 import { join } from 'pathe'
 import { i18n, initI18n } from '../i18n'
 import { createDefaultConfig, ensureCcgDir, getCcgDir, readCcgConfig, writeCcgConfig } from '../utils/config'
-import { configureGeminiCliApi, configureSponsorForCodex, getAllCommandIds, getCoreCommandIds, getSponsor, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, promptSponsorInit, showBinaryDownloadWarning, sponsorInquirerChoices, syncMcpToCodex, syncMcpToGemini, writeFastContextPrompt } from '../utils/installer'
+import { configureGeminiCliApi, getAllCommandIds, getCoreCommandIds, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, showBinaryDownloadWarning, syncMcpToCodex, syncMcpToGemini, writeFastContextPrompt } from '../utils/installer'
 import { isWindows } from '../utils/platform'
 import { migrateToV1_4_0, needsMigration } from '../utils/migration'
 import { promptOpencodeModel } from '../utils/model-selection'
@@ -321,12 +321,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
   // Claude Code API configuration
   let apiUrl = ''
   let apiKey = ''
-  // Sponsored gateways also speak the OpenAI wire protocol, so they can back
-  // Codex CLI too. Applied during the install phase, not mid-step — the step
-  // machine allows going back or cancelling, and side effects must not survive that.
-  let sponsorId = ''
-  let sponsorWireCodex = false
-  let sponsorActivateCodex = false
   let geminiCliBaseUrl = ''
   let geminiCliKey = ''
   let geminiCliModel = ''
@@ -393,7 +387,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
         choices: [
           { name: `${ansis.green('●')} ${i18n.t('init:api.officialOption')}`, value: 'official' },
           { name: `${ansis.cyan('●')} ${i18n.t('init:api.thirdPartyOption')}`, value: 'thirdparty' },
-          ...sponsorInquirerChoices(),
           { name: `${ansis.gray('○')} ${i18n.t('init:api.skipOption')}`, value: 'skip' },
           ...navSentinels(canGoBack),
         ],
@@ -407,24 +400,11 @@ export async function init(options: InitOptions = {}): Promise<void> {
       // Clear stale values before collecting fresh input
       apiUrl = ''
       apiKey = ''
-      sponsorId = ''
-      sponsorWireCodex = false
-      sponsorActivateCodex = false
       geminiCliBaseUrl = ''
       geminiCliKey = ''
       geminiCliModel = ''
 
-      const sponsor = getSponsor(apiProvider)
-      if (sponsor) {
-        // anthropicBaseUrl has no /v1: Claude Code appends /v1/messages itself.
-        apiUrl = sponsor.anthropicBaseUrl
-        sponsorId = sponsor.id
-        const picked = await promptSponsorInit(sponsor)
-        apiKey = picked.apiKey
-        sponsorWireCodex = picked.wireCodex
-        sponsorActivateCodex = picked.activateCodex
-      }
-      else if (apiProvider === 'thirdparty') {
+      if (apiProvider === 'thirdparty') {
         const apiAnswers = await inquirer.prompt([
           {
             type: 'input',
@@ -685,7 +665,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
             value: 'ace-tool',
           },
           {
-            name: `context7 ${ansis.green('(free)')} ${ansis.gray('— 库文档查询')}`,
+            name: `context7 ${ansis.gray('— 库文档查询（无需 API Key）')}`,
             value: 'context7',
             checked: true,
           },
@@ -730,7 +710,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
         console.log(ansis.cyan.bold(`  🔧 ace-tool MCP`))
         console.log()
         console.log(`     ${ansis.gray('•')} ${ansis.cyan(i18n.t('init:mcp.officialService'))}: ${ansis.underline('https://augmentcode.com/')}`)
-        console.log(`     ${ansis.gray('•')} ${ansis.cyan(i18n.t('init:mcp.proxyService'))} ${ansis.yellow(`(${i18n.t('init:mcp.noSignup')})`)}: ${ansis.underline('https://acemcp.heroman.wtf/')}`)
         console.log()
 
         const aceAnswers = await inquirer.prompt([
@@ -1239,28 +1218,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
       console.log(`    ${ansis.green('✓')} API ${ansis.gray(`→ ${settingsPath}`)}`)
     }
 
-    // Register the chosen sponsored gateway as a Codex model provider.
-    // Separate from the ANTHROPIC_* write because Codex speaks OpenAI:
-    // its base_url keeps the /v1 suffix that ANTHROPIC_BASE_URL must omit.
-    if (sponsorWireCodex && sponsorId) {
-      const picked = getSponsor(sponsorId)
-      const codexApi = await configureSponsorForCodex(sponsorId, sponsorActivateCodex)
-      console.log()
-      if (codexApi.success && picked) {
-        const copy = { name: picked.name, id: picked.id }
-        console.log(`    ${ansis.green('✓')} Codex ${ansis.gray(`→ ${codexApi.configPath}`)}`)
-        // env_key auth: the key lives in the environment, never in config.toml,
-        // so we never clobber the user's existing ~/.codex/auth.json login.
-        console.log(`      ${ansis.gray(i18n.t('init:api.sponsorCodexEnvHint', copy))}`)
-        console.log(`      ${ansis.cyan(`export ${picked.codex.env_key}="${apiKey.slice(0, 6)}..."`)}`)
-        if (!codexApi.activated)
-          console.log(`      ${ansis.gray(i18n.t('init:api.sponsorCodexNotActive', copy))}`)
-      }
-      else {
-        console.log(`    ${ansis.yellow('!')} ${codexApi.message}`)
-      }
-    }
-
     // Gemini CLI third-party gateway — for users without a Google account.
     // gemini auto-selects gateway auth on seeing GOOGLE_GEMINI_BASE_URL, but
     // 0.53.1 only reads the process environment (its .env loading is gone),
@@ -1515,16 +1472,13 @@ export async function init(options: InitOptions = {}): Promise<void> {
       console.log()
       console.log(ansis.gray(`     ${i18n.t('init:mcp.mcpOptionsHint')}`))
       console.log()
-      console.log(`     ${ansis.green('1.')} ${ansis.cyan('fast-context')} ${ansis.yellow('(推荐)')}: Windsurf Fast Context`)
-      console.log(`        ${ansis.gray('AI 驱动代码搜索，需 Windsurf 账号，免费/低成本')}`)
+      console.log(`     ${ansis.green('1.')} ${ansis.cyan('fast-context')}: Windsurf Fast Context`)
+      console.log(`        ${ansis.gray('AI 驱动代码搜索，需 Windsurf 账号')}`)
       console.log()
       console.log(`     ${ansis.green('2.')} ${ansis.cyan('ace-tool / ace-tool-rs')}: ${ansis.underline('https://augmentcode.com/')}`)
       console.log(`        ${ansis.gray(i18n.t('init:mcp.promptEnhancement'))}`)
       console.log()
-      console.log(`     ${ansis.green('3.')} ${ansis.cyan('ace-tool ' + i18n.t('init:mcp.proxyService'))} ${ansis.yellow(`(${i18n.t('init:mcp.noSignup')})`)}: ${ansis.underline('https://acemcp.heroman.wtf/')}`)
-      console.log(`        ${ansis.gray(i18n.t('init:mcp.communityProxy'))}`)
-      console.log()
-      console.log(`     ${ansis.green('4.')} ${ansis.cyan('ContextWeaver')} ${ansis.yellow(`(${i18n.t('init:mcp.freeQuota')})`)}: ${ansis.underline('https://siliconflow.cn/')}`)
+      console.log(`     ${ansis.green('3.')} ${ansis.cyan('ContextWeaver')} ${ansis.gray(`(${i18n.t('init:mcp.apiKeyRequired')})`)}: ${ansis.underline('https://siliconflow.cn/')}`)
       console.log(`        ${ansis.gray(i18n.t('init:mcp.localEngine'))}`)
       console.log()
     }

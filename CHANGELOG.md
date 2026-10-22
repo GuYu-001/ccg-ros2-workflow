@@ -52,20 +52,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.7.2] - 2026-10-18
 
-### ✨ 新功能
+### 🔄 变更
 
-- **x6.ai 成为赞助商，并可直接用作 API 提供方** — 中英文 README 赞助区新增 x6.ai Banner + 介绍，位于 PackyCode、APIMart 之下。`init` Step 1 与菜单 API 配置新增 x6.ai 选项，自动填 `ANTHROPIC_BASE_URL=https://api.x6.ai`（**不带** `/v1`），用户只填 Key。
-- **Codex CLI 接入 x6.ai** — `codex-mode install` 静默注册 `[model_providers.x6ai]`（`base_url=https://api.x6.ai/v1`，**带** `/v1`；`env_key=X6AI_API_KEY`）。注册与启用分离，启用默认否；卸载只摘自己那张表。
-
-### 🗑️ 移除
-
-- **Gamma Remover 下架** — README Banner 与 `assets/sponsors/gamma-remover.webp` 移除。
+- 历史 API 预设已移除；当前仅保留官方认证与用户自定义端点。
 
 ## [3.7.1] - 2026-10-12
 
 ### 🐛 修复
 
-- **全新 npm 安装的 JSON stdout**：兼容依赖范围中新版 i18next 默认打印 support notice；初始化显式关闭该提示，避免 `skills catalog/list --json`、`doctor --json` 与 `--version` 输出被赞助 banner 污染。修复使用官方初始化开关，保留原翻译和日志行为。
+- **全新 npm 安装的 JSON stdout**：兼容依赖范围中新版 i18next 默认打印 support notice；初始化显式关闭该提示，避免 `skills catalog/list --json`、`doctor --json` 与 `--version` 输出被额外提示污染。修复使用官方初始化开关，保留原翻译和日志行为。
 
 ## [3.7.0] - 2026-10-12
 
@@ -123,25 +118,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔄 变更
 
-- **重发 3.6.5 的内容。** 3.6.5 的第一次 `npm publish` 打印了 `+ ccg-workflow@3.6.5`，随后同一版本的 PUT 全部 409 `Cannot publish over previously staged version "3.6.5"`，而 `npm view` / tarball / attestations 对 owner 也一直 404。版本号被 npm 内部占住、对外不可装。3.6.6 是同一份代码（PackyCode 赞助商 + `sponsors.ts` 表 + npm 11 钉死 + 暂存 409 当已接受）。不要再发 3.6.5。
+- **重发 3.6.5 的内容。** 3.6.5 的第一次 `npm publish` 打印了 `+ ccg-workflow@3.6.5`，随后同一版本的 PUT 全部 409 `Cannot publish over previously staged version "3.6.5"`，而 `npm view` / tarball / attestations 对 owner 也一直 404。版本号被 npm 内部占住、对外不可装。3.6.6 是同一份代码，沿用 npm 11 固定版本及暂存 409 处理。不要再发 3.6.5。
 
 ## [3.6.5] - 2026-09-15
 
 > ⚠ 此版本 **从未出现在 npm registry**。CI 收下暂存后扫描未放行，号作废。功能以 3.6.7 为准。
 
-### ✨ 新功能
+### 🔄 变更
 
-- **PackyCode 成为赞助商，并可直接用作 API 提供方** — 中英文 README 顶部新增 PackyCode Banner + 介绍，位置在 APIMart 之上。`init` Step 1 与菜单的 API 配置新增 PackyCode 选项，选中后自动填入 Base URL（`https://cf.api.fan`，**不带** `/v1`），用户只需粘贴 Key。注册链接带联盟参数 `aff=m21P`。
-- **Codex CLI 也能走 PackyCode** — 同一份 `installer-codex-api.ts` 新增 `[model_providers.packycode]`（`base_url = https://cf.api.fan/v1`，**带** `/v1`，`wire_api = responses`，`env_key = PACKYCODE_API_KEY`）。`ccg codex-mode install` 静默注册（保持非交互），`init` 选 PackyCode 时另问是否接 Codex。**注册与启用分离，启用默认否**——翻 `model_provider` 会把用户全部 Codex 请求从订阅改道到按量计费，安装器不该替人默默决定。卸载连带摘除该表与悬空 `model_provider`，且不误伤 APIMart。
-- **赞助商表抽成 `src/utils/sponsors.ts`** — 一家赞助商 = 列表里一个对象。`init` Step 1、菜单 API 配置、Codex 静默注册、卸载全部遍历这张表；i18n 只留一套 `sponsorOption` / `sponsorGetKey` / `sponsorCodex*` 模板。再加一家只改这一处 + README Banner，不再复制 init/menu/i18n 分支。
-
-### 🐛 修复
-
-- **两个 Base URL 极易写反，已分别锁死** — 与 APIMart 同一条铁律：Claude Code 的 `ANTHROPIC_BASE_URL` = `https://cf.api.fan`（不带 `/v1`）；Codex 的 `base_url` = `https://cf.api.fan/v1`（带 `/v1`）。取值来自 [PackyAPI 官方文档](https://docs.packyapi.com/docs/cli/2-claude.html)。写反表现为静默 404。
-
-### ✅ 测试
-
-- `installer-codex-api.test.ts` 改测注册表 + 通用 API：每家 Claude 基址无 `/v1`、Codex 带 `/v1`、默认不激活、用户配置无损、摘一家不误伤另一家、`configureAll` / `removeAll` 往返零残留。旧的 `configureApiMartForCodex` 包装仍有一例防回归。
+- 此版本的历史 API 预设及对应专用测试不再随本项目提供。
 
 ## [3.6.4] - 2026-09-03
 
@@ -244,25 +229,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.5.0] - 2026-08-26
 
-### ✨ Features
-
-- **APIMart 成为赞助商，并可直接用作 API 提供方** — 中英文 README 顶部新增 APIMart Banner + 介绍，位置在 Gamma Remover 之上。`init` Step 1 与菜单的 API 配置新增 APIMart 选项，选中后自动填入 Base URL，用户只需粘贴 Key。
-- **Codex CLI 也能走 APIMart** — 新增 `src/utils/installer-codex-api.ts`，把 APIMart 注册为 `~/.codex/config.toml` 里的 `[model_providers.apimart]`。`ccg codex-mode install` 会静默完成注册（保持非交互，CI 可用），`init` 选 APIMart 时则会额外询问是否接入 Codex。
-  **注册与启用是两个独立的问题，且启用默认为否**：翻动 `model_provider` 会把用户**全部** Codex 请求从现有订阅改道到按量计费的 APIMart，这种事安装器不该替人默默决定。注册本身不改变任何行为，日后想切只是一行改动。
-  合并沿用 `syncMcpToCodex()` 的做法（解析 → 只改一张表 → 临时文件 + rename 原子写），用户既有配置完整保留；卸载时会一并摘除该表以及可能悬空的 `model_provider`。
-
-### 🐛 Fixes
-
-- **两个 Base URL 极易写反，已分别锁死并加注释** — Claude Code 的 `ANTHROPIC_BASE_URL` 必须是 `https://api.apimart.ai`（**不带** `/v1`，因为 Claude Code 自己会拼 `/v1/messages`）；Codex 的 `base_url` 必须是 `https://api.apimart.ai/v1`（**带** `/v1`，OpenAI 协议约定）。写反的表现是静默 404。两处取值分处不同模块并各自注明理由。
-
 ### 🔄 Changes
 
-- **302.AI 赞助结束** — README Banner、init/菜单选项、i18n 文案与 `assets/sponsors/302.ai*.jpg` 一并移除。
 - **npm 发布改用 Trusted Publishing (OIDC)** — 新增 `.github/workflows/publish.yml`，推 `v*` tag 即发布，仓库和 CI 里都不再存放任何 npm token（长期 token 会过期，也会泄漏）。发布前强制跑 typecheck + test + build，并校验 tag 与 `package.json` 版本一致、该版本尚未发布过。附带生成 provenance 证明。
-
-### ✅ Tests
-
-- 新增 `installer-codex-api.test.ts`（9 例）：默认不激活、`/v1` 后缀正确、用户配置无损、显式激活、往返卸载零残留、不误伤用户自有 provider。生成的配置已用 `codex --strict-config`（codex-cli 0.149.0）实测通过。
 
 ---
 
@@ -700,10 +669,9 @@ Ground-up rewrite. From 29 static commands to an intent-driven engine with hooks
 
 ## [2.1.12] - 2026-04-03
 
-### ✨ 新功能
+### 🔄 变更
 
-- **302.AI 赞助商集成**（#126）：init Step 1/4 和菜单 API 配置新增 302.AI 选项，自动填入 baseUrl，用户仅需输入 API Key
-- **README 赞助商 Banner**：中英文 README 顶部新增 302.AI 可点击 Banner + 产品介绍
+- 此版本的历史 API 预设不再随本项目提供。
 
 ---
 
@@ -716,7 +684,6 @@ Ground-up rewrite. From 29 static commands to an intent-driven engine with hooks
 ### ✨ 新功能
 
 - **Impeccable 命令可选安装**（#125）：init Step 4/4 新增 confirm 提示，20 个前端设计命令（polish/audit/animate 等）默认不安装，需要的用户自行勾选。update 时保留已有选择
-- **X (Twitter) 社区入口**：README header 加 `@CCG_Workflow` 徽章 + 架构图下方 demo 推文链接 + Contact 区 Twitter 入口
 
 ---
 
@@ -832,10 +799,9 @@ Ground-up rewrite. From 29 static commands to an intent-driven engine with hooks
 ### ✨ 新功能
 
 - **初始化交互重构**：3 步流程替代原来的 8 轮 yes/no 确认
-  - Step 1: API 提供方（list 选择：官方 / 第三方 / 赞助商预留位）
+  - Step 1: API 提供方（list 选择：官方 / 自定义 API）
   - Step 2: MCP 工具（checkbox 多选，可同时装多个，按需填 Key）
   - Step 3: 性能模式（list 选择：标准 / 轻量）
-- **赞助商预留位**：init 和 menu 的 API 提供方选择中预留赞助商合作位
 - **MCP 多选共存**：ace-tool + fast-context 可同时安装，ace 为主检索，fast-context 辅助语义搜索
 
 ### 🐛 修复
@@ -1053,7 +1019,7 @@ Ground-up rewrite. From 29 static commands to an intent-driven engine with hooks
 
 - **`/ccg:codex-exec` 命令**：新增第 26 个斜杠命令，与 `/ccg:plan` 配对使用——Codex 全权执行（MCP 搜索 + 代码实现 + 测试），Claude 仅做决策/审核，极大降低 Claude token 消耗
 - **Skills 体系**：首次引入 Claude Code 原生 Skills 机制，安装 6 个 skill 到 `~/.claude/skills/`（verify-security / verify-quality / verify-change / verify-module / gen-docs / multi-agent）
-- **context7 MCP 自动安装**：初始化时自动安装 context7（免费库文档查询），无需 API Key
+- **context7 MCP 自动安装**：初始化时自动安装 context7（库文档查询），无需 API Key
 - **Codex MCP 同步**：新增 `syncMcpToCodex()`，将 CCG 管理的 MCP 服务器镜像同步到 `~/.codex/config.toml`，支持原子写 + stale 清理
 
 ### 🐛 修复
@@ -1085,7 +1051,6 @@ Ground-up rewrite. From 29 static commands to an intent-driven engine with hooks
 
 ### 🔄 变更
 
-- **ace-tool 中转链接更新**：init 和 config-mcp 中的中转推荐统一更新为 https://acemcp.heroman.wtf/
 - **MCP 推荐顺序**：init 中 ace-tool 默认选中为首选
 
 ---
@@ -1099,7 +1064,7 @@ Ground-up rewrite. From 29 static commands to an intent-driven engine with hooks
 
 ### 🔄 变更
 
-- **MCP 推荐调整**：ace-tool 恢复为默认推荐（`search_context` 可用，`enhance_prompt` 已不可用），中转推荐更新为 https://acemcp.heroman.wtf/
+- **MCP 默认选项调整**：ace-tool 恢复为默认选项（`search_context` 可用，`enhance_prompt` 已不可用）
 - **ContextWeaver 降为备选**：仍可使用，需硅基流动 API Key
 
 ### 🗑️ 移除
@@ -2483,10 +2448,8 @@ Windows 用户使用 PowerShell 执行命令时，路径格式不兼容：
    - ✅ 移除 auggie 作为安装选项（用户仍可手动配置）
    - ✅ 从 3 个选项简化为 2 个（安装 ace-tool / 跳过）
 
-2. **中转服务支持**
-   - ✅ 添加 linux.do 社区中转服务提示
-   - ✅ 无需注册即可使用（降低使用门槛）
-   - ✅ 安装时提供官方服务和中转服务两种选择
+2. **自定义端点支持**
+   - ace-tool 支持官方服务与用户自填 Base URL
 
 3. **Token 配置优化**
    - ✅ 支持跳过 Token 配置（默认：跳过）
@@ -3139,7 +3102,7 @@ console.log(ansis.gray(`     }`))
 
   [mcp]
   provider = "ace-tool"
-  setup_url = "https://linux.do/t/topic/284963"
+  setup_url = ""
 
   [mcp.tools]
   code_search_ace = "mcp__ace-tool__search_context"
@@ -3229,8 +3192,7 @@ console.log(ansis.gray(`     }`))
 - **使用体验**：
   - 命令模板自动读取配置，无需手动修改
   - ace-tool 用户：完整功能（Prompt 增强 + 代码检索）
-  - auggie 用户：代码检索功能，提示查看配置教程链接
-  - 配置教程：https://linux.do/t/topic/1280612
+  - auggie 用户：代码检索功能，提示查看 MCP 配置说明
 
 #### 文档更新
 
