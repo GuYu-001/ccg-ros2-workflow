@@ -10,11 +10,10 @@ const fixturePaths = vi.hoisted(() => new Set<string>())
 vi.mock('node:child_process', async (original) => {
   const actual = await original<typeof import('node:child_process')>()
   if (process.platform !== 'win32') return actual
-  return { ...actual, execSync: vi.fn((command: string, options?: import('node:child_process').ExecSyncOptions) => {
-    const output = actual.execSync(command, options)
-    const path = command.match(/^"([^"]+)" --version$/)?.[1]
+  return { ...actual, execFileSync: vi.fn((path: string, args: string[], options?: import('node:child_process').ExecFileSyncOptions) => {
+    const output = actual.execFileSync(path, args, options)
     // Run the Node PE fixture for real; only normalize its wrapper identity.
-    return path && fixturePaths.has(path) ? Buffer.from('codeagent-wrapper version 5.16.1\n') : output
+    return args[0] === '--version' && fixturePaths.has(path) ? 'codeagent-wrapper version 5.16.1\n' : output
   }) }
 })
 

@@ -743,21 +743,25 @@ pnpm test
 **Trusted Publishing (OIDC)** 完成，本地和 CI 都不存任何 npm token（[publish.yml](.github/workflows/publish.yml)）。
 
 ```bash
-git add -A
-git commit -m "chore: bump version to x.y.z"
-git push origin main
+# 先将已审查的发布提交合并到 main，并同步到最新 main
+git switch main
+git pull --ff-only origin main
+
+# 如有 wrapper 变更，确认对应 main 提交的 build-binaries 已成功，而非上一次的结果
+gh run list --workflow=build-binaries.yml --branch main --limit 5
+gh run watch --exit-status  # 选择上一步确认的 run，必须成功后再继续
 
 # 推 tag 触发发布（tag 名必须是 v 前缀 + package.json 里的版本号）
 git tag -a vx.y.z -m "vx.y.z — 一句话说明"
 git push origin vx.y.z
 ```
 
-CI 会自动跑 typecheck → test → build → 校验 tag 与 `package.json` 一致 → 校验该版本未发布过 →
+CI 先核对 `preset` 的 Linux AMD64 wrapper 与本包期望版本，再跑 typecheck → test → build → 校验 tag 与 `package.json` 一致 → 校验该版本未发布过 →
 `npm publish --provenance`。查看结果：
 
 ```bash
 gh run list --workflow=publish.yml --limit 1
-npm view ccg-workflow version          # 确认线上版本
+npm view ccg-ros2-workflow version     # 确认线上版本
 ```
 
 需要重跑而不想动 tag 时用 `gh workflow run publish.yml --ref main`。
@@ -767,13 +771,13 @@ npm view ccg-workflow version          # 确认线上版本
 先用 `--loglevel verbose` 重跑，然后只看这一行：
 
 ```
-npm http fetch POST <码> https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/ccg-workflow
+npm http fetch POST <码> https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/ccg-ros2-workflow
 ```
 
 | 现象 | 真实含义 | 处理 |
 |------|---------|------|
 | **没有这一行** | npm 压根没发起 OIDC 交换 | 查是否有残留凭据。**`actions/setup-node` 的 `registry-url` 是元凶**——它会写 `_authToken=${NODE_AUTH_TOKEN}`，无 secret 时展开成空 token，npm 便跳过 OIDC。workflow 里已刻意不设该参数，勿加回 |
-| `404` + `package not found` | npm 侧没有该**包**的 Trusted Publisher 记录 | 去 npmjs.com/package/ccg-workflow/access 配（注意是**包**的设置，不是账号设置） |
+| `404` + `package not found` | npm 侧没有该**包**的 Trusted Publisher 记录 | 去 npmjs.com/package/ccg-ros2-workflow/access 配（注意是**包**的设置，不是账号设置） |
 | `201` | 交换成功 | 正常 |
 
 ⚠ 普通日志级别看不到这行，这是区分「workflow 配错」和「npm 后台没配」的唯一依据。
@@ -783,7 +787,7 @@ npm http fetch POST <码> https://registry.npmjs.org/-/npm/v1/oidc/token/exchang
 https://github.blog/changelog/2026-07-28-npm-publish-time-malware-scanning-and-dual-use-metadata/
 
 npm 网页的 README 有服务端渲染缓存，发布后要等一会儿才更新（无痕也绕不过）；
-想立刻确认内容用 `npm view ccg-workflow readme | head -20` 直接读 registry。
+想立刻确认内容用 `npm view ccg-ros2-workflow readme | head -20` 直接读 registry。
 
 ### 检查清单
 - [ ] package.json 版本号已更新
@@ -794,13 +798,13 @@ npm 网页的 README 有服务端渲染缓存，发布后要等一会儿才更�
   - [ ] `codeagent-wrapper/main.go` → `version = "x.y.z"`
   - [ ] `src/utils/installer.ts` → `EXPECTED_BINARY_VERSION = 'x.y.z'`
   - 两边版本必须一致，否则用户 update 时无法触发 binary 重新下载
-  - **⛔ 禁止未经确认手动 `gh release upload`！** 推送 wrapper 变更后 CI（`.github/workflows/build-binaries.yml`）会自动编译并重建 fork 的 preset GitHub Release，不再同步上游 Cloudflare R2。手动上传会覆盖 CI 产物
+  - **⛔ 禁止未经确认手动 `gh release upload`！** 仅推送到 main 的 wrapper 变更会自动触发 `.github/workflows/build-binaries.yml`，编译并重建 fork 的 preset GitHub Release；手动上传会覆盖 CI 产物
 - [ ] `pnpm typecheck` 通过（tsc --noEmit，不可跳过）
 - [ ] `pnpm build` 通过
 - [ ] `pnpm test` 通过
-- [ ] `git push origin main` 成功
+- [ ] 发布提交已合并到 main；如有 wrapper 变更，该提交对应的 build-binaries 已跑绿，再打 tag
 - [ ] `git push origin vx.y.z` 成功，且 publish.yml 跑绿
-- [ ] `npm view ccg-workflow version` 已是新版本
+- [ ] `npm view ccg-ros2-workflow version` 已是新版本
 
 ---
 

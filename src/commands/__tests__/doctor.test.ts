@@ -8,6 +8,7 @@ import { stringify } from 'smol-toml'
 import { doctor } from '../doctor'
 import { createHash } from 'node:crypto'
 import { collectDoctorReport } from '../../utils/doctor-checks'
+import { EXPECTED_BINARY_VERSION } from '../../utils/installer'
 import { installSkills } from '../../utils/skill-manager'
 
 vi.mock('node:child_process', async (original) => {
@@ -53,6 +54,35 @@ beforeEach(async () => {
 afterEach(async () => { await fs.remove(home) })
 
 describe('CCG doctor inventory', () => {
+  it.each(['claude', 'codex'])('compares the wrapper against this package without failing %s mode for a mismatch', async (mode) => {
+    if (mode === 'codex') await codexInstall()
+    else {
+      await claudeInstall()
+      await config('codex', 'codex', ['codex'])
+      await fs.outputFile(join(home, '.claude/bin/codeagent-wrapper'), 'fixture')
+    }
+    for (const version of ['0.1.0', EXPECTED_BINARY_VERSION]) {
+      exec.mockReturnValue(`codeagent-wrapper version ${version}`)
+      const { checks, failureCount } = await collectDoctorReport(deps())
+      const binary = checks.find(c => c.id === 'binary.wrapper')!
+      expect(binary.detail).toContain(version)
+      expect(binary.detail).toContain(EXPECTED_BINARY_VERSION)
+      expect(binary.status).toBe(version === EXPECTED_BINARY_VERSION ? 'pass' : 'warn')
+      if (binary.status === 'warn') expect(binary.remediation).toContain('ccg-ros2-workflow update')
+      expect(failureCount).toBe(0)
+    }
+  })
+
+  it('directs custom registrations to manual review without calling them outdated or trusted', async () => {
+    await codexInstall()
+    const path = join(home, '.codex/hooks.json')
+    const hooks = await fs.readJson(path)
+    hooks.hooks.UserPromptSubmit[0].matcher = 'custom'
+    await fs.writeJson(path, hooks)
+    const { checks } = await collectDoctorReport(deps())
+    expect(checks.find(c => c.id === 'codex.hook-registration')?.status).toBe('pass')
+    expect(checks.find(c => c.id === 'codex.hook-trust')).toMatchObject({ status: 'warn', detail: expect.stringMatching(/custom.*\/hooks/i) })
+  })
   it('does not treat unrelated Codex AGENTS.md or a non-version marker as installed', async () => {
     await fs.outputFile(join(home, '.codex', 'AGENTS.md'), '# User rules')
     await fs.outputFile(join(home, '.codex', '.ccg-version'), 'unrelated')
@@ -225,6 +255,12 @@ describe('CCG doctor inventory', () => {
     ['Usage: agy [--output-format FMT]', 'pass'],
     ['  -o|--output-format FMT', 'pass'],
     ['  --output-format: value', 'pass'],
+    ['  -o FMT, --output-format FMT', 'pass'],
+    ['  --json, --output-format', 'pass'],
+    ['  -of, --output-format', 'pass'],
+    ['  [-o | --output-format <fmt>]', 'pass'],
+    ['  agy --output-format <fmt> [prompt]', 'pass'],
+    ['  \x1b[32m--output-format\x1b[0m FMT', 'pass'],
     ['The new option replaces --output-format json.', 'warn'],
     [null, 'warn'],
   ])('checks Antigravity help (%s) without turning capability warnings into failures', async (help, status) => {

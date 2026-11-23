@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { init } from '../../commands/init'
+import { showBinaryDownloadWarning } from '../installer'
 import { createDefaultConfig, createDefaultRouting } from '../config'
 import { injectConfigVariables } from '../installer-template'
 import { promptOpencodeModel, validateOpencodeModel } from '../model-selection'
@@ -105,6 +106,22 @@ function answerInitQuestions(overrides: Record<string, any> = {}) {
 }
 
 describe('API configuration during init', () => {
+  it('reports a lagging preset at init without calling it a failed download', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mocks.install.mockResolvedValue({ success: true, binVersionMismatch: true, binaryVersion: '5.15.0', installedCommands: ['go'], installedPrompts: [], errors: [] })
+    await init({ skipPrompt: true, skipMcp: true, force: true, installDir: '/tmp/ccg-init-test' })
+    expect(warn.mock.calls.flat().join(' ')).toMatch(/5\.15\.0.*expected 5\.16\.1.*ccg-ros2-workflow update/)
+    expect(warn.mock.calls.flat().join(' ')).toContain('https://github.com/GuYu-001/ccg-ros2-workflow/releases/tag/preset')
+    expect(showBinaryDownloadWarning).not.toHaveBeenCalled()
+    expect(process.exitCode).not.toBe(1)
+  })
+
+  it('prints download help before returning from an installation with a failed binary', async () => {
+    mocks.install.mockResolvedValue({ success: false, binInstalled: false, errors: ['Failed to download binary'] })
+    await init({ skipPrompt: true, skipMcp: true, force: true, installDir: '/tmp/ccg-init-test' })
+    expect(showBinaryDownloadWarning).toHaveBeenCalledWith('/tmp/ccg-init-test/bin')
+    expect(process.exitCode).toBe(1)
+  })
   it('offers only official authentication, a custom API, skip and navigation', async () => {
     answerInitQuestions()
     await init({ skipMcp: true, force: true, installDir: '/tmp/ccg-init-test' })

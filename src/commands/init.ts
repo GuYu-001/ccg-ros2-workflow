@@ -7,7 +7,7 @@ import { homedir } from 'node:os'
 import { join } from 'pathe'
 import { i18n, initI18n } from '../i18n'
 import { createDefaultConfig, ensureCcgDir, getCcgDir, readCcgConfig, writeCcgConfig } from '../utils/config'
-import { configureGeminiCliApi, getAllCommandIds, getCoreCommandIds, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, showBinaryDownloadWarning, syncMcpToCodex, syncMcpToGemini, writeFastContextPrompt } from '../utils/installer'
+import { configureGeminiCliApi, getAllCommandIds, getCoreCommandIds, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, showBinaryDownloadWarning, syncMcpToCodex, syncMcpToGemini, warnBinaryVersionMismatch, writeFastContextPrompt } from '../utils/installer'
 import { isWindows } from '../utils/platform'
 import { migrateToV1_4_0, needsMigration } from '../utils/migration'
 import { promptOpencodeModel } from '../utils/model-selection'
@@ -1125,6 +1125,8 @@ export async function init(options: InitOptions = {}): Promise<void> {
       skillsMode: selectedSkillsMode,
     })
 
+    if (result.binVersionMismatch) warnBinaryVersionMismatch(result.binaryVersion ?? null)
+    else if (result.binInstalled === false) showBinaryDownloadWarning(join(installDir, 'bin'))
     if (!result.success) {
       spinner.fail(ansis.red(i18n.t('init:installFailed')))
       result.errors.forEach(error => console.log(`    ${ansis.red('✗')} ${error}`))
@@ -1459,10 +1461,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
           console.log(`      ${ansis.cyan(exportCommand)}`)
         }
       }
-    }
-    else if (!result.binVersionMismatch) {
-      // Binary download failed — show prominent warning with manual fix instructions
-      showBinaryDownloadWarning(join(installDir, 'bin'))
     }
 
     // Show MCP resources if user skipped installation

@@ -1,5 +1,5 @@
-import { copyFileSync, readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { copyFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { basename, dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import fs from 'fs-extra'
@@ -14,23 +14,27 @@ const fixture = vi.hoisted(() => ({
 }))
 vi.mock('node:child_process', async (original) => {
   const actual = await original<typeof import('node:child_process')>()
-  return { ...actual, execSync: vi.fn((command: string, options?: import('node:child_process').ExecSyncOptions) => {
-    if (command.startsWith('curl ')) {
-      const match = command.match(/ -o "([^"]+)" "(https:\/\/[^"\s]+)"$/)
-      if (!match || !fixture.asset) throw new Error('Unexpected fixture download request')
-      fixture.downloads.push({ destination: match[1], url: match[2] })
-      if (fixture.failDownloads) throw new Error('Fixture release download unavailable')
-      copyFileSync(fixture.asset, match[1])
+  return { ...actual, execFileSync: vi.fn((file: string, args: string[], options?: import('node:child_process').ExecFileSyncOptions) => {
+    if (file === 'curl') {
+      const destination = args[args.indexOf('-o') + 1]
+      const url = args.at(-1)!
+      if (!destination || !fixture.asset) throw new Error('Unexpected fixture download request')
+      fixture.downloads.push({ destination, url })
+      if (fixture.failDownloads) {
+        writeFileSync(destination, 'partial download')
+        throw new Error('Fixture release download interrupted')
+      }
+      copyFileSync(fixture.asset, destination)
       return Buffer.alloc(0)
     }
-    if ((fixture.simulatedPlatform || fixture.versionOverride) && /^"[^"]+[/\\]bin[/\\]codeagent-wrapper(?:\.exe)?" --version$/.test(command)) {
-      return Buffer.from(`codeagent-wrapper version ${fixture.versionOverride || '5.16.1'}\n`)
+    if ((fixture.simulatedPlatform || fixture.versionOverride) && args[0] === '--version') {
+      return `codeagent-wrapper version ${fixture.versionOverride || '5.16.1'}\n`
     }
-    const output = actual.execSync(command, options)
+    const output = actual.execFileSync(file, args, options)
     // Windows uses a runnable Node PE fixture. Verify execution for real, then
     // normalize its identity; this checks installation, not the real Go binary.
-    return process.platform === 'win32' && /codeagent-wrapper\.exe" --version$/.test(command)
-      ? Buffer.from('codeagent-wrapper version 5.16.1\n') : output
+    return process.platform === 'win32' && file.endsWith('.exe') && args[0] === '--version'
+      ? 'codeagent-wrapper version 5.16.1\n' : output
   }) }
 })
 let assetDirectory: string
@@ -359,7 +363,9 @@ describe('installWorkflows — binary installation', () => {
     expect(fs.existsSync(installed)).toBe(true)
     expect(await fs.readFile(installed)).toEqual(await fs.readFile(fixture.asset))
     expect(fixture.downloads.slice(before)).toHaveLength(1)
-    expect(fixture.downloads.at(-1)?.destination).toBe(installed)
+    expect(dirname(fixture.downloads.at(-1)!.destination)).toBe(dirname(installed))
+    expect(fixture.downloads.at(-1)?.destination).not.toBe(installed)
+    expect(await fs.readdir(result.binPath!)).toEqual([binaryName])
     expect(fixture.downloads.at(-1)?.url).toMatch(/^https:\/\/github\.com\/GuYu-001\/ccg-ros2-workflow\/releases\/download\/preset\/codeagent-wrapper-(darwin|linux|windows)-(amd64|arm64)(?:\.exe)?$/)
     if (process.platform !== 'win32') expect((await fs.stat(installed)).mode & 0o777).toBe(0o755)
     expect(await verifyBinaryVersion(tmpDir)).toBe(true)
@@ -386,8 +392,12 @@ describe('installWorkflows — binary installation', () => {
       expect(await fs.readFile(join(directory, 'bin', executable))).toEqual(await fs.readFile(fixture.asset))
       expect(fixture.downloads.slice(before)).toEqual([{
         url: `https://github.com/GuYu-001/ccg-ros2-workflow/releases/download/preset/${asset}`,
-        destination: join(directory, 'bin', executable),
+        destination: expect.any(String),
       }])
+      const destination = fixture.downloads.at(-1)!.destination
+      expect(dirname(destination)).toBe(join(directory, 'bin'))
+      expect(basename(destination)).not.toBe(executable)
+      expect(await fs.readdir(join(directory, 'bin'))).toEqual([executable])
     }
     finally {
       fixture.simulatedPlatform = false
@@ -401,7 +411,12 @@ describe('installWorkflows — binary installation', () => {
     vi.mocked(fetch).mockClear()
     fixture.failDownloads = true
     try {
-      const result = await installWorkflows(['go'], join(tmpDir, 'unavailable'), true, { mcpProvider: 'skip' })
+      const directory = join(tmpDir, 'unavailable')
+      const bin = join(directory, 'bin')
+      const name = process.platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper'
+      const old = '#!/bin/sh\necho "codeagent-wrapper version 5.15.0"\n'
+      await fs.outputFile(join(bin, name), old, { mode: 0o755 })
+      const result = await installWorkflows(['go'], directory, true, { mcpProvider: 'skip' })
       expect(result.success).toBe(false)
       expect(result.binInstalled).not.toBe(true)
       const urls = fixture.downloads.slice(before).map(download => download.url)
@@ -411,23 +426,43 @@ describe('installWorkflows — binary installation', () => {
       }
       expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2)
       expect(result.errors.join('\n')).toContain('https://github.com/GuYu-001/ccg-ros2-workflow/releases/tag/preset')
+      expect(await fs.readFile(join(bin, name), 'utf8')).toBe(old)
+      expect(await fs.readdir(bin)).toEqual([name])
     }
     finally {
       fixture.failDownloads = false
     }
   })
 
+  it('discards a completed download with unreadable version without replacing the installed wrapper', async () => {
+    const directory = join(tmpDir, 'invalid-version')
+    const bin = join(directory, 'bin')
+    const name = process.platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper'
+    const old = '#!/bin/sh\necho "codeagent-wrapper version 5.15.0"\n'
+    await fs.outputFile(join(bin, name), old, { mode: 0o755 })
+    fixture.versionOverride = 'unrecognized'
+    try {
+      const result = await installWorkflows(['go'], directory, true, { mcpProvider: 'skip' })
+      expect(result.errors.join(' ')).toContain('could not read codeagent-wrapper version')
+      expect(result.success).toBe(false)
+      expect(await fs.readFile(join(bin, name), 'utf8')).toBe(old)
+      expect(await fs.readdir(bin)).toEqual([name])
+    }
+    finally { fixture.versionOverride = '' }
+  })
+
   it('warns without failing the installation if the preset release lags behind the npm package', async () => {
     fixture.versionOverride = '5.15.0'
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
       const result = await installWorkflows(['go'], join(tmpDir, 'stale-preset'), true, { mcpProvider: 'skip' })
       expect(result.success).toBe(true)
       expect(result.binInstalled).not.toBe(true)
-      const text = warn.mock.calls.flat().join('\n')
-      for (const expected of ['5.15.0', '5.16.1', 'https://github.com/GuYu-001/ccg-ros2-workflow/releases/tag/preset', 'ccg-ros2-workflow update']) expect(text).toContain(expected)
+      expect(result.binVersionMismatch).toBe(true)
+      expect(result.binaryVersion).toBe('5.15.0')
+      const binaryName = process.platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper'
+      expect(await fs.readFile(join(tmpDir, 'stale-preset/bin', binaryName))).toEqual(await fs.readFile(fixture.asset))
     }
-    finally { fixture.versionOverride = ''; warn.mockRestore() }
+    finally { fixture.versionOverride = '' }
   })
 
   it('only automatically rebuilds the preset on main wrapper pushes and still permits manual dispatch', async () => {

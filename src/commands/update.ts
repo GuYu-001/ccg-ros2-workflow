@@ -8,7 +8,6 @@ import ora from 'ora'
 import { homedir } from 'node:os'
 import { join } from 'pathe'
 import { checkForUpdates, compareVersions } from '../utils/version'
-import { EXPECTED_BINARY_VERSION, installedBinaryVersion, showBinaryDownloadWarning, verifyBinary, warnBinaryVersionMismatch } from '../utils/installer'
 import { readCcgConfig, writeCcgConfig } from '../utils/config'
 import { migrateToV1_4_0, needsMigration } from '../utils/migration'
 import { i18n } from '../i18n'
@@ -366,13 +365,16 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
 
   let installSuccess = false
   try {
-    await execAsync(`npx --yes ccg-ros2-workflow@latest init --force --skip-mcp --skip-prompt`, {
+    const { stdout, stderr } = await execAsync(`npx --yes ccg-ros2-workflow@latest init --force --skip-mcp --skip-prompt`, {
       timeout: 300000, // 5min — binary download from GitHub Release may be slow (especially in China)
       env: {
         ...process.env,
         CCG_UPDATE_MODE: 'true',
       },
     })
+    // Only the newly installed package knows which wrapper version it requires.
+    if (stdout) process.stdout.write(stdout)
+    if (stderr) process.stderr.write(stderr)
 
     // Step 5: Verify new installation actually produced files
     const commandsDir = join(installDir, 'commands', 'ccg')
@@ -401,6 +403,8 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
   }
   catch (error) {
     spinner.fail(i18n.t('update:installFailed'))
+    const output = (error as { stdout?: string }).stdout
+    if (output) process.stdout.write(output)
     console.log(ansis.red(`${i18n.t('common:error')}: ${error}`))
   }
 
@@ -412,16 +416,6 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
         await fs.remove(dir + BACKUP_SUFFIX)
       }
       catch { /* non-critical: stale backup files */ }
-    }
-
-    // Verify binary exists, is functional, AND version matches
-    if (!(await verifyBinary(installDir))) {
-      showBinaryDownloadWarning(join(installDir, 'bin'))
-    }
-    else {
-      // Binary exists and runs, but check version
-      const actual = await installedBinaryVersion(installDir)
-      if (actual !== EXPECTED_BINARY_VERSION) warnBinaryVersionMismatch(actual)
     }
   }
   else {

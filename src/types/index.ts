@@ -102,6 +102,7 @@ export interface InstallResult {
   binPath?: string
   binInstalled?: boolean
   binVersionMismatch?: boolean
+  binaryVersion?: string
 }
 
 // ace-tool 配置

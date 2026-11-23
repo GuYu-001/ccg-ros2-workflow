@@ -1,6 +1,7 @@
 import type { InstallResult } from '../types'
 import { codexHookReviewNotice, codexHookTrustedNotice } from '../i18n'
 import { homedir } from 'node:os'
+import { randomUUID } from 'node:crypto'
 import ansis from 'ansis'
 import fs from 'fs-extra'
 import { basename, join } from 'pathe'
@@ -128,9 +129,9 @@ async function downloadFromUrl(url: string, destPath: string, timeoutMs: number,
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       // Prefer curl — auto-reads HTTPS_PROXY / ALL_PROXY for proxy support
-      const { execSync } = await import('node:child_process')
-      execSync(
-        `curl -fsSL --max-time ${timeoutSec} -o "${destPath}" "${url}"`,
+      const { execFileSync } = await import('node:child_process')
+      execFileSync(
+        'curl', ['-fsSL', '--max-time', String(timeoutSec), '-o', destPath, url],
         { stdio: 'pipe', timeout: timeoutMs + 5000 },
       )
 
@@ -781,12 +782,17 @@ export async function verifyBinary(installDir: string): Promise<boolean> {
 export async function installedBinaryVersion(installDir: string): Promise<string | null> {
   const binDir = join(installDir, 'bin')
   const wrapperName = process.platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper'
-  const wrapperPath = join(binDir, wrapperName)
+  return readBinaryVersion(join(binDir, wrapperName))
+}
 
+export function parseWrapperVersion(output: string): string | null {
+  return /^(?:codeagent-wrapper version\s+)?(\d+\.\d+\.\d+(?:[-+][\w.-]+)?)$/.exec(output.trim())?.[1] ?? null
+}
+
+async function readBinaryVersion(wrapperPath: string): Promise<string | null> {
   try {
-    const { execSync } = await import('node:child_process')
-    const output = execSync(`"${wrapperPath}" --version`, { stdio: 'pipe' }).toString().trim()
-    return /^(?:codeagent-wrapper version\s+)?(\d+\.\d+\.\d+(?:[-+][\w.-]+)?)$/.exec(output)?.[1] ?? null
+    const { execFileSync } = await import('node:child_process')
+    return parseWrapperVersion(execFileSync(wrapperPath, ['--version'], { encoding: 'utf8', timeout: 10000, killSignal: 'SIGKILL' }))
   }
   catch {
     return null
@@ -852,6 +858,7 @@ export function showBinaryDownloadWarning(binDir: string): void {
  * Skips download if binary already exists and passes `--version` check.
  */
 async function installBinaryFile(ctx: InstallContext): Promise<void> {
+  ctx.result.binInstalled = false
   try {
     const binDir = join(ctx.installDir, 'bin')
     await fs.ensureDir(binDir)
@@ -872,25 +879,29 @@ async function installBinaryFile(ctx: InstallContext): Promise<void> {
       return
     }
 
-    const installed = await downloadBinaryFromRelease(binaryName, destBinary)
-
-    if (installed) {
-      const actual = await installedBinaryVersion(ctx.installDir)
+    // Keep the .exe suffix on Windows so the staged program can be probed there.
+    const staged = join(binDir, `.ccg-${randomUUID()}${process.platform === 'win32' ? '.exe' : ''}`)
+    try {
+      if (!await downloadBinaryFromRelease(binaryName, staged)) {
+        ctx.result.errors.push(`Failed to download binary: ${binaryName} from GitHub Release (after 2 attempts). Check network or visit https://github.com/${GITHUB_REPO}/releases/tag/${RELEASE_TAG}`)
+        return
+      }
+      const actual = await readBinaryVersion(staged)
+      if (!actual) {
+        ctx.result.errors.push('Binary verification failed: could not read codeagent-wrapper version')
+        return
+      }
+      await fs.rename(staged, destBinary)
+      ctx.result.binaryVersion = actual
       if (actual === EXPECTED_BINARY_VERSION) {
         ctx.result.binPath = binDir
         ctx.result.binInstalled = true
       }
-      else if (actual === null) {
-        ctx.result.errors.push('Binary verification failed: could not read codeagent-wrapper version')
-      }
       else {
         ctx.result.binVersionMismatch = true
-        warnBinaryVersionMismatch(actual)
       }
     }
-    else {
-      ctx.result.errors.push(`Failed to download binary: ${binaryName} from GitHub Release (after 2 attempts). Check network or visit https://github.com/${GITHUB_REPO}/releases/tag/${RELEASE_TAG}`)
-    }
+    finally { await fs.remove(staged) }
   }
   catch (error) {
     ctx.result.errors.push(`Failed to install codeagent-wrapper (non-blocking): ${error}`)

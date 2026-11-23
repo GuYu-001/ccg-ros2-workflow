@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.7.6-ros2.0] - 2026-11-23
 
+- **升级须知（从 3.7.2-ros2.0 升级）：** 旧版 `update` 仍按 5.15.0 核对 wrapper，所以升级成功后也会显示一次红色「二进制下载失败」。运行 `npx ccg-ros2-workflow doctor`，若 wrapper 显示 5.16.1，可忽略该提示；若版本仍不符，请稍后重试 `ccg-ros2-workflow update`。使用 Antigravity 时，`agy --help` 必须列出 `--output-format`；否则先运行 `agy update`。
+
 - **Wrapper Web UI (5.16.1):** Bind to IPv4 loopback, validate the Host header, render task text as text rather than HTML, and remove `Access-Control-Allow-Origin: *` from `/api/stream`. To watch a remote workstation or robot, forward the port with `ssh -L` or run in lite mode. Use `CODEAGENT_BROWSER=builtin` to leave opening the URL to the orchestrator.
 - **Antigravity:** Read stream-json output to resume sessions and surface denied actions. Use `CODEAGENT_AGY_SETTINGS` to select the agy settings file. The ROS2 upper-layer backend needs `agy --help` to list `--output-format`; doctor reads help from either output stream and recommends `agy update` if it cannot confirm support. Version probes read stdout only.
 - **Spec commands:** Allow one hour for background research, planning, implementation, and review calls; polling intervals are unchanged.

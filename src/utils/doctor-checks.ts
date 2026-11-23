@@ -1,5 +1,6 @@
 import fs from 'fs-extra'
 import { spawnSync } from 'node:child_process'
+import { stripVTControlCharacters } from 'node:util'
 import { homedir } from 'node:os'
 import { join } from 'pathe'
 import { parse } from 'smol-toml'
@@ -7,6 +8,7 @@ import { version } from '../../package.json'
 import { ccgHooksTrusted, hasCcgHook, installedCcgHookTrustEntries, installedHookCommand } from './codex-hook-trust'
 import type { SkillManagerOptions } from './skill-manager'
 import { listSkills, SKILL_MANIFEST_FILE } from './skill-manager'
+import { EXPECTED_BINARY_VERSION, parseWrapperVersion } from './installer'
 
 export type DoctorStatus = 'pass' | 'warn' | 'fail' | 'skip'
 export interface DoctorCheck {
@@ -212,16 +214,27 @@ async function codexChecks(codexDir: string, managedAgents: boolean): Promise<Do
   ]
 }
 
-async function standaloneDelegationChecks(installDir: string, codexDir: string, home: string, platform: NodeJS.Platform, exec: NonNullable<DoctorDependencies['exec']>): Promise<DoctorCheck[]> {
+async function wrapperCheck(installDir: string, platform: NodeJS.Platform, exec: NonNullable<DoctorDependencies['exec']>, standalone = false): Promise<DoctorCheck> {
   const wrapper = join(installDir, 'bin', platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper')
   const raw = await fs.pathExists(wrapper) ? exec(wrapper, ['--version']) : null
+  const label = standalone ? 'External delegation' : 'Binary'
+  if (!raw) return standalone
+    ? check('binary.wrapper', label, 'warn', 'Wrapper not installed or not runnable; M+ external model delegation is unavailable', 'Run ccg-ros2-workflow init to install the external model delegation toolchain.')
+    : check('binary.wrapper', label, 'fail', 'codeagent-wrapper not found or --version failed')
+  const version = parseWrapperVersion(raw)
+  return version === EXPECTED_BINARY_VERSION
+    ? check('binary.wrapper', label, 'pass', `v${version}`)
+    : check('binary.wrapper', label, 'warn', `codeagent-wrapper version: ${version ?? 'unrecognized'}; expected ${EXPECTED_BINARY_VERSION}`, 'Run ccg-ros2-workflow update.')
+}
+
+async function standaloneDelegationChecks(installDir: string, codexDir: string, home: string, platform: NodeJS.Platform, exec: NonNullable<DoctorDependencies['exec']>): Promise<DoctorCheck[]> {
   const agents = await readText(join(codexDir, 'AGENTS.md')) || ''
   const names = [...new Set([...agents.matchAll(/--backend ([a-z][a-z0-9-]*)\b/g)].map(match => match[1]))].filter(name => Object.hasOwn(BACKENDS, name))
   const promptFiles = names.flatMap(name => ['analyzer', 'reviewer'].map(role => join(installDir, '.ccg', 'prompts', name, `${role}.md`)))
   const hasPrompts = promptFiles.length > 0 && (await Promise.all(promptFiles.map(path => fs.pathExists(path)))).every(Boolean)
   const drivers = await backendChecks(names.filter(name => name !== 'codex'), false, home, platform, exec)
   return [
-    check('binary.wrapper', 'External delegation', raw ? 'pass' : 'warn', raw ? versionDetail(raw) : 'Wrapper not installed; M+ external model delegation is unavailable', 'Run ccg-ros2-workflow init to install the external model delegation toolchain.'),
+    await wrapperCheck(installDir, platform, exec, true),
     check('codex.role-prompts', 'Delegation prompts', hasPrompts ? 'pass' : 'warn', hasPrompts ? 'External role prompts found' : 'Role prompts not installed; external model delegation is incomplete', 'Run ccg-ros2-workflow init to install role prompts and configure external model CLIs.'),
     ...drivers.map(driver => ({ ...driver, id: driver.id.replace('cli.', 'cli.delegation.'), status: driver.status === 'fail' ? 'warn' as const : driver.status, detail: driver.status === 'fail' ? `${driver.detail}; external model delegation is unavailable` : driver.detail })),
   ]
@@ -246,7 +259,13 @@ async function backendChecks(names: string[], pureClaude: boolean, home: string,
     checks.push(check(`cli.${name}`, spec.label, output ? 'pass' : 'fail', output ? versionDetail(output) : 'Not found or --version failed', `Install ${spec.label} and ensure ${spec.commands[0]} is on PATH, then run ccg-ros2-workflow doctor.`))
     if (name === 'antigravity' && selected) {
       const help = exec(selected, ['--help'])
-      const available = /(?:^\s*(?:-\w[\s,|]+)?|\[)--output-format(?=[\s,:=<\[\]]|$)/m.test(help || '')
+      const available = stripVTControlCharacters(help || '').split('\n').some(line => {
+        const usage = /^(?:usage:\s*)?agy\s/i.test(line.trim())
+        // Option rows can start with aliases and their metavars. Do not match prose.
+        if (!usage && !/^\s*\[?-/.test(line)) return false
+        const options = usage ? line : line.trim().split(/\s{2,}/, 1)[0]
+        return /(?:^|[\s,|\[])--output-format(?=[\s,:=<\[\]]|$)/.test(options)
+      })
       checks.push(check('cli.antigravity.output-format', 'Antigravity stream output', available ? 'pass' : 'warn',
         available ? 'agy supports --output-format' : 'Could not confirm --output-format support; the wrapper needs stream-json.',
         'Run agy update, then confirm agy --help lists --output-format.'))
@@ -331,9 +350,7 @@ export async function collectDoctorReport(deps: DoctorDependencies = {}): Promis
   if (mode === 'codex' || mode === 'both') checks.push(...await codexChecks(codexDir, managedAgents))
   if (mode === 'codex') checks.push(...await standaloneDelegationChecks(installDir, codexDir, home, platform, exec))
   if (!pureClaude && workflowInstalled) {
-    const wrapper = join(installDir, 'bin', platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper')
-    const raw = await fs.pathExists(wrapper) ? exec(wrapper, ['--version']) : null
-    checks.push(check('binary.wrapper', 'Binary', raw ? 'pass' : 'fail', raw ? versionDetail(raw) : 'codeagent-wrapper not found or --version failed'))
+    checks.push(await wrapperCheck(installDir, platform, exec))
   }
   checks.push(...await backendChecks(names, pureClaude, home, platform, exec))
   checks.push(...await skillChecks(home, installDir, mode, deps))
