@@ -214,6 +214,8 @@ npx ccg-ros2-workflow init --skip-prompt
 
 Requires **Node.js 20+** and **Claude Code CLI**. Codex CLI, Grok CLI, Kimi Code CLI, and Antigravity are optional (enable multi-model features).
 
+The default ROS2 upper-layer backend, Antigravity, requires an `agy` CLI that supports `--output-format stream-json`. Check `agy --help` for `--output-format`; if it is missing, run `agy update` and recheck with `npx ccg-ros2-workflow doctor`.
+
 **Option B — native plugin (skills only, zero dependencies, v3.5.1+)**
 
 Want just the ROS2 domain knowledge, engineering references, and quality gates without the multi-model orchestration?
@@ -224,6 +226,8 @@ claude plugin install ccg@ccg
 ```
 
 Skills are invoked as `/ccg:<skill>`. No npx, no binary. The multi-model commands ship only through Option A (their templates carry install-time placeholders that a native plugin can't resolve).
+
+**Codex-led mode:** After `npx ccg-ros2-workflow codex-mode install`, run `/hooks` in Codex to review and trust `ccg-workflow.py`. Codex CLI ≥ 0.129 skips untrusted hooks; `npx ccg-ros2-workflow doctor` reports the current trust state.
 
 ## CLI Commands
 
@@ -316,4 +320,4 @@ MIT
 
 ---
 
-v3.7.2-ros2.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.7.6-ros2.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)

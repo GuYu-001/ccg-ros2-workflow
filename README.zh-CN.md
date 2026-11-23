@@ -214,6 +214,8 @@ npx ccg-ros2-workflow init --skip-prompt
 
 需要 **Node.js 20+** 和 **Claude Code CLI**。Codex CLI、Grok CLI、Kimi Code CLI 和 Antigravity 为可选（启用多模型功能）。
 
+默认 ROS2 上层应用后端 Antigravity 需要 `agy` 支持 `--output-format stream-json`。请在 `agy --help` 中确认有 `--output-format`；若没有，运行 `agy update`，然后用 `npx ccg-ros2-workflow doctor` 复查。
+
 **方式 B：原生插件（仅技能，零依赖，v3.5.1+）**
 
 只想要 ROS2 领域知识、通用工程参考和质量关卡，不需要多模型编排时：
@@ -224,6 +226,8 @@ claude plugin install ccg@ccg
 ```
 
 技能以 `/ccg:<skill>` 形式调用。无需 npx、无需 binary。多模型命令因含模板占位符不随插件分发，需方式 A。
+
+**Codex 主导模式：** 运行 `npx ccg-ros2-workflow codex-mode install` 后，请在 Codex 中运行 `/hooks`，审阅并信任 `ccg-workflow.py`。Codex CLI ≥ 0.129 会跳过未信任的 hook；可用 `npx ccg-ros2-workflow doctor` 检查当前信任状态。
 
 ## CLI 命令大全
 
@@ -316,4 +320,4 @@ MIT
 
 ---
 
-v3.7.2-ros2.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.7.6-ros2.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)

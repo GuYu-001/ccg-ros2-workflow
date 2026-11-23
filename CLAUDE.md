@@ -2,7 +2,7 @@
 
 > [根目录](../CLAUDE.md) > **skills-v2**
 
-**Last Updated**: 2026-10-18 (v3.7.2)
+**Last Updated**: 2026-11-23 (v3.7.6-ros2.0)
 
 > ⚠ 本文档主体仍停留在 v2.1.16 架构描述（v3.0 引擎重构后未全量同步）。下方变更记录保留 v3.x 修复轨迹，完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 

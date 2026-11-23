@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.7.6-ros2.0] - 2026-11-23
+
+- **Wrapper Web UI (5.16.1):** Bind to IPv4 loopback, validate the Host header, and render output as text. Use `CODEAGENT_BROWSER=builtin` to leave opening the URL to the orchestrator.
+- **Antigravity:** Read stream-json output to resume sessions and surface denied actions. The ROS2 upper-layer backend needs `agy --help` to list `--output-format`; doctor warns when it cannot confirm support and recommends `agy update`.
+- **Spec commands:** Allow one hour for background research, planning, implementation, and review calls; polling intervals are unchanged.
+- **Skill routing:** Match English keywords at word boundaries and use specific phrases for generic architecture skills. ROS2 vectors, DDS endpoints, and tf2 caches no longer inject unrelated skills. Mentioning a model action is not consent to run it.
+- **Codex mode:** Merge the workflow handler into existing hook registrations and preserve user handlers on uninstall. Doctor distinguishes a registered hook from a trusted one. Review the installed hook in Codex with `/hooks`.
+
 ## [3.0.0] - 2026-05-20
 
 ### 🚀 ROS2 Edition - Major Release
