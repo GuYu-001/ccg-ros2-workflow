@@ -26,7 +26,20 @@ permissions:
   id-token: write # mints the OIDC token npm authenticates against
 
 jobs:
+  verify-preset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify preset wrapper version
+        run: bash .github/scripts/check-preset.sh
+
   publish:
+    needs: verify-preset
     runs-on: ubuntu-latest
     environment: npm-publish
 
