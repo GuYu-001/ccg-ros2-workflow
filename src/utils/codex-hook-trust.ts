@@ -168,19 +168,26 @@ export async function readHooksJson(path: string): Promise<Json | null> {
   }
   if (!doc || typeof doc !== 'object' ||
       ('hooks' in doc && (!doc.hooks || typeof doc.hooks !== 'object' || Array.isArray(doc.hooks))) ||
-      (doc.hooks && 'UserPromptSubmit' in doc.hooks && !Array.isArray(doc.hooks.UserPromptSubmit)))
+      (doc.hooks && 'UserPromptSubmit' in doc.hooks && (!Array.isArray(doc.hooks.UserPromptSubmit)
+        || doc.hooks.UserPromptSubmit.some((group: Json) => !Array.isArray(group?.hooks)))))
     throw new Error('Invalid Codex hooks.json; original file kept')
   return doc
 }
 
 // A dangling link is not an absent file: fail without replacing it.
-async function existingTarget(path: string): Promise<string | null> {
-  try { await fs.lstat(path) }
+export async function existingTarget(path: string): Promise<string | null> {
+  let stat
+  try { stat = await fs.lstat(path) }
   catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
     throw error
   }
-  return fs.realpath(path)
+  try { return await fs.realpath(path) }
+  catch (error) {
+    if (stat.isSymbolicLink())
+      throw new Error(`Cannot resolve symlink ${path}; restore its target or repair the link and retry: ${error}`)
+    throw error
+  }
 }
 
 async function writeAtomic(destination: string, content: string) {
@@ -232,7 +239,10 @@ function replaceTrustedHash(text: string, key: string, hash: string): string | n
   const line = `trusted_hash = "${hash}"${eol}`
   for (let i = start + 1; i < lines.length && !/^\s*\[/.test(lines[i]); i++) {
     if (/^\s*trusted_hash\s*=/.test(lines[i])) {
-      lines[i] = line
+      const value = /^([ \t]*trusted_hash[ \t]*=[ \t]*)(["'])([^"'\\]*)\2([ \t]*(?:#[^\r\n]*)?\r?)$/.exec(lines[i])
+      if (!value) return null
+      const [, assignment, quote, , suffix] = value
+      lines[i] = `${assignment}${quote}${hash}${quote}${suffix}`
       return lines.join('\n')
     }
   }
@@ -252,15 +262,15 @@ function dropEmptyHookState(config: Json) {
  * touching anything else (inline tables, invalid TOML) is left alone.
  */
 export async function trustCcgCodexHooks(codexHome: string, hooks: Json, stale: CcgHookTrust[] = []): Promise<boolean> {
-  const entries = await installedCcgHookTrustEntries(hooks, codexHome)
-  if (!entries.length) return false
-  // A reinstall that moved the handler leaves approvals under its old positions.
-  const current = new Set(entries.map(e => e.key))
-  await forgetTrust(codexHome, stale.filter(e => !current.has(e.key)))
-
-  const path = await configTomlPath(codexHome)
-  const original = await fs.pathExists(path) ? await fs.readFile(path, 'utf8') : ''
   try {
+    const entries = await installedCcgHookTrustEntries(hooks, codexHome)
+    // A removed duplicate can leave an approval even when only a customized hook survives.
+    const current = new Set(entries.map(e => e.key))
+    await forgetTrust(codexHome, stale.filter(e => !current.has(e.key)))
+    if (!entries.length) return false
+
+    const path = await configTomlPath(codexHome)
+    const original = await fs.pathExists(path) ? await fs.readFile(path, 'utf8') : ''
     const before = parse(original) as Json
     if (ccgHooksTrusted(entries, before)) return true
     const eol = original.includes('\r\n') ? '\r\n' : '\n'
@@ -303,26 +313,23 @@ async function forgetTrust(codexHome: string, entries: CcgHookTrust[]): Promise<
   const original = await fs.readFile(path, 'utf8')
   let text = original
   let removed = 0
-  try {
-    const expected = parse(original) as Json
-    for (const { key, hash } of entries) {
-      const previous = expected.hooks?.state?.[key]
-      if (previous?.trusted_hash !== hash || Object.keys(previous).length !== 1) continue
-      const escapedKey = JSON.stringify(key).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      const block = new RegExp(`^\\[hooks\\.state\\.${escapedKey}\\]\\r?\\ntrusted_hash = "${hash}"(?:\\r?\\n|$)`, 'm')
-      if (!block.test(text)) continue
-      text = text.replace(block, '')
-      delete expected.hooks.state[key]
-      removed++
-    }
-    if (!removed) return 0
-    const actual = parse(text) as Json
-    // Removing the last explicit child may remove implicit parent tables.
-    if (!actual.hooks?.state && !Object.keys(expected.hooks.state).length) delete expected.hooks.state
-    if (!actual.hooks && !Object.keys(expected.hooks).length) delete expected.hooks
-    if (!isDeepStrictEqual(expected, actual)) return 0
+  const expected = parse(original) as Json
+  for (const { key, hash } of entries) {
+    const previous = expected.hooks?.state?.[key]
+    if (previous?.trusted_hash !== hash || Object.keys(previous).length !== 1) continue
+    const escapedKey = JSON.stringify(key).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const block = new RegExp(`^[ \\t]*\\[hooks\\.state\\.${escapedKey}\\][ \\t]*\\r?\\n[ \\t]*trusted_hash[ \\t]*=[ \\t]*"${hash}"[ \\t]*(?:\\r?\\n|$)`, 'm')
+    if (!block.test(text)) throw new Error(`Cannot safely remove the trust record for ${key}; config.toml was not changed`)
+    text = text.replace(block, '')
+    delete expected.hooks.state[key]
+    removed++
   }
-  catch { return 0 }
+  if (!removed) return 0
+  const actual = parse(text) as Json
+  // Removing the last explicit child may remove implicit parent tables.
+  if (!actual.hooks?.state && !Object.keys(expected.hooks.state).length) delete expected.hooks.state
+  if (!actual.hooks && !Object.keys(expected.hooks).length) delete expected.hooks
+  if (!isDeepStrictEqual(expected, actual)) throw new Error('Cannot verify the trust cleanup; config.toml was not changed')
   await writeAtomic(path, text)
   return removed
 }

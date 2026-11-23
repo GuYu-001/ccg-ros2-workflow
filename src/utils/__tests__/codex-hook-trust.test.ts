@@ -72,6 +72,7 @@ describe('mergeCcgHooks', () => {
 
 describe('trust and registration lifecycle', () => {
   const hooksPath = () => join(codexHome, 'hooks.json')
+  const scriptPath = () => join(codexHome, 'hooks', 'ccg-workflow.py')
   const configPath = () => join(codexHome, 'config.toml')
   const provider = '# User configuration\n[model_providers.custom]\nname = "Custom"\n'
   const userState = '[hooks.state."other:stop:0:0"]\nenabled = false\n'
@@ -107,7 +108,7 @@ describe('trust and registration lifecycle', () => {
   it('re-approves a handler Codex would show as modified, keeping the record where it was', async () => {
     await fs.outputJson(hooksPath(), { hooks: { UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'python3 ~/.codex/hooks/ccg-workflow.py', timeout: 10 }] }] } })
     const key = `${await fs.realpath(hooksPath())}:user_prompt_submit:0:0`
-    const record = (hash: string) => `[hooks.state.${JSON.stringify(key)}]\n# approved earlier\ntrusted_hash = "${hash}"\n\n`
+    const record = (hash: string) => `[hooks.state.${JSON.stringify(key)}]\n# approved earlier\n  trusted_hash  =  "${hash}"  # keep this comment\n\n`
     await fs.outputFile(configPath(), record('sha256:old') + provider)
     expect((await installCodexMode()).message).toContain('[hooks.state]')
     const [entry] = await installedCcgHookTrustEntries(await fs.readJson(hooksPath()), codexHome)
@@ -127,6 +128,30 @@ describe('trust and registration lifecycle', () => {
     const [entry] = await installedCcgHookTrustEntries(merged, codexHome)
     expect(entry).toEqual(old[0])
     expect(await fs.readFile(configPath(), 'utf8')).toBe(provider + userApproval + stanza(entry))
+  })
+
+  it('cleans the obsolete approval even when the first registration is customized', async () => {
+    const custom = { matcher: 'special', hooks: [...userGroup.hooks, { ...ccgGroup().hooks[0], timeout: 30 }] }
+    const doc = { hooks: { UserPromptSubmit: [custom, ccgGroup(), userGroup] } }
+    await fs.outputJson(hooksPath(), doc)
+    const [stale] = await installedCcgHookTrustEntries(doc, codexHome)
+    const keep = provider + stanza({ key: stale.key.replace(/:1:0$/, ':2:0'), hash: 'sha256:user' })
+    await fs.outputFile(configPath(), keep + stanza(stale))
+    const result = await installCodexMode()
+    expect(result.success).toBe(true)
+    expect(result.message).toContain('/hooks')
+    expect(result.message).not.toContain('[hooks.state]')
+    expect((await fs.readJson(hooksPath())).hooks.UserPromptSubmit).toEqual([custom, userGroup])
+    expect(await fs.readFile(configPath(), 'utf8')).toBe(keep)
+  })
+
+  it('removes the verified approval under an indented TOML header', async () => {
+    const doc = { hooks: { UserPromptSubmit: [ccgGroup()] } }
+    await fs.outputJson(hooksPath(), doc)
+    const [entry] = await installedCcgHookTrustEntries(doc, codexHome)
+    await fs.outputFile(configPath(), provider + '  ' + stanza(entry))
+    expect((await uninstallCodexMode()).removed).toContainEqual(expect.stringContaining('[hooks.state]'))
+    expect(await fs.readFile(configPath(), 'utf8')).toBe(provider)
   })
 
   it('leaves a hook the user disabled in Codex disabled and says so', async () => {
@@ -174,6 +199,60 @@ describe('trust and registration lifecycle', () => {
     expect(await fs.readFile(target, 'utf8')).toBe(provider)
   })
 
+  it.each(['config.toml', 'hooks.json'])('rejects a dangling %s symlink without installing any files', async (name) => {
+    const link = join(codexHome, name)
+    const target = join(home, 'unmounted', name)
+    await fs.ensureDir(codexHome)
+    await fs.symlink(target, link)
+    const result = await installCodexMode()
+    expect(result.success).toBe(false)
+    expect(result.message).toContain(link)
+    expect(result.message).toMatch(/restore|reconnect|repair/i)
+    expect(await fs.readlink(link)).toBe(target)
+    expect(await fs.pathExists(target)).toBe(false)
+    expect(await fs.readdir(codexHome)).toEqual([name])
+  })
+
+  const permissionTest = it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)
+  permissionTest('installs and requests manual review when config.toml cannot be read', async () => {
+    await fs.outputFile(configPath(), provider)
+    await fs.chmod(configPath(), 0)
+    try {
+      const result = await installCodexMode()
+      expect(result.success).toBe(true)
+      expect(result.message).toContain('/hooks')
+      expect(result.message).not.toContain('[hooks.state]')
+      expect(await fs.pathExists(join(codexHome, '.ccg-version'))).toBe(true)
+      expect(await fs.pathExists(scriptPath())).toBe(true)
+      expect((await fs.readJson(hooksPath())).hooks.UserPromptSubmit).toEqual([ccgGroup()])
+    }
+    finally { await fs.chmod(configPath(), 0o600) }
+    expect(await fs.readFile(configPath(), 'utf8')).toBe(provider)
+  })
+
+  permissionTest('finishes installation when stale trust cannot be removed through a symlink', async () => {
+    const doc = { hooks: { UserPromptSubmit: [ccgGroup(), userGroup, ccgGroup()] } }
+    await fs.outputJson(hooksPath(), doc)
+    const [, stale] = await installedCcgHookTrustEntries(doc, codexHome)
+    const dotfiles = join(home, 'dotfiles')
+    const target = join(dotfiles, 'config.toml')
+    const original = provider + stanza(stale)
+    await fs.outputFile(target, original)
+    await fs.symlink(target, configPath())
+    await fs.chmod(dotfiles, 0o555)
+    try {
+      const result = await installCodexMode()
+      expect(result.success).toBe(true)
+      expect(result.message).toContain('/hooks')
+      expect(result.message).not.toContain('[hooks.state]')
+      expect(await fs.pathExists(join(codexHome, '.ccg-version'))).toBe(true)
+      expect((await fs.readJson(hooksPath())).hooks.UserPromptSubmit).toEqual([ccgGroup(), userGroup])
+      expect(await fs.readlink(configPath())).toBe(target)
+      expect(await fs.readFile(target, 'utf8')).toBe(original)
+    }
+    finally { await fs.chmod(dotfiles, 0o755) }
+  })
+
   it('keeps similar user commands and their configuration', async () => {
     const h = ccgGroup().hooks[0]
     const lookalikes = [{ ...h, command: h.command + '.backup' }, { ...h, type: 'other' },
@@ -198,7 +277,8 @@ describe('trust and registration lifecycle', () => {
       await fs.outputJson(hooksPath(), target)
       await fs.outputFile(configPath(), config)
       expect(await readCcgHookTrust(codexHome, target)).toBe(config === inline)
-      await uninstallCcgCodexHooks(codexHome)
+      const { skipped } = await uninstallCcgCodexHooks(codexHome)
+      expect(skipped.join(' ')).toMatch(/config\.toml trust cleanup skipped/)
       expect(await fs.readFile(configPath(), 'utf8')).toBe(config)
     }
   })
@@ -230,18 +310,62 @@ describe('trust and registration lifecycle', () => {
     expect(await fs.readdir(codexHome)).toEqual(['hooks.json'])
   })
 
-  it.each(['', '{', '{// comment\n"hooks":{}}', '{"hooks":{"UserPromptSubmit":{}}}'])(
-    'finishes uninstall without modifying unreadable hooks.json (%j)', async (bad) => {
+  it.each(['', '{', '{// comment\n"hooks":{}}', '{"hooks":{"UserPromptSubmit":{}}}', '{"hooks":{"UserPromptSubmit":[{"hooks":{}}]}}'])(
+    'retains the script until unreadable hooks.json is repaired (%j)', async (bad) => {
       await installCodexMode()
+      const hooks = await fs.readJson(hooksPath())
+      const config = await fs.readFile(configPath(), 'utf8')
       await fs.writeFile(hooksPath(), bad)
       const result = await uninstallCodexMode()
-      expect(result.success).toBe(true)
+      expect(result.success).toBe(false)
       expect(result.skipped.join('\n')).toMatch(/hooks\.json.*unchanged.+:/i)
+      expect(result.skipped.join('\n')).toMatch(/ccg-workflow\.py.*ccg-ros2-workflow codex-mode uninstall/)
       expect(await fs.readFile(hooksPath(), 'utf8')).toBe(bad)
-      expect((await fs.readdir(codexHome)).sort()).toEqual(['config.toml', 'hooks.json'])
+      expect(await fs.readFile(configPath(), 'utf8')).toBe(config)
+      expect(await fs.pathExists(scriptPath())).toBe(true)
+      expect((await fs.readdir(codexHome)).sort()).toEqual(['config.toml', 'hooks', 'hooks.json'])
+      await fs.writeJson(hooksPath(), hooks)
       expect((await uninstallCodexMode()).success).toBe(true)
+      expect(await fs.readdir(codexHome)).toEqual(['config.toml'])
+      expect((await readConfig()).hooks?.state).toBeUndefined()
     },
   )
+
+  permissionTest('keeps the registered script and its approval when symlinked hooks.json cannot be rewritten', async () => {
+    const dotfiles = join(home, 'dotfiles')
+    const target = join(dotfiles, 'hooks.json')
+    await fs.outputJson(target, { hooks: { UserPromptSubmit: [userGroup] } })
+    await fs.ensureDir(codexHome)
+    await fs.symlink(target, hooksPath())
+    expect((await installCodexMode()).success).toBe(true)
+    const registered = await fs.readJson(target)
+    expect(await readCcgHookTrust(codexHome, registered)).toBe(true)
+    await fs.chmod(dotfiles, 0o555)
+    try {
+      const result = await uninstallCodexMode()
+      expect(result.success).toBe(false)
+      expect(result.skipped.join('\n')).toMatch(/ccg-workflow\.py.*ccg-ros2-workflow codex-mode uninstall/)
+      expect(await fs.readJson(target)).toEqual(registered)
+      expect(await readCcgHookTrust(codexHome, registered)).toBe(true)
+      expect(await fs.pathExists(scriptPath())).toBe(true)
+      expect((await fs.readdir(codexHome)).sort()).toEqual(['config.toml', 'hooks', 'hooks.json'])
+    }
+    finally { await fs.chmod(dotfiles, 0o755) }
+    expect((await uninstallCodexMode()).success).toBe(true)
+    expect(await fs.readlink(hooksPath())).toBe(target)
+    expect((await fs.readJson(target)).hooks.UserPromptSubmit).toEqual([userGroup])
+    expect(await fs.pathExists(scriptPath())).toBe(false)
+    expect((await readConfig()).hooks?.state).toBeUndefined()
+  })
+
+  it('removes a leftover script when only user registrations remain', async () => {
+    await fs.outputFile(scriptPath(), '# leftover')
+    const userOnly = { hooks: { UserPromptSubmit: [userGroup] } }
+    await fs.outputJson(hooksPath(), userOnly)
+    expect((await uninstallCodexMode()).success).toBe(true)
+    expect(await fs.pathExists(scriptPath())).toBe(false)
+    expect(await fs.readJson(hooksPath())).toEqual(userOnly)
+  })
 
   it('rejects a malformed shipped template before creating any files', async () => {
     const read = vi.spyOn(fs, 'readJson').mockResolvedValueOnce({ hooks: { UserPromptSubmit: [
@@ -257,6 +381,8 @@ describe('trust and registration lifecycle', () => {
   it('prints skipped files and their reasons in the non-interactive CLI', async () => {
     await fs.outputFile(hooksPath(), '{')
     const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const oldExitCode = process.exitCode
     try {
       const cli = cac()
       await setupCommands(cli)
@@ -265,8 +391,14 @@ describe('trust and registration lifecycle', () => {
       const output = log.mock.calls.flat().join('\n')
       expect(output).toMatch(/Skipped: .*hooks\.json unchanged.*:/)
       expect(output).toContain('user settings kept')
+      expect(process.exitCode).toBe(1)
+      expect(error.mock.calls.flat().join('\n')).toMatch(/uninstall incomplete/i)
     }
-    finally { log.mockRestore() }
+    finally {
+      process.exitCode = oldExitCode
+      log.mockRestore()
+      error.mockRestore()
+    }
   })
 
   it('reports an unreadable trust file separately after successful deregistration', async () => {

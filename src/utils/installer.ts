@@ -5,7 +5,7 @@ import ansis from 'ansis'
 import fs from 'fs-extra'
 import { basename, join } from 'pathe'
 import { getLegacyCommandIds, getWorkflowById } from './installer-data'
-import { installedCcgHookTrustEntries, installedHookTemplate, mergeCcgHooks, readHooksJson, trustCcgCodexHooks, uninstallCcgCodexHooks, writeHooksJson } from './codex-hook-trust'
+import { existingTarget, installedCcgHookTrustEntries, installedHookTemplate, mergeCcgHooks, readHooksJson, trustCcgCodexHooks, uninstallCcgCodexHooks, writeHooksJson } from './codex-hook-trust'
 import { PACKAGE_ROOT, injectConfigVariables, injectHookConfig, replaceHomePathsInTemplate } from './installer-template'
 import { readCcgConfig } from './config'
 import { installSkillCommands } from './skill-registry'
@@ -544,6 +544,8 @@ export async function installCodexMode(): Promise<{ success: boolean, message: s
     const existing = await readHooksJson(hooksPath)
     const previous = existing ? await installedCcgHookTrustEntries(existing, codexHome, true) : []
     const merged = mergeCcgHooks(existing, template, codexHome)
+    const configDest = join(codexHome, 'config.toml')
+    const configTarget = await existingTarget(configDest)
     await fs.ensureDir(join(codexHome, 'agents'))
 
     // Read CCG config once — reused for template variable injection across
@@ -558,9 +560,8 @@ export async function installCodexMode(): Promise<{ success: boolean, message: s
     }
 
     const configSrc = join(codexTemplateDir, 'config.toml')
-    const configDest = join(codexHome, 'config.toml')
-    if (await fs.pathExists(configSrc) && !(await fs.pathExists(configDest))) {
-      await fs.copy(configSrc, configDest)
+    if (!configTarget && await fs.pathExists(configSrc)) {
+      await fs.copyFile(configSrc, configDest, fs.constants.COPYFILE_EXCL)
     }
 
     const agentsSrc = join(codexTemplateDir, 'agents')
@@ -627,7 +628,6 @@ export async function uninstallCodexMode(): Promise<{ success: boolean, removed:
     join(codexHome, 'agents', 'ccg-implement.toml'),
     join(codexHome, 'agents', 'ccg-review.toml'),
     join(codexHome, 'agents', 'ccg-research.toml'),
-    join(codexHome, 'hooks', 'ccg-workflow.py'),
     join(codexHome, '.ccg-version'),
   ]
 
@@ -635,13 +635,17 @@ export async function uninstallCodexMode(): Promise<{ success: boolean, removed:
   const agentsMd = join(codexHome, 'AGENTS.md')
 
   try {
+    let registrationCleared = false
     try {
       const registration = await uninstallCcgCodexHooks(codexHome)
       removed.push(...registration.removed)
       skipped.push(...registration.skipped)
+      registrationCleared = true
+      ccgFiles.push(join(codexHome, 'hooks', 'ccg-workflow.py'))
     }
     catch (error) {
-      skipped.push(`~/.codex/hooks.json unchanged; check the registration manually: ${error}`)
+      skipped.push(`~/.codex/hooks.json unchanged; CCG registration may still be active: ${error}`)
+      skipped.push('~/.codex/hooks/ccg-workflow.py not removed because deregistration could not be confirmed. Repair hooks.json or its permissions, then rerun ccg-ros2-workflow codex-mode uninstall.')
     }
     for (const file of ccgFiles) {
       if (await fs.pathExists(file)) {
@@ -676,7 +680,7 @@ export async function uninstallCodexMode(): Promise<{ success: boolean, removed:
       }
     }
 
-    return { success: true, removed, skipped }
+    return { success: registrationCleared, removed, skipped }
   }
   catch (error) {
     return { success: false, removed, skipped: [...skipped, `Error: ${error}`] }
@@ -689,15 +693,14 @@ async function _installCodexFilesInternal(ctx: InstallContext): Promise<void> {
 
   try {
     const codexHome = join(homedir(), '.codex')
+    const configDest = join(codexHome, 'config.toml')
+    const configTarget = await existingTarget(configDest)
     await fs.ensureDir(join(codexHome, 'agents'))
 
     // .codex/config.toml (merge, don't overwrite user's existing config)
     const configSrc = join(codexTemplateDir, 'config.toml')
-    const configDest = join(codexHome, 'config.toml')
-    if (await fs.pathExists(configSrc)) {
-      if (!(await fs.pathExists(configDest))) {
-        await fs.copy(configSrc, configDest)
-      }
+    if (!configTarget && await fs.pathExists(configSrc)) {
+      await fs.copyFile(configSrc, configDest, fs.constants.COPYFILE_EXCL)
     }
 
     // .codex/agents/*.toml

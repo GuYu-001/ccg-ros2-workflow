@@ -181,7 +181,7 @@ export async function setupCommands(cli: CAC): Promise<void> {
           console.log(ansis.green('✓ Codex mode uninstalled'))
         }
         else {
-          console.error(ansis.red('✗ Codex mode uninstall failed'))
+          console.error(ansis.red('✗ Codex mode uninstall incomplete'))
           process.exitCode = 1
         }
         if (result.removed.length) console.log(ansis.gray(`  Removed: ${result.removed.join(', ')}`))

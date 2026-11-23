@@ -777,7 +777,7 @@ async function handleCodexMode(): Promise<void> {
       spinner.succeed(isZh ? 'Codex 模式已卸载' : 'Codex mode uninstalled')
     }
     else {
-      spinner.fail(isZh ? '卸载失败' : 'Uninstall failed')
+      spinner.fail(isZh ? 'Codex 模式未完全卸载' : 'Codex mode uninstall incomplete')
     }
     for (const f of result.removed) console.log(`  ${ansis.red('✗')} ${f}`)
     for (const reason of result.skipped) console.log(`  ${ansis.gray('○')} ${reason}`)
