@@ -10,6 +10,7 @@ const fixture = vi.hoisted(() => ({
   downloads: [] as { url: string, destination: string }[],
   simulatedPlatform: false,
   failDownloads: false,
+  versionOverride: '',
 }))
 vi.mock('node:child_process', async (original) => {
   const actual = await original<typeof import('node:child_process')>()
@@ -22,8 +23,8 @@ vi.mock('node:child_process', async (original) => {
       copyFileSync(fixture.asset, match[1])
       return Buffer.alloc(0)
     }
-    if (fixture.simulatedPlatform && /^"[^"]+[/\\]bin[/\\]codeagent-wrapper(?:\.exe)?" --version$/.test(command)) {
-      return Buffer.from('codeagent-wrapper version 5.16.1\n')
+    if ((fixture.simulatedPlatform || fixture.versionOverride) && /^"[^"]+[/\\]bin[/\\]codeagent-wrapper(?:\.exe)?" --version$/.test(command)) {
+      return Buffer.from(`codeagent-wrapper version ${fixture.versionOverride || '5.16.1'}\n`)
     }
     const output = actual.execSync(command, options)
     // Windows uses a runnable Node PE fixture. Verify execution for real, then
@@ -414,6 +415,25 @@ describe('installWorkflows — binary installation', () => {
     finally {
       fixture.failDownloads = false
     }
+  })
+
+  it('warns without failing the installation if the preset release lags behind the npm package', async () => {
+    fixture.versionOverride = '5.15.0'
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const result = await installWorkflows(['go'], join(tmpDir, 'stale-preset'), true, { mcpProvider: 'skip' })
+      expect(result.success).toBe(true)
+      expect(result.binInstalled).not.toBe(true)
+      const text = warn.mock.calls.flat().join('\n')
+      for (const expected of ['5.15.0', '5.16.1', 'https://github.com/GuYu-001/ccg-ros2-workflow/releases/tag/preset', 'ccg-ros2-workflow update']) expect(text).toContain(expected)
+    }
+    finally { fixture.versionOverride = ''; warn.mockRestore() }
+  })
+
+  it('only automatically rebuilds the preset on main wrapper pushes and still permits manual dispatch', async () => {
+    const workflow = await fs.readFile(join(findPackageRoot(), '.github/workflows/build-binaries.yml'), 'utf8')
+    expect(workflow).toMatch(/^\s{2}push:\n\s{4}branches: \[main\]\n\s{4}paths:\n\s+- 'codeagent-wrapper\/\*\*'/m)
+    expect(workflow).toMatch(/^  workflow_dispatch:/m)
   })
 })
 

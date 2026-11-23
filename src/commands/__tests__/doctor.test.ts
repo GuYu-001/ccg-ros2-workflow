@@ -1,13 +1,19 @@
 import type { DoctorDependencies } from '../../utils/doctor-checks'
 import fs from 'fs-extra'
 import { tmpdir } from 'node:os'
+import * as cp from 'node:child_process'
 import { join } from 'pathe'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { stringify } from 'smol-toml'
 import { doctor } from '../doctor'
-import { installedCcgHookTrustEntries } from '../../utils/codex-hook-trust'
+import { createHash } from 'node:crypto'
 import { collectDoctorReport } from '../../utils/doctor-checks'
 import { installSkills } from '../../utils/skill-manager'
+
+vi.mock('node:child_process', async (original) => {
+  const actual = await original<typeof cp>()
+  return { ...actual, spawnSync: vi.fn(actual.spawnSync) }
+})
 
 let home: string
 let exec: ReturnType<typeof vi.fn>
@@ -89,8 +95,13 @@ describe('CCG doctor inventory', () => {
     expect(report.checks.find(c => c.id === 'codex.hook-registration')?.status).toBe('pass')
     expect(report.checks.find(c => c.id === 'codex.hook-trust')).toMatchObject({ status: 'warn', remediation: expect.stringContaining('/hooks') })
     const dir = join(home, '.codex')
-    const [entry] = await installedCcgHookTrustEntries(await fs.readJson(join(dir, 'hooks.json')), dir)
-    await fs.outputFile(join(dir, 'config.toml'), stringify({ hooks: { state: { [entry.key]: { trusted_hash: entry.hash } } } }))
+    const key = `${await fs.realpath(join(dir, 'hooks.json'))}:user_prompt_submit:0:0`
+    const command = `python3 ${join(dir, 'hooks', 'ccg-workflow.py')}`
+    // Codex 0.154.0 normalized payload, independent of installer code. The
+    // temp directory varies, so hash this fixture with its actual command.
+    const payload = JSON.stringify({ event_name: 'user_prompt_submit', hooks: [{ async: false, command, timeout: 10, type: 'command' }] })
+    const hash = 'sha256:' + createHash('sha256').update(payload).digest('hex')
+    await fs.outputFile(join(dir, 'config.toml'), stringify({ hooks: { state: { [key]: { trusted_hash: hash } } } }))
     const trusted = await collectDoctorReport(deps())
     expect(trusted.checks.find(c => c.id === 'codex.hook-trust')?.status).toBe('pass')
   })
@@ -109,6 +120,25 @@ describe('CCG doctor inventory', () => {
     exec.mockReturnValue(null)
     const missingHost = await collectDoctorReport(deps())
     expect(missingHost.checks.find(c => c.id === 'cli.codex')?.status).toBe('fail')
+  })
+
+  it('reports legacy registration as outdated even when previously approved in Codex', async () => {
+    await codexInstall()
+    const dir = join(home, '.codex')
+    const path = join(dir, 'hooks.json')
+    await fs.writeJson(path, { hooks: { UserPromptSubmit: [{ hooks: [{
+      type: 'command', command: 'python3 ~/.codex/hooks/ccg-workflow.py', timeout: 10,
+    }] }] } })
+    // Independently captured from codex-cli 0.154.0 app-server hooks/list.
+    const key = `${await fs.realpath(path)}:user_prompt_submit:0:0`
+    await fs.outputFile(join(dir, 'config.toml'), stringify({ hooks: { state: { [key]: {
+      trusted_hash: 'sha256:aecf70fe8f35a00f5b581978a244b1be2515b52b40091a0cab8a87edc5bfe172',
+    } } } }))
+    const { checks } = await collectDoctorReport(deps())
+    expect(checks.find(c => c.id === 'codex.hook-registration')?.status).not.toBe('fail')
+    expect(checks.find(c => c.id === 'codex.hook-trust')).toMatchObject({
+      status: 'warn', detail: expect.stringMatching(/outdated/i), remediation: 'Run ccg-ros2-workflow codex-mode install.',
+    })
   })
 
   it('still requires Claude config in both modes and valid Codex artifacts in standalone mode', async () => {
@@ -192,6 +222,10 @@ describe('CCG doctor inventory', () => {
   it.each([
     ['  --output-format <format>', 'pass'],
     ['  --output-formats', 'warn'],
+    ['Usage: agy [--output-format FMT]', 'pass'],
+    ['  -o|--output-format FMT', 'pass'],
+    ['  --output-format: value', 'pass'],
+    ['The new option replaces --output-format json.', 'warn'],
     [null, 'warn'],
   ])('checks Antigravity help (%s) without turning capability warnings into failures', async (help, status) => {
     await config('antigravity')
@@ -214,6 +248,41 @@ describe('CCG doctor inventory', () => {
       expect(report.checks.some(c => c.id === 'cli.antigravity.output-format')).toBe(false)
     }
     expect(exec.mock.calls.some(([, args]) => args[0] === '--help')).toBe(false)
+  })
+
+  it('uses real PATH probes: help may use stderr but a version must succeed on stdout', async () => {
+    await config('antigravity', 'antigravity', ['antigravity'])
+    await claudeInstall()
+    const bin = join(home, 'bin')
+    const win = process.platform === 'win32'
+    const program = join(bin, win ? 'agy.cmd' : 'agy')
+    const path = process.env.PATH
+    try {
+      await fs.ensureDir(bin)
+      process.env.PATH = bin
+      for (const [stdout, code, status] of [['agy dev build', 0, 'pass'], ['', 0, 'fail'], ['agy 1.2.3', 1, 'fail']] as const) {
+        await fs.writeFile(program, win
+          ? `@echo off\r\nif "%1"=="--help" (echo --output-format FMT 1>&2 & exit /b 0)\r\necho warning: Node v18.20.1 1>&2\r\n${stdout ? 'echo ' + stdout : ''}\r\nexit /b ${code}\r\n`
+          : `#!/bin/sh\nif [ "$1" = --help ]; then echo '  --output-format FMT' >&2; exit 0; fi\necho 'warning: Node v18.20.1' >&2\nprintf '%s' '${stdout}'\nexit ${code}\n`, { mode: 0o755 })
+        const report = await collectDoctorReport(deps({ exec: undefined, platform: process.platform }))
+        const version = report.checks.find(c => c.id === 'cli.antigravity')
+        expect(version?.status).toBe(status)
+        expect(version?.detail).not.toContain('18.20.1')
+        if (code === 0 && stdout) expect(report.checks.find(c => c.id === 'cli.antigravity.output-format')?.status).toBe('pass')
+      }
+    }
+    finally { if (path === undefined) delete process.env.PATH; else process.env.PATH = path }
+  })
+
+  it('uses a non-ignorable signal for the bounded CLI probe', async () => {
+    await config('antigravity')
+    await claudeInstall()
+    const spy = vi.mocked(cp.spawnSync).mockImplementation(() => ({ status: 1 } as ReturnType<typeof cp.spawnSync>))
+    try {
+      await collectDoctorReport(deps({ exec: undefined }))
+      expect(spy).toHaveBeenCalledWith('agy', ['--version'], expect.objectContaining({ timeout: 10000, killSignal: 'SIGKILL' }))
+    }
+    finally { spy.mockRestore() }
   })
 
   it('probes the working Windows shim when agy.exe is absent', async () => {

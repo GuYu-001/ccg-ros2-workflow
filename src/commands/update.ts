@@ -8,7 +8,7 @@ import ora from 'ora'
 import { homedir } from 'node:os'
 import { join } from 'pathe'
 import { checkForUpdates, compareVersions } from '../utils/version'
-import { showBinaryDownloadWarning, verifyBinary } from '../utils/installer'
+import { EXPECTED_BINARY_VERSION, installedBinaryVersion, showBinaryDownloadWarning, verifyBinary, warnBinaryVersionMismatch } from '../utils/installer'
 import { readCcgConfig, writeCcgConfig } from '../utils/config'
 import { migrateToV1_4_0, needsMigration } from '../utils/migration'
 import { i18n } from '../i18n'
@@ -420,11 +420,8 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
     }
     else {
       // Binary exists and runs, but check version
-      const { verifyBinaryVersion } = await import('../utils/installer')
-      const versionOk = await verifyBinaryVersion(installDir)
-      if (!versionOk) {
-        showBinaryDownloadWarning(join(installDir, 'bin'))
-      }
+      const actual = await installedBinaryVersion(installDir)
+      if (actual !== EXPECTED_BINARY_VERSION) warnBinaryVersionMismatch(actual)
     }
   }
   else {

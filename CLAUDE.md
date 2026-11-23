@@ -12,6 +12,12 @@
 
 > 完整变更历史请查看 [CHANGELOG.md](./CHANGELOG.md)
 
+### 2026-11-23 (v3.7.6-ros2.0)
+- wrapper 5.16.1 的 Web UI 仅监听本机；远程查看可用 SSH 端口转发。Antigravity 需支持 `--output-format`，doctor 会检查。
+- spec 命令后台调用超时改为一小时。skill-router 恢复常见缓存、消息队列、RAG、API 请求，并避免误匹配 ROS2 词汇。
+- Codex 模式合并而非覆盖 hooks.json；仅为安装器写入的标准 handler 自动记录信任。doctor 区分旧命令、用户自定义注册及标准 handler 的信任状态。
+- 只有 main 的 wrapper 路径变动才自动重建 preset release；安装器发现下载版本与 npm 包预期不符时会显示重试办法。
+
 ### 2026-10-18 (v3.7.2)
 - 历史 API 预设已移除；当前仅保留官方认证与用户自定义端点。
 

@@ -9,11 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.7.6-ros2.0] - 2026-11-23
 
-- **Wrapper Web UI (5.16.1):** Bind to IPv4 loopback, validate the Host header, and render output as text. The page is no longer reachable from other machines; to watch a remote workstation or robot, forward the port with `ssh -L` or run in lite mode. Use `CODEAGENT_BROWSER=builtin` to leave opening the URL to the orchestrator.
-- **Antigravity:** Read stream-json output to resume sessions and surface denied actions. The ROS2 upper-layer backend needs `agy --help` to list `--output-format`; doctor warns when it cannot confirm support and recommends `agy update`.
+- **Wrapper Web UI (5.16.1):** Bind to IPv4 loopback, validate the Host header, render task text as text rather than HTML, and remove `Access-Control-Allow-Origin: *` from `/api/stream`. To watch a remote workstation or robot, forward the port with `ssh -L` or run in lite mode. Use `CODEAGENT_BROWSER=builtin` to leave opening the URL to the orchestrator.
+- **Antigravity:** Read stream-json output to resume sessions and surface denied actions. Use `CODEAGENT_AGY_SETTINGS` to select the agy settings file. The ROS2 upper-layer backend needs `agy --help` to list `--output-format`; doctor reads help from either output stream and recommends `agy update` if it cannot confirm support. Version probes read stdout only.
 - **Spec commands:** Allow one hour for background research, planning, implementation, and review calls; polling intervals are unchanged.
-- **Skill routing:** Match English keywords at word boundaries and use specific phrases for generic architecture skills. ROS2 vectors, DDS endpoints, and tf2 caches no longer inject unrelated skills. Mentioning a model action is not consent to run it.
+- **Skill routing:** Match English words and phrases across spaces, hyphens or underscores, while keeping Chinese substring matching. Cache queries, queue design, document retrieval and REST endpoints select the corresponding skills without treating a bare ROS2 vector, DDS endpoint or tf2 cache as a request. Mentioning a model action is not consent to run it.
 - **Codex mode:** Merge the workflow handler into existing hook registrations and preserve user handlers on uninstall. Codex CLI ≥ 0.129 skips hooks nobody trusted, so `codex-mode install` now records trust for its own `ccg-workflow.py` handler in `~/.codex/config.toml` `[hooks.state]`; no other hook is trusted and the rest of the file is kept as written. A hook you disabled in Codex stays disabled, and when the file cannot be edited safely (inline `hooks` table, invalid TOML) nothing is written and the installer asks you to run `/hooks` instead. Uninstall removes the record. Doctor distinguishes a registered hook from a trusted one.
+
+- **Codex hook lifecycle:** Preserve hook/config symlinks and permissions, upgrade old script paths, and deduplicate in place. Custom handler options and matchers are preserved and require manual review in `/hooks`. Invalid registrations stop installation before files are written; uninstall leaves unreadable registrations untouched, reports why, and removes the remaining managed files. After uninstall, review any user hooks whose positions changed.
+- **Binary releases:** Only wrapper changes pushed to `main` automatically rebuild the `preset` release; manual dispatch remains available. A newly downloaded wrapper with a different version produces a non-blocking warning with both versions and a retry command.
 
 ## [3.0.0] - 2026-05-20
 

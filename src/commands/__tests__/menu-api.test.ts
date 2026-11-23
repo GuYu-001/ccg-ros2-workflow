@@ -45,6 +45,19 @@ describe('API settings menu', () => {
     }) as any)
   }
 
+  it('shows the reason and skipped files when Codex uninstall cannot finish', async () => {
+    const dir = join(home.path, '.codex')
+    await fs.outputFile(join(dir, 'hooks.json'), '{')
+    await fs.ensureDir(join(dir, 'AGENTS.md')) // Force a later non-hook I/O failure.
+    const replies = ['X', 'uninstall', 'Q']
+    vi.spyOn(inquirer, 'prompt').mockImplementation((async ([question]: any) =>
+      question.name === 'action' ? { action: replies.shift() ?? 'Q' } : { continue: '' }) as any)
+    await showMainMenu()
+    const text = vi.mocked(console.log).mock.calls.flat().join('\n')
+    expect(text).toContain('hooks.json unchanged')
+    expect(text).toContain('Error:')
+  })
+
   it('offers only official authentication and user-configured endpoints', async () => {
     const prompt = answerMenu('official')
     await showMainMenu()

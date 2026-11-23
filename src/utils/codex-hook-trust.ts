@@ -72,14 +72,33 @@ export function installedHookCommand(codexHome: string): string {
   return `python3 '${path.replaceAll("'", "'\\''")}'`
 }
 
-// Only the shipped handler is ours. Legacy relative paths are removable but
-// never approved; a different command that mentions the script is user-owned.
+// Ownership permits historical spellings; approval requires the exact installed handler.
+function defaultOptions(h: Json): boolean {
+  return h.timeout === 10 && Object.keys(h).every(k => ['type', 'command', 'timeout'].includes(k))
+}
+
 function isCcgHandler(h: Json, codexHome: string, legacy: boolean): boolean {
-  if (h?.type !== 'command' || h.timeout !== 10 || Object.keys(h).some(k => !['type', 'command', 'timeout'].includes(k))) return false
-  return h.command === installedHookCommand(codexHome) || (legacy && [
-    'python3 .codex/hooks/ccg-workflow.py', 'python3 ~/.codex/hooks/ccg-workflow.py',
-    `python3 ${scriptPath(codexHome)}`,
-  ].includes(h.command))
+  if (h?.type !== 'command' || typeof h.command !== 'string') return false
+  let canonical: string
+  try { canonical = installedHookCommand(codexHome) }
+  catch { return false }
+  if (h.command === canonical) return legacy || defaultOptions(h)
+  if (!legacy) return false
+
+  // Compare the whole invocation, never a substring or a parsed shell expression.
+  // Only normalize repeated path separators and the Windows drive letter.
+  const normalize = (s: string) => {
+    if (process.platform === 'win32')
+      s = s.replaceAll('\\', '/').replace(/^([A-Z]):/, (_, drive: string) => drive.toLowerCase() + ':')
+    return s.replace(/([^/])\/{2,}/g, '$1/')
+  }
+  const arg = /^python3[ \t]+(.+)$/.exec(h.command)?.[1]
+  if (!arg) return false
+  const path = normalize(arg.startsWith('"') && arg.endsWith('"') || arg.startsWith("'") && arg.endsWith("'")
+    ? arg.slice(1, -1) : arg)
+  return [CCG_HOOK_SCRIPT, 'ccg-ros2-workflow.py'].some(name =>
+    [join(codexHome, 'hooks', name), '~/.codex/hooks/' + name, '.codex/hooks/' + name]
+      .some(candidate => path === normalize(candidate)))
 }
 
 export function ccgHookTrustEntries(doc: Json, codexHome: string, legacy = false, sourcePath = join(codexHome, 'hooks.json')): CcgHookTrust[] {
@@ -88,7 +107,7 @@ export function ccgHookTrustEntries(doc: Json, codexHome: string, legacy = false
   const label = 'user_prompt_submit'
   return groups.flatMap((group: Json, g: number) => {
     if (!Array.isArray(group?.hooks) || Object.keys(group).some(k => k !== 'hooks')) return []
-    return group.hooks.flatMap((h: Json, i: number) => isCcgHandler(h, codexHome, legacy)
+    return group.hooks.flatMap((h: Json, i: number) => isCcgHandler(h, codexHome, legacy) && defaultOptions(h)
       ? [{ key: `${sourcePath}:${label}:${g}:${i}`, hash: codexHookHash(label, h) }] : [])
   })
 }
@@ -100,50 +119,78 @@ export async function installedCcgHookTrustEntries(doc: Json, codexHome: string,
   return source ? ccgHookTrustEntries(doc, codexHome, legacy, source) : []
 }
 
-function withoutCcgHooks(doc: Json, codexHome: string): Json {
+export function hasCcgHook(doc: Json, codexHome: string): boolean {
   const groups = doc.hooks?.UserPromptSubmit
-  if (!Array.isArray(groups)) return doc
+  return Array.isArray(groups) && groups.some(g => Array.isArray(g?.hooks)
+    && g.hooks.some((h: Json) => isCcgHandler(h, codexHome, true)))
+}
+
+// Keep the first existing registration in position. Preserve customized handler/group
+// options, updating only its script path; an edited handler is never auto-approved.
+function updateCcgHooks(doc: Json, codexHome: string, replacement?: Json): Json {
   const hooks = { ...doc.hooks }
-  const kept = groups.flatMap((group: Json) => {
-    if (!Array.isArray(group?.hooks) || Object.keys(group).some(k => k !== 'hooks')) return [group]
-    const rest = group.hooks.filter((h: Json) => !isCcgHandler(h, codexHome, true))
-    return rest.length === group.hooks.length ? [group] : rest.length ? [{ ...group, hooks: rest }] : []
+  let found = false
+  const groups = (hooks.UserPromptSubmit ?? []).flatMap((group: Json) => {
+    if (!Array.isArray(group?.hooks)) return [group]
+    const kept = group.hooks.flatMap((h: Json) => {
+      if (!isCcgHandler(h, codexHome, true)) return [h]
+      if (found || !replacement) return []
+      found = true
+      return [{ ...h, command: replacement.command }]
+    })
+    return kept.length || !group.hooks.length ? [{ ...group, hooks: kept }] : []
   })
-  if (kept.length) hooks.UserPromptSubmit = kept
+  if (replacement && !found) groups.push({ hooks: [replacement] })
+  if (groups.length) hooks.UserPromptSubmit = groups
   else delete hooks.UserPromptSubmit
   return { ...doc, hooks }
 }
 
 export function mergeCcgHooks(existing: Json | null, template: Json, codexHome: string): Json {
-  // Updating in place keeps position-based trust keys of neighbouring user hooks stable.
-  if (existing && ccgHookTrustEntries(existing, codexHome, true).length === 1) {
-    const replacement = template.hooks.UserPromptSubmit[0].hooks[0]
-    const groups = existing.hooks.UserPromptSubmit.map((group: Json) => {
-      if (!Array.isArray(group?.hooks) || Object.keys(group).some(k => k !== 'hooks')) return group
-      return { ...group, hooks: group.hooks.map((h: Json) => isCcgHandler(h, codexHome, true) ? replacement : h) }
-    })
-    return { ...existing, hooks: { ...existing.hooks, UserPromptSubmit: groups } }
-  }
-  const doc = withoutCcgHooks(existing ?? {}, codexHome)
-  return { ...doc, hooks: { ...doc.hooks, UserPromptSubmit: [
-    ...(doc.hooks?.UserPromptSubmit || []), ...template.hooks.UserPromptSubmit,
-  ] } }
+  return updateCcgHooks(existing ?? {}, codexHome, template.hooks.UserPromptSubmit[0].hooks[0])
+}
+
+const shippedHandler = { type: 'command', command: 'python3 ~/.codex/hooks/ccg-workflow.py', timeout: 10 }
+
+export function installedHookTemplate(template: unknown, codexHome: string): Json {
+  if (!isDeepStrictEqual(template, { hooks: { UserPromptSubmit: [{ hooks: [shippedHandler] }] } }))
+    throw new Error('Unexpected Codex hook template')
+  return { hooks: { UserPromptSubmit: [{ hooks: [{ ...shippedHandler, command: installedHookCommand(codexHome) }] }] } }
 }
 
 export async function readHooksJson(path: string): Promise<Json | null> {
-  if (!(await fs.pathExists(path))) return null
+  if (!(await existingTarget(path))) return null
   const doc = await fs.readJson(path)
-  if (!doc || typeof doc !== 'object' || Array.isArray(doc) ||
+  if (Array.isArray(doc)) {
+    if (isDeepStrictEqual(doc, [{ event: 'user_prompt_submit', script: 'hooks/ccg-workflow.py', timeout_ms: 10000 }]))
+      return { hooks: { UserPromptSubmit: [{ hooks: [shippedHandler] }] } }
+    throw new Error('Unsupported hooks.json array; back up the file and convert your hooks to the Codex hooks object before reinstalling')
+  }
+  if (!doc || typeof doc !== 'object' ||
       ('hooks' in doc && (!doc.hooks || typeof doc.hooks !== 'object' || Array.isArray(doc.hooks))) ||
       (doc.hooks && 'UserPromptSubmit' in doc.hooks && !Array.isArray(doc.hooks.UserPromptSubmit)))
     throw new Error('Invalid Codex hooks.json; original file kept')
   return doc
 }
 
-async function writeAtomic(path: string, content: string) {
+// A dangling link is not an absent file: fail without replacing it.
+async function existingTarget(path: string): Promise<string | null> {
+  try { await fs.lstat(path) }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
+    throw error
+  }
+  return fs.realpath(path)
+}
+
+async function writeAtomic(destination: string, content: string) {
+  const target = await existingTarget(destination)
+  const path = target ?? destination
+  const mode = target ? (await fs.stat(target)).mode & 0o777 : 0o600
   const tmp = `${path}.${randomUUID()}.tmp`
   try {
     await fs.writeFile(tmp, content, { encoding: 'utf8', flag: 'wx', mode: 0o600 })
+    await fs.chmod(tmp, mode)
     await fs.rename(tmp, path)
   }
   finally { await fs.remove(tmp) }
@@ -284,23 +331,26 @@ async function forgetTrust(codexHome: string, entries: CcgHookTrust[]): Promise<
  * Take CCG's hooks back out of ~/.codex: its trust records and its hooks.json
  * groups. The file is deleted only when nothing of the user's is left in it.
  */
-export async function uninstallCcgCodexHooks(codexHome: string): Promise<string[]> {
+export async function uninstallCcgCodexHooks(codexHome: string): Promise<{ removed: string[], skipped: string[] }> {
   const hooksPath = join(codexHome, 'hooks.json')
   const hooksJson = await readHooksJson(hooksPath)
-  if (!hooksJson) return []
   const removed: string[] = []
+  const skipped: string[] = []
+  if (!hooksJson || !hasCcgHook(hooksJson, codexHome)) return { removed, skipped }
   const entries = await installedCcgHookTrustEntries(hooksJson, codexHome, true)
-  if (!entries.length) return []
-  const forgotten = await forgetTrust(codexHome, entries)
-  if (forgotten) removed.push(`~/.codex/config.toml [hooks.state] (${forgotten} CCG trust record${forgotten > 1 ? 's' : ''})`)
-  const rest = withoutCcgHooks(hooksJson, codexHome)
-  if (!Object.keys(rest.hooks || {}).length && Object.keys(rest).length === 1) {
+  const rest = updateCcgHooks(hooksJson, codexHome)
+  if (!Object.keys(rest.hooks || {}).length && Object.keys(rest).length === 1 && !(await fs.lstat(hooksPath)).isSymbolicLink()) {
     await fs.remove(hooksPath)
     removed.push('~/.codex/hooks.json')
   }
   else if (JSON.stringify(rest) !== JSON.stringify(hooksJson)) {
     await writeHooksJson(hooksPath, rest)
-    removed.push('~/.codex/hooks.json (CCG hook only; your hooks kept)')
+    removed.push('~/.codex/hooks.json (CCG hook only; reapprove any later hooks whose positions changed in /hooks)')
   }
-  return removed
+  try {
+    const forgotten = await forgetTrust(codexHome, entries)
+    if (forgotten) removed.push(`~/.codex/config.toml [hooks.state] (${forgotten} CCG trust record${forgotten > 1 ? 's' : ''})`)
+  }
+  catch (error) { skipped.push(`~/.codex/config.toml trust cleanup skipped: ${error}`) }
+  return { removed, skipped }
 }

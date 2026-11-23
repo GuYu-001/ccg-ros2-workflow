@@ -284,7 +284,7 @@ bash build-all.sh
 
 ### CI 自动构建
 
-推送包含 `codeagent-wrapper/` 变更的 commit 后，`.github/workflows/build-binaries.yml` 自动：
+只有推送到 `main` 且包含 `codeagent-wrapper/` 变更时，`.github/workflows/build-binaries.yml` 才自动运行；功能分支的 push 不会发布。也可用 `workflow_dispatch` 手动触发。该工作流会：
 1. 交叉编译 6 个平台二进制（`CGO_ENABLED=0`、`-ldflags="-s -w"`）
 2. 删除旧 preset 并重建 fork 的 GitHub Release，上传六个资产；不再同步上游 R2
 

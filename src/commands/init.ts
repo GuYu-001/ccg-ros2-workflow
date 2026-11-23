@@ -1460,7 +1460,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
         }
       }
     }
-    else {
+    else if (!result.binVersionMismatch) {
       // Binary download failed — show prominent warning with manual fix instructions
       showBinaryDownloadWarning(join(installDir, 'bin'))
     }

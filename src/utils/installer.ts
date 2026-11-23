@@ -5,7 +5,7 @@ import ansis from 'ansis'
 import fs from 'fs-extra'
 import { basename, join } from 'pathe'
 import { getLegacyCommandIds, getWorkflowById } from './installer-data'
-import { installedCcgHookTrustEntries, installedHookCommand, mergeCcgHooks, readHooksJson, trustCcgCodexHooks, uninstallCcgCodexHooks, writeHooksJson } from './codex-hook-trust'
+import { installedCcgHookTrustEntries, installedHookTemplate, mergeCcgHooks, readHooksJson, trustCcgCodexHooks, uninstallCcgCodexHooks, writeHooksJson } from './codex-hook-trust'
 import { PACKAGE_ROOT, injectConfigVariables, injectHookConfig, replaceHomePathsInTemplate } from './installer-template'
 import { readCcgConfig } from './config'
 import { installSkillCommands } from './skill-registry'
@@ -73,7 +73,7 @@ export type { SkillMeta } from './skill-registry'
  * Must match the `version` constant in codeagent-wrapper/main.go.
  * When this differs from the installed binary, update triggers re-download.
  */
-const EXPECTED_BINARY_VERSION = '5.16.1'
+export const EXPECTED_BINARY_VERSION = '5.16.1'
 
 // ═══════════════════════════════════════════════════════
 // Install context — shared across sub-functions
@@ -538,6 +538,12 @@ export async function installCodexMode(): Promise<{ success: boolean, message: s
 
   try {
     const codexHome = join(homedir(), '.codex')
+    // Preflight both shared registration and shipped template before touching user files.
+    const hooksPath = join(codexHome, 'hooks.json')
+    const template = installedHookTemplate(await fs.readJson(join(codexTemplateDir, 'hooks.json')), codexHome)
+    const existing = await readHooksJson(hooksPath)
+    const previous = existing ? await installedCcgHookTrustEntries(existing, codexHome, true) : []
+    const merged = mergeCcgHooks(existing, template, codexHome)
     await fs.ensureDir(join(codexHome, 'agents'))
 
     // Read CCG config once — reused for template variable injection across
@@ -592,26 +598,8 @@ export async function installCodexMode(): Promise<{ success: boolean, message: s
       }
     }
 
-    // hooks.json — resolve the `~/.codex/...` hook command to an absolute path.
-    // Codex does not reliably expand `~` when spawning the hook command, so a
-    // relative/tilde path made it look for `.codex/hooks/` in the project dir.
-    const hooksJsonSrc = join(codexTemplateDir, 'hooks.json')
-    let trustedHooks = false
-    if (await fs.pathExists(hooksJsonSrc)) {
-      const template = await fs.readJson(hooksJsonSrc)
-      const handler = template.hooks.UserPromptSubmit[0].hooks[0]
-      if (handler.command !== 'python3 ~/.codex/hooks/ccg-workflow.py') throw new Error('Unexpected Codex hook template')
-      handler.command = installedHookCommand(codexHome)
-      // Merge, never overwrite: ~/.codex/hooks.json may hold the user's own hooks.
-      const hooksPath = join(codexHome, 'hooks.json')
-      const existing = await readHooksJson(hooksPath)
-      const previous = existing ? await installedCcgHookTrustEntries(existing, codexHome, true) : []
-      const merged = mergeCcgHooks(existing, template, codexHome)
-      await writeHooksJson(hooksPath, merged)
-      // codex-cli >= 0.129 skips hooks nobody trusted in /hooks, and `codex exec`
-      // does it without a word. Record trust for CCG's own handler only.
-      trustedHooks = await trustCcgCodexHooks(codexHome, merged, previous)
-    }
+    await writeHooksJson(hooksPath, merged)
+    const trustedHooks = await trustCcgCodexHooks(codexHome, merged, previous)
 
     // Write version marker so external tools can check which CCG version installed Codex mode
     await fs.writeFile(join(codexHome, '.ccg-version'), packageVersion, 'utf-8')
@@ -643,19 +631,24 @@ export async function uninstallCodexMode(): Promise<{ success: boolean, removed:
     join(codexHome, '.ccg-version'),
   ]
 
-  // hooks.json is shared with the user's own hooks — handled separately below.
   // AGENTS.md — only remove if it contains CCG marker
   const agentsMd = join(codexHome, 'AGENTS.md')
 
   try {
+    try {
+      const registration = await uninstallCcgCodexHooks(codexHome)
+      removed.push(...registration.removed)
+      skipped.push(...registration.skipped)
+    }
+    catch (error) {
+      skipped.push(`~/.codex/hooks.json unchanged; check the registration manually: ${error}`)
+    }
     for (const file of ccgFiles) {
       if (await fs.pathExists(file)) {
         await fs.remove(file)
         removed.push(file.replace(homedir(), '~'))
       }
     }
-
-    removed.push(...await uninstallCcgCodexHooks(codexHome))
 
     if (await fs.pathExists(agentsMd)) {
       const content = await fs.readFile(agentsMd, 'utf-8')
@@ -669,7 +662,7 @@ export async function uninstallCodexMode(): Promise<{ success: boolean, removed:
     }
 
     // config.toml is user-owned; preserve all settings and provider selections.
-    skipped.push('~/.codex/config.toml (preserved — may contain user settings)')
+    skipped.push('~/.codex/config.toml (user settings kept; only verified CCG trust records are eligible for removal)')
 
     // Clean up empty dirs
     for (const dir of ['agents', 'hooks']) {
@@ -780,10 +773,9 @@ export async function verifyBinary(installDir: string): Promise<boolean> {
 }
 
 /**
- * Check if installed binary version matches expected version.
- * Returns true if version matches, false if outdated or unreadable.
+ * Read a version without echoing arbitrary executable output into the terminal.
  */
-export async function verifyBinaryVersion(installDir: string): Promise<boolean> {
+export async function installedBinaryVersion(installDir: string): Promise<string | null> {
   const binDir = join(installDir, 'bin')
   const wrapperName = process.platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper'
   const wrapperPath = join(binDir, wrapperName)
@@ -791,12 +783,19 @@ export async function verifyBinaryVersion(installDir: string): Promise<boolean> 
   try {
     const { execSync } = await import('node:child_process')
     const output = execSync(`"${wrapperPath}" --version`, { stdio: 'pipe' }).toString().trim()
-    const version = output.replace(/^.*version\s*/, '')
-    return version === EXPECTED_BINARY_VERSION
+    return /^(?:codeagent-wrapper version\s+)?(\d+\.\d+\.\d+(?:[-+][\w.-]+)?)$/.exec(output)?.[1] ?? null
   }
   catch {
-    return false
+    return null
   }
+}
+
+export async function verifyBinaryVersion(installDir: string): Promise<boolean> {
+  return await installedBinaryVersion(installDir) === EXPECTED_BINARY_VERSION
+}
+
+export function warnBinaryVersionMismatch(actual: string | null): void {
+  console.warn(`codeagent-wrapper version: ${actual ?? 'unrecognized'}; expected ${EXPECTED_BINARY_VERSION}. Check https://github.com/${GITHUB_REPO}/releases/tag/${RELEASE_TAG} and retry ccg-ros2-workflow update later.`)
 }
 
 /**
@@ -864,38 +863,26 @@ async function installBinaryFile(ctx: InstallContext): Promise<void> {
     const destBinary = join(binDir, process.platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper')
 
     // Check if binary exists, is functional, AND version matches
-    if (await fs.pathExists(destBinary)) {
-      try {
-        const { execSync } = await import('node:child_process')
-        const versionOutput = execSync(`"${destBinary}" --version`, { stdio: 'pipe' }).toString().trim()
-        const installedVersion = versionOutput.replace(/^.*version\s*/, '')
-
-        // Compare with expected version from package
-        const expectedVersion = EXPECTED_BINARY_VERSION
-        if (installedVersion === expectedVersion) {
-          // Binary exists, works, and version matches — skip download
-          ctx.result.binPath = binDir
-          ctx.result.binInstalled = true
-          return
-        }
-        // Version mismatch — fall through to re-download
-      }
-      catch {
-        // Binary exists but broken — fall through to re-download
-      }
+    if (await fs.pathExists(destBinary) && await verifyBinaryVersion(ctx.installDir)) {
+      ctx.result.binPath = binDir
+      ctx.result.binInstalled = true
+      return
     }
 
     const installed = await downloadBinaryFromRelease(binaryName, destBinary)
 
     if (installed) {
-      try {
-        const { execSync } = await import('node:child_process')
-        execSync(`"${destBinary}" --version`, { stdio: 'pipe' })
+      const actual = await installedBinaryVersion(ctx.installDir)
+      if (actual === EXPECTED_BINARY_VERSION) {
         ctx.result.binPath = binDir
         ctx.result.binInstalled = true
       }
-      catch (verifyError) {
-        ctx.result.errors.push(`Binary verification failed (non-blocking): ${verifyError}`)
+      else if (actual === null) {
+        ctx.result.errors.push('Binary verification failed: could not read codeagent-wrapper version')
+      }
+      else {
+        ctx.result.binVersionMismatch = true
+        warnBinaryVersionMismatch(actual)
       }
     }
     else {

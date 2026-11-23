@@ -4,6 +4,8 @@ import fs from 'fs-extra'
 import { join } from 'pathe'
 import { parse as parseToml } from 'smol-toml'
 import { initI18n } from '../../i18n'
+import cac from 'cac'
+import { setupCommands } from '../../cli-setup'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ccgHookTrustEntries, ccgHooksTrusted, codexHookHash, installedCcgHookTrustEntries, installedHookCommand, mergeCcgHooks, readCcgHookTrust, uninstallCcgCodexHooks } from '../codex-hook-trust'
 import { installCodexMode, uninstallCodexMode } from '../installer'
@@ -31,6 +33,15 @@ afterEach(async () => {
 })
 
 describe('codexHookHash', () => {
+  it('reproduces a complete trust entry reported by codex-cli 0.154.0', () => {
+    const dir = '/home/robot/.codex'
+    const source = '/private/tmp/codex-source/hooks.json'
+    const doc = { hooks: { UserPromptSubmit: [{ hooks: [{ type: 'command', timeout: 10, command: 'python3 /home/robot/.codex/hooks/ccg-workflow.py' }] }] } }
+    expect(ccgHookTrustEntries(doc, dir, false, source)).toEqual([{
+      key: '/private/tmp/codex-source/hooks.json:user_prompt_submit:0:0',
+      hash: 'sha256:1c76eee4ff57c89c91a207235349ef4aae988374910b267649309b39bbc4f359',
+    }])
+  })
   it('matches the hash codex-cli 0.170.0 reported via hooks/list', () => {
     const handler = { type: 'command', command: 'python3 /Users/li/.tmp-agent/codexhome.me7288co/hook.py', timeout: 10 }
     expect(codexHookHash('user_prompt_submit', handler))
@@ -108,12 +119,14 @@ describe('trust and registration lifecycle', () => {
     await fs.outputJson(hooksPath(), { hooks: { UserPromptSubmit: [ccgGroup(), userGroup, ccgGroup()] } })
     const old = await installedCcgHookTrustEntries(await fs.readJson(hooksPath()), codexHome)
     expect(old.map(e => e.key.slice(-4))).toEqual([':0:0', ':2:0'])
-    await fs.outputFile(configPath(), provider + stanza(old[1]))
+    const userApproval = stanza({ key: old[0].key.replace(/:0:0$/, ':1:0'), hash: 'sha256:user' })
+    await fs.outputFile(configPath(), provider + userApproval + stanza(old[1]))
     expect((await installCodexMode()).message).toContain('[hooks.state]')
     const merged = await fs.readJson(hooksPath())
-    expect(merged.hooks.UserPromptSubmit).toEqual([userGroup, ccgGroup()])
+    expect(merged.hooks.UserPromptSubmit).toEqual([ccgGroup(), userGroup])
     const [entry] = await installedCcgHookTrustEntries(merged, codexHome)
-    expect(await fs.readFile(configPath(), 'utf8')).toBe(provider + stanza(entry))
+    expect(entry).toEqual(old[0])
+    expect(await fs.readFile(configPath(), 'utf8')).toBe(provider + userApproval + stanza(entry))
   })
 
   it('leaves a hook the user disabled in Codex disabled and says so', async () => {
@@ -163,7 +176,8 @@ describe('trust and registration lifecycle', () => {
 
   it('keeps similar user commands and their configuration', async () => {
     const h = ccgGroup().hooks[0]
-    const lookalikes = [{ ...h, command: h.command + '.backup' }, { ...h, type: 'other' }, { ...h, timeout: 30 }]
+    const lookalikes = [{ ...h, command: h.command + '.backup' }, { ...h, type: 'other' },
+      { ...h, command: 'python3 /other/hooks/ccg-workflow.py' }, { ...h, command: h.command + ' --custom' }]
     const original = { hooks: { UserPromptSubmit: [{ hooks: lookalikes }], PreToolUse: [userGroup] } }
     await fs.outputJson(hooksPath(), original)
     await fs.outputFile(configPath(), provider)
@@ -213,6 +227,127 @@ describe('trust and registration lifecycle', () => {
     await fs.outputFile(hooksPath(), '{"hooks": []}')
     expect((await installCodexMode()).success).toBe(false)
     expect(await fs.readFile(hooksPath(), 'utf8')).toBe('{"hooks": []}')
+    expect(await fs.readdir(codexHome)).toEqual(['hooks.json'])
+  })
+
+  it.each(['', '{', '{// comment\n"hooks":{}}', '{"hooks":{"UserPromptSubmit":{}}}'])(
+    'finishes uninstall without modifying unreadable hooks.json (%j)', async (bad) => {
+      await installCodexMode()
+      await fs.writeFile(hooksPath(), bad)
+      const result = await uninstallCodexMode()
+      expect(result.success).toBe(true)
+      expect(result.skipped.join('\n')).toMatch(/hooks\.json.*unchanged.+:/i)
+      expect(await fs.readFile(hooksPath(), 'utf8')).toBe(bad)
+      expect((await fs.readdir(codexHome)).sort()).toEqual(['config.toml', 'hooks.json'])
+      expect((await uninstallCodexMode()).success).toBe(true)
+    },
+  )
+
+  it('rejects a malformed shipped template before creating any files', async () => {
+    const read = vi.spyOn(fs, 'readJson').mockResolvedValueOnce({ hooks: { UserPromptSubmit: [
+      { hooks: [{ type: 'command', command: 'python3 ~/.codex/hooks/ccg-workflow.py', timeout: 11 }] },
+    ] } })
+    try {
+      expect(await installCodexMode()).toMatchObject({ success: false, message: expect.stringMatching(/template/i) })
+      expect(await fs.pathExists(codexHome)).toBe(false)
+    }
+    finally { read.mockRestore() }
+  })
+
+  it('prints skipped files and their reasons in the non-interactive CLI', async () => {
+    await fs.outputFile(hooksPath(), '{')
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    try {
+      const cli = cac()
+      await setupCommands(cli)
+      cli.parse(['node', 'ccg', 'codex-mode', 'uninstall'], { run: false })
+      await cli.runMatchedCommand()
+      const output = log.mock.calls.flat().join('\n')
+      expect(output).toMatch(/Skipped: .*hooks\.json unchanged.*:/)
+      expect(output).toContain('user settings kept')
+    }
+    finally { log.mockRestore() }
+  })
+
+  it('reports an unreadable trust file separately after successful deregistration', async () => {
+    expect((await installCodexMode()).success).toBe(true)
+    await fs.remove(configPath())
+    await fs.ensureDir(configPath())
+    const result = await uninstallCodexMode()
+    expect(result.success).toBe(true)
+    expect(result.removed).toContain('~/.codex/hooks.json')
+    expect(result.skipped.join('\n')).toMatch(/config\.toml.*trust.*:/)
+    expect(result.skipped.join('\n')).not.toContain('hooks.json unchanged')
+  })
+
+  it('migrates only the exact v3.0.4 array; leaves a mixed array for manual conversion', async () => {
+    const old = { event: 'user_prompt_submit', script: 'hooks/ccg-workflow.py', timeout_ms: 10000 }
+    await fs.outputJson(hooksPath(), [old, { ...old, script: 'user.py' }])
+    expect(await installCodexMode()).toMatchObject({ success: false, message: expect.stringMatching(/back up.*convert/i) })
+    expect(await fs.readdir(codexHome)).toEqual(['hooks.json'])
+    await fs.outputJson(hooksPath(), [old])
+    expect((await installCodexMode()).success).toBe(true)
+    expect((await fs.readJson(hooksPath())).hooks.UserPromptSubmit).toEqual([ccgGroup()])
+  })
+
+  it.each([true, false])('preserves hooks.json symlink through install and uninstall (shared: %s)', async (shared) => {
+    const target = join(home, 'dotfiles', 'hooks.json')
+    const groups = shared ? [ccgGroup(), userGroup] : [ccgGroup()]
+    await fs.outputJson(target, { hooks: { UserPromptSubmit: groups } })
+    await fs.outputFile(configPath(), provider)
+    await fs.symlink(target, hooksPath())
+    for (const path of [target, configPath()]) await fs.chmod(path, 0o640)
+    expect((await installCodexMode()).success).toBe(true)
+    expect((await fs.lstat(hooksPath())).isSymbolicLink()).toBe(true)
+    expect(Object.keys((await readConfig()).hooks.state)).toEqual([`${await fs.realpath(target)}:user_prompt_submit:0:0`])
+    const result = await uninstallCodexMode()
+    expect(result.success).toBe(true)
+    if (shared) expect(result.removed.join(' ')).toContain('/hooks')
+    expect((await fs.lstat(hooksPath())).isSymbolicLink()).toBe(true)
+    expect(await fs.readJson(target)).toEqual({ hooks: shared ? { UserPromptSubmit: [userGroup] } : {} })
+    if (process.platform !== 'win32') {
+      for (const path of [target, configPath()]) expect((await fs.stat(path)).mode & 0o777).toBe(0o640)
+    }
+  })
+
+  it.each(['python3 .codex/hooks/ccg-ros2-workflow.py', 'duplicate-slash', 'quoted'])(
+    'recognizes and upgrades the historical command %s in place', async (form) => {
+      const command = form === 'duplicate-slash' ? ccgCommand().replace('/.codex/', '//.codex/')
+        : form === 'quoted' ? `python3 "${ccgCommand().slice(8)}"` : form
+      await fs.outputJson(hooksPath(), { hooks: { UserPromptSubmit: [
+        { hooks: [{ ...ccgGroup().hooks[0], command }] }, userGroup,
+      ] } })
+      expect((await installCodexMode()).success).toBe(true)
+      expect((await fs.readJson(hooksPath())).hooks.UserPromptSubmit).toEqual([ccgGroup(), userGroup])
+      expect((await uninstallCodexMode()).success).toBe(true)
+      expect((await fs.readJson(hooksPath())).hooks.UserPromptSubmit).toEqual([userGroup])
+    },
+  )
+
+  it('keeps customized options and matcher on reinstall without auto-trust; removes only its handler on uninstall', async () => {
+    const group = { matcher: 'special', hooks: [{ ...ccgGroup().hooks[0], timeout: 30, statusMessage: 'wait' }, ...userGroup.hooks] }
+    await fs.outputJson(hooksPath(), { hooks: { UserPromptSubmit: [group] } })
+    await fs.outputFile(configPath(), provider)
+    expect((await installCodexMode()).message).toContain('/hooks')
+    expect((await fs.readJson(hooksPath())).hooks.UserPromptSubmit).toEqual([group])
+    expect(await fs.readFile(configPath(), 'utf8')).toBe(provider)
+    await uninstallCodexMode()
+    expect((await fs.readJson(hooksPath())).hooks.UserPromptSubmit).toEqual([{ ...group, hooks: userGroup.hooks }])
+  })
+
+  it('recognizes Windows drive case but never trusts a noncanonical or unquotable command', () => {
+    const platform = vi.spyOn(process, 'platform', 'get').mockReturnValue('win32')
+    try {
+      for (const user of ['Robot', 'Ro%bot', 'Ro!bot']) {
+        const dir = `C:/Users/${user}/.codex`
+        const doc = { hooks: { UserPromptSubmit: [{ hooks: [{
+          type: 'command', command: `python3 ${dir.replace(/^C:/, 'c:')}/hooks/ccg-workflow.py`, timeout: 10,
+        }] }] } }
+        expect(ccgHookTrustEntries(doc, dir, true)).toHaveLength(user === 'Robot' ? 1 : 0)
+        expect(ccgHookTrustEntries(doc, dir)).toHaveLength(0)
+      }
+    }
+    finally { platform.mockRestore() }
   })
 
   it('uses the installed command for a home with spaces and quotes', () => {

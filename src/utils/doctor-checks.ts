@@ -4,7 +4,7 @@ import { homedir } from 'node:os'
 import { join } from 'pathe'
 import { parse } from 'smol-toml'
 import { version } from '../../package.json'
-import { ccgHooksTrusted, ccgHookTrustEntries, installedCcgHookTrustEntries } from './codex-hook-trust'
+import { ccgHooksTrusted, hasCcgHook, installedCcgHookTrustEntries, installedHookCommand } from './codex-hook-trust'
 import type { SkillManagerOptions } from './skill-manager'
 import { listSkills, SKILL_MANIFEST_FILE } from './skill-manager'
 
@@ -78,9 +78,9 @@ function executeVersion(file: string, args: string[]): string | null {
     const flag = args[0]
     if (args.length !== 1 || (flag !== '--version' && flag !== '--help')) return null
     const shim = process.platform === 'win32' && /^[\w-]+\.cmd$/.test(file)
-    const result = spawnSync(shim ? 'cmd.exe' : file, shim ? ['/d', '/s', '/c', `${file} ${flag}`] : args, { encoding: 'utf8', timeout: 10000, windowsHide: true })
+    const result = spawnSync(shim ? 'cmd.exe' : file, shim ? ['/d', '/s', '/c', `${file} ${flag}`] : args, { encoding: 'utf8', timeout: 10000, killSignal: 'SIGKILL', windowsHide: true })
     if (result.error || result.status !== 0) return null
-    return [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
+    return (flag === '--help' ? [result.stdout, result.stderr].join('\n') : result.stdout).trim()
   }
   catch { return null }
 }
@@ -194,14 +194,19 @@ async function codexChecks(codexDir: string, managedAgents: boolean): Promise<Do
   }
   catch { /* Configuration contents and errors may contain provider secrets. */ }
   const trustEntries = await installedCcgHookTrustEntries(settings, codexDir)
-  const hookRegistered = ccgHookTrustEntries(settings, codexDir, true).length > 0
+  const hookRegistered = hasCcgHook(settings, codexDir)
+  // A legacy path needs reinstalling; a current path with user options needs
+  // manual review. Do not claim to know Codex's trust hash for a custom matcher.
+  const legacyOnly = hookRegistered && !registeredCommands(settings, 'UserPromptSubmit').includes(installedHookCommand(codexDir))
   const hookTrusted = ccgHooksTrusted(trustEntries, parsedConfig)
   const marker = await readText(join(codexDir, '.ccg-version'))
   return [
     check('codex.agents', 'Codex mode', managedAgents ? 'pass' : 'fail', managedAgents ? 'CCG managed AGENTS.md installed' : 'CCG managed AGENTS.md missing', 'Run ccg-ros2-workflow codex-mode install.'),
     check('codex.artifacts', 'Codex files', present.every(Boolean) ? 'pass' : 'fail', `${present.filter(Boolean).length}/${required.length} managed agent and hook files`, 'Run ccg-ros2-workflow codex-mode install.'),
     check('codex.hook-registration', 'Codex hooks', hookRegistered ? 'pass' : 'fail', hookRegistered ? 'CCG workflow hook registered' : 'CCG workflow hook not registered', 'Run ccg-ros2-workflow codex-mode install.'),
-    ...(hookRegistered ? [check('codex.hook-trust', 'Codex hook trust', hookTrusted ? 'pass' : 'warn', hookTrusted ? 'CCG workflow hook trusted' : 'CCG workflow hook not trusted; codex-cli >= 0.129 skips it', 'Run ccg-ros2-workflow codex-mode install, or review and trust ccg-workflow.py in Codex with /hooks.')] : []),
+    ...(hookRegistered ? [legacyOnly
+      ? check('codex.hook-trust', 'Codex hook trust', 'warn', 'Outdated CCG hook registration', 'Run ccg-ros2-workflow codex-mode install.')
+      : check('codex.hook-trust', 'Codex hook trust', hookTrusted ? 'pass' : 'warn', hookTrusted ? 'CCG workflow hook trusted' : !trustEntries.length ? 'Custom CCG hook registration; verify its approval in /hooks' : 'CCG workflow hook not trusted; codex-cli >= 0.129 skips it', 'Run ccg-ros2-workflow codex-mode install, or review and trust ccg-workflow.py in Codex with /hooks.')] : []),
     check('codex.config', 'Codex config', validConfig ? 'pass' : 'fail', validConfig ? 'Readable Codex TOML' : 'Missing or invalid Codex TOML', 'Run ccg-ros2-workflow codex-mode install or repair the existing Codex config.toml.'),
     check('codex.version', 'Codex marker', /^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(marker?.trim() || '') ? 'pass' : 'fail', marker ? 'CCG version marker present' : 'CCG version marker missing', 'Run ccg-ros2-workflow codex-mode install.'),
   ]
@@ -241,7 +246,7 @@ async function backendChecks(names: string[], pureClaude: boolean, home: string,
     checks.push(check(`cli.${name}`, spec.label, output ? 'pass' : 'fail', output ? versionDetail(output) : 'Not found or --version failed', `Install ${spec.label} and ensure ${spec.commands[0]} is on PATH, then run ccg-ros2-workflow doctor.`))
     if (name === 'antigravity' && selected) {
       const help = exec(selected, ['--help'])
-      const available = /(?:^|[\s,])--output-format(?=[\s,=<\[]|$)/m.test(help || '')
+      const available = /(?:^\s*(?:-\w[\s,|]+)?|\[)--output-format(?=[\s,:=<\[\]]|$)/m.test(help || '')
       checks.push(check('cli.antigravity.output-format', 'Antigravity stream output', available ? 'pass' : 'warn',
         available ? 'agy supports --output-format' : 'Could not confirm --output-format support; the wrapper needs stream-json.',
         'Run agy update, then confirm agy --help lists --output-format.'))
