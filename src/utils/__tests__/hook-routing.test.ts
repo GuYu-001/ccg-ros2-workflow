@@ -82,4 +82,79 @@ describe('knowledge context', () => {
     const { output } = await runHook({ skillsProfile: ['verify-quality'] }, 'api设计要怎么做', longKnowledge)
     expect(output).toBe('')
   })
+
+  it('does not let a domain that did not ship use up a slot', async () => {
+    const { context } = await runHook({}, 'a pentest of the graphql api behind redis', domainKnowledge)
+    expect(context).toContain('API设计')
+    expect(context).toContain('缓存架构')
+  })
+})
+
+async function domainKnowledge(dir: string) {
+  for (const [sub, file] of [['ai', 'rag-system.md'], ['ai', 'agent-dev.md'], ['architecture', 'message-queue.md'], ['architecture', 'caching.md'], ['architecture', 'api-design.md'], ['architecture', 'cloud-native.md']]) {
+    const root = join(dir, 'skills', 'ccg', 'domains', sub)
+    await mkdir(root, { recursive: true })
+    await writeFile(join(root, file), `# ${file}`)
+  }
+}
+
+describe('domain keyword matching', () => {
+  it.each([
+    '存储速度向量到 std::vector<geometry_msgs::msg::Vector3>',
+    '排查 ROS2 DDS endpoint discovery',
+    '修改 tf2 buffer 的 cache time 和变换缓存时长',
+    'launch orchestration: source setup.bash and run the binary',
+    '排查 QoS 消息队列深度与 ROS2 pub/sub sink',
+    'sensor fault injection during an incident',
+  ])('does not route robot middleware vocabulary: %s', async (prompt) => {
+    expect((await runHook({}, prompt, domainKnowledge)).output).toBe('')
+  })
+
+  it.each([
+    ['用 Redis 做缓存', '缓存架构'], ['设计 REST API', 'API设计'],
+    ['给 RAG 建向量数据库', 'RAG系统'], ['choose a vector database', 'RAG系统'],
+    ['设计分布式消息队列', '消息队列'], ['design agent orchestration', 'Agent开发'],
+  ])('still routes domain-specific requests: %s', async (prompt, skill) => {
+    expect((await runHook({}, prompt, domainKnowledge)).context).toContain(skill)
+  })
+
+  it('ignores English keywords that only appear inside longer words', async () => {
+    for (const prompt of ['fix average() in calc.py', 'restore the backup and check interest', 'the cached value is stale']) {
+      const { output } = await runHook({}, prompt, domainKnowledge)
+      expect(output, prompt).toBe('')
+    }
+  })
+
+  it('does not read the everyday word "rest" as REST', async () => {
+    const { output } = await runHook({}, 'read the rest of the file', domainKnowledge)
+    expect(output).toBe('')
+  })
+
+  it('matches English keywords as whole words, case-insensitively', async () => {
+    expect((await runHook({}, 'Build a RAG pipeline', domainKnowledge)).context).toContain('RAG系统')
+    expect((await runHook({}, 'add a cache layer (redis)', domainKnowledge)).context).toContain('缓存架构')
+    expect((await runHook({}, 'design the REST API', domainKnowledge)).context).toContain('API设计')
+  })
+
+  it('keeps matching plurals and the words a whole-word rule would lose', async () => {
+    expect((await runHook({}, 'list all API endpoints', domainKnowledge)).context).toContain('API设计')
+    expect((await runHook({}, 'store the embeddings', domainKnowledge)).context).toContain('RAG系统')
+    expect((await runHook({}, 'open the dockerfile', domainKnowledge)).context).toContain('云原生')
+  })
+
+  it('keeps substring matching for keywords containing CJK characters', async () => {
+    expect((await runHook({}, '帮我加一层缓存', domainKnowledge)).context).toContain('缓存架构')
+    expect((await runHook({}, '这个api设计要怎么做', domainKnowledge)).context).toContain('API设计')
+  })
+})
+
+describe('model-action intent', () => {
+  it('treats a matched phrase as a mention, not as a confirmed request', async () => {
+    const prompt = '那个对话开启 Codex review 时，还是用默认浏览器打开'
+    for (const config of [{}, { routing: { frontend: { primary: 'claude' }, backend: { primary: 'claude' } } }]) {
+      const { context } = await runHook(config, prompt)
+      expect(context).toContain('不代表用户一定在请求执行')
+      expect(context).not.toContain('用户请求')
+    }
+  })
 })
