@@ -7,6 +7,7 @@ import { initI18n } from '../../i18n'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ccgHookTrustEntries, ccgHooksTrusted, codexHookHash, installedCcgHookTrustEntries, installedHookCommand, mergeCcgHooks, readCcgHookTrust, uninstallCcgCodexHooks } from '../codex-hook-trust'
 import { installCodexMode, uninstallCodexMode } from '../installer'
+import { PACKAGE_ROOT } from '../installer-template'
 
 vi.mock('node:os', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:os')>()
@@ -66,31 +67,99 @@ describe('trust and registration lifecycle', () => {
   const stanza = (entry: { key: string, hash: string }) => `[hooks.state.${JSON.stringify(entry.key)}]\ntrusted_hash = "${entry.hash}"\n`
 
   it.each(['python3 .codex/hooks/ccg-workflow.py', 'python3 ~/.codex/hooks/ccg-workflow.py', 'absolute'])(
-    'upgrades the %s command without duplicating or moving mixed user hooks', async (legacy) => {
+    'upgrades the %s command without duplicating or moving mixed user hooks, and trusts only it', async (legacy) => {
       const original = { type: 'command', command: legacy === 'absolute' ? ccgCommand() : legacy, timeout: 10 }
       const user = userGroup.hooks[0]
       const mixed = { hooks: [user, original, user] }
       await fs.outputJson(hooksPath(), { hooks: { UserPromptSubmit: [userGroup, mixed], Stop: [userGroup] } })
       await fs.outputFile(configPath(), provider + userState)
       const installed = await installCodexMode()
-      expect(installed).toMatchObject({ success: true, message: expect.stringContaining('≥ 0.129') })
+      expect(installed).toMatchObject({ success: true, message: expect.stringContaining('[hooks.state]') })
+      expect(installed.message).not.toContain('≥ 0.129')
       const merged = await fs.readJson(hooksPath())
       expect(merged.hooks.UserPromptSubmit).toEqual([userGroup, { hooks: [user, ccgGroup().hooks[0], user] }])
       const [entry] = await installedCcgHookTrustEntries(merged, codexHome)
       expect(entry.key).toBe(`${await fs.realpath(hooksPath())}:user_prompt_submit:1:1`)
+      // The approval is appended; everything the user wrote is still there byte for byte.
+      expect(await fs.readFile(configPath(), 'utf8')).toBe(provider + userState + stanza(entry))
+      expect(Object.keys((await readConfig()).hooks.state)).toEqual(['other:stop:0:0', entry.key])
       const before = await fs.readFile(hooksPath(), 'utf8')
       expect((await installCodexMode()).success).toBe(true)
       expect(await fs.readFile(hooksPath(), 'utf8')).toBe(before)
-      expect(await fs.readFile(configPath(), 'utf8')).toBe(provider + userState)
-      // Model a decision that the user made in Codex.
-      await fs.appendFile(configPath(), stanza(entry))
-      expect((await installCodexMode()).message).not.toContain('≥ 0.129')
       expect(await fs.readFile(configPath(), 'utf8')).toBe(provider + userState + stanza(entry))
       expect((await uninstallCodexMode()).success).toBe(true)
       expect(await fs.readFile(configPath(), 'utf8')).toBe(provider + userState)
       expect(await fs.readJson(hooksPath())).toEqual({ hooks: { UserPromptSubmit: [userGroup, { hooks: [user, user] }], Stop: [userGroup] } })
     },
   )
+
+  it('re-approves a handler Codex would show as modified, keeping the record where it was', async () => {
+    await fs.outputJson(hooksPath(), { hooks: { UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'python3 ~/.codex/hooks/ccg-workflow.py', timeout: 10 }] }] } })
+    const key = `${await fs.realpath(hooksPath())}:user_prompt_submit:0:0`
+    const record = (hash: string) => `[hooks.state.${JSON.stringify(key)}]\n# approved earlier\ntrusted_hash = "${hash}"\n\n`
+    await fs.outputFile(configPath(), record('sha256:old') + provider)
+    expect((await installCodexMode()).message).toContain('[hooks.state]')
+    const [entry] = await installedCcgHookTrustEntries(await fs.readJson(hooksPath()), codexHome)
+    expect(entry.key).toBe(key)
+    expect(await fs.readFile(configPath(), 'utf8')).toBe(record(entry.hash) + provider)
+  })
+
+  it('drops approvals left under positions a deduplicated handler no longer has', async () => {
+    await fs.outputJson(hooksPath(), { hooks: { UserPromptSubmit: [ccgGroup(), userGroup, ccgGroup()] } })
+    const old = await installedCcgHookTrustEntries(await fs.readJson(hooksPath()), codexHome)
+    expect(old.map(e => e.key.slice(-4))).toEqual([':0:0', ':2:0'])
+    await fs.outputFile(configPath(), provider + stanza(old[1]))
+    expect((await installCodexMode()).message).toContain('[hooks.state]')
+    const merged = await fs.readJson(hooksPath())
+    expect(merged.hooks.UserPromptSubmit).toEqual([userGroup, ccgGroup()])
+    const [entry] = await installedCcgHookTrustEntries(merged, codexHome)
+    expect(await fs.readFile(configPath(), 'utf8')).toBe(provider + stanza(entry))
+  })
+
+  it('leaves a hook the user disabled in Codex disabled and says so', async () => {
+    await fs.outputJson(hooksPath(), { hooks: { UserPromptSubmit: [ccgGroup()] } })
+    const [entry] = await installedCcgHookTrustEntries(await fs.readJson(hooksPath()), codexHome)
+    const config = `${provider}[hooks.state.${JSON.stringify(entry.key)}]\nenabled = false\n`
+    await fs.outputFile(configPath(), config)
+    const installed = await installCodexMode()
+    expect(installed).toMatchObject({ success: true, message: expect.stringContaining('/hooks') })
+    expect(installed.message).not.toContain('[hooks.state]')
+    expect(await fs.readFile(configPath(), 'utf8')).toBe(config)
+  })
+
+  it.each([
+    ['an inline hooks table', 'hooks = { state = {} }\n'],
+    ['invalid TOML', 'invalid = "'],
+  ])('installs without touching a config.toml written as %s', async (_name, config) => {
+    await fs.outputFile(configPath(), config)
+    const installed = await installCodexMode()
+    expect(installed).toMatchObject({ success: true, message: expect.stringContaining('≥ 0.129') })
+    expect(await fs.readFile(configPath(), 'utf8')).toBe(config)
+    expect(await fs.readdir(codexHome)).not.toContainEqual(expect.stringContaining('.tmp'))
+  })
+
+  it('keeps CRLF line endings and a missing final newline intact', async () => {
+    const config = '# windows\r\n[model_providers.custom]\r\nname = "Custom"'
+    await fs.outputFile(configPath(), config)
+    expect((await installCodexMode()).message).toContain('[hooks.state]')
+    const [entry] = await installedCcgHookTrustEntries(await fs.readJson(hooksPath()), codexHome)
+    expect(await fs.readFile(configPath(), 'utf8'))
+      .toBe(`${config}\r\n[hooks.state.${JSON.stringify(entry.key)}]\r\ntrusted_hash = "${entry.hash}"\r\n`)
+  })
+
+  it('writes through a symlinked config.toml instead of replacing the link', async () => {
+    const target = join(home, 'dotfiles', 'codex-config.toml')
+    await fs.outputFile(target, provider)
+    await fs.ensureDir(codexHome)
+    await fs.symlink(target, configPath())
+    expect((await installCodexMode()).message).toContain('[hooks.state]')
+    expect((await fs.lstat(configPath())).isSymbolicLink()).toBe(true)
+    const [entry] = await installedCcgHookTrustEntries(await fs.readJson(hooksPath()), codexHome)
+    expect(await fs.readFile(target, 'utf8')).toBe(provider + stanza(entry))
+    expect((await uninstallCodexMode()).success).toBe(true)
+    expect((await fs.lstat(configPath())).isSymbolicLink()).toBe(true)
+    expect(await fs.readFile(target, 'utf8')).toBe(provider)
+  })
 
   it('keeps similar user commands and their configuration', async () => {
     const h = ccgGroup().hooks[0]
@@ -152,14 +221,20 @@ describe('trust and registration lifecycle', () => {
     expect(ccgHookTrustEntries({ hooks: { UserPromptSubmit: [{ hooks: [handler] }] } }, dir)).toHaveLength(1)
   })
 
-  it.each(['en', 'zh-CN'] as const)('explains how to approve a fresh hook in %s', async (lang) => {
+  it.each(['en', 'zh-CN'] as const)('trusts a fresh hook, says so in %s, and takes the approval back on uninstall', async (lang) => {
     await initI18n(lang)
     const result = await installCodexMode()
     expect(result.success).toBe(true)
-    expect(result.message).toContain(lang === 'en' ? 'skips untrusted hooks' : '跳过未信任的 hook')
+    expect(result.message).toContain(lang === 'en' ? 'Trusted the CCG hook' : '记录信任')
     expect(result.message).toContain('/hooks')
-    expect((await readConfig()).hooks).toBeUndefined()
-    await uninstallCcgCodexHooks(codexHome)
+    expect(result.message).not.toContain('≥ 0.129')
+    const shipped = await fs.readFile(join(PACKAGE_ROOT, 'templates', 'codex', 'config.toml'), 'utf8')
+    const hooks = await fs.readJson(hooksPath())
+    const [entry] = await installedCcgHookTrustEntries(hooks, codexHome)
+    expect(await fs.readFile(configPath(), 'utf8')).toBe(shipped + stanza(entry))
+    expect(await readCcgHookTrust(codexHome, hooks)).toBe(true)
+    expect((await uninstallCodexMode()).removed).toContainEqual(expect.stringContaining('[hooks.state]'))
+    expect(await fs.readFile(configPath(), 'utf8')).toBe(shipped)
     expect(await fs.pathExists(hooksPath())).toBe(false)
   })
 })

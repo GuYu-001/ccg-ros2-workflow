@@ -43,7 +43,10 @@ wire_api = "responses"
 `
     await fs.outputFile(configPath, config)
     expect((await installCodexMode()).success).toBe(true)
-    expect(await fs.readFile(configPath, 'utf8')).toBe(config)
+    // Install adds one thing: the approval for its own hook, after the user's text.
+    const installed = await fs.readFile(configPath, 'utf8')
+    expect(installed.startsWith(config)).toBe(true)
+    expect(installed.slice(config.length)).toMatch(/^\[hooks\.state\."[^"\n]+:user_prompt_submit:0:0"\]\ntrusted_hash = "sha256:[0-9a-f]{64}"\n$/)
     expect((await uninstallCodexMode()).success).toBe(true)
     expect(await fs.readFile(configPath, 'utf8')).toBe(config)
   })

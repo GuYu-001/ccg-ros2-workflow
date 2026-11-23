@@ -227,7 +227,7 @@ claude plugin install ccg@ccg
 
 技能以 `/ccg:<skill>` 形式调用。无需 npx、无需 binary。多模型命令因含模板占位符不随插件分发，需方式 A。
 
-**Codex 主导模式：** 运行 `npx ccg-ros2-workflow codex-mode install` 后，请在 Codex 中运行 `/hooks`，审阅并信任 `ccg-workflow.py`。Codex CLI ≥ 0.129 会跳过未信任的 hook；可用 `npx ccg-ros2-workflow doctor` 检查当前信任状态。
+**Codex 主导模式：** Codex CLI ≥ 0.129 会跳过未信任的 hook，因此 `npx ccg-ros2-workflow codex-mode install` 会在 `~/.codex/config.toml` 的 `[hooks.state]` 中为自己的 `ccg-workflow.py` 记录信任；你的其他 hook 和该文件的其余内容保持原样。撤销方法：在 Codex 中运行 `/hooks`，或执行 `npx ccg-ros2-workflow codex-mode uninstall`。如果安装器提示未能记录信任，请在 Codex 中运行 `/hooks` 手动信任 `ccg-workflow.py`；可用 `npx ccg-ros2-workflow doctor` 检查当前信任状态。
 
 ## CLI 命令大全
 

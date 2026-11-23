@@ -1,11 +1,11 @@
 import type { InstallResult } from '../types'
-import { codexHookReviewNotice } from '../i18n'
+import { codexHookReviewNotice, codexHookTrustedNotice } from '../i18n'
 import { homedir } from 'node:os'
 import ansis from 'ansis'
 import fs from 'fs-extra'
 import { basename, join } from 'pathe'
 import { getLegacyCommandIds, getWorkflowById } from './installer-data'
-import { installedHookCommand, mergeCcgHooks, readCcgHookTrust, readHooksJson, uninstallCcgCodexHooks, writeHooksJson } from './codex-hook-trust'
+import { installedCcgHookTrustEntries, installedHookCommand, mergeCcgHooks, readHooksJson, trustCcgCodexHooks, uninstallCcgCodexHooks, writeHooksJson } from './codex-hook-trust'
 import { PACKAGE_ROOT, injectConfigVariables, injectHookConfig, replaceHomePathsInTemplate } from './installer-template'
 import { readCcgConfig } from './config'
 import { installSkillCommands } from './skill-registry'
@@ -604,9 +604,13 @@ export async function installCodexMode(): Promise<{ success: boolean, message: s
       handler.command = installedHookCommand(codexHome)
       // Merge, never overwrite: ~/.codex/hooks.json may hold the user's own hooks.
       const hooksPath = join(codexHome, 'hooks.json')
-      const merged = mergeCcgHooks(await readHooksJson(hooksPath), template, codexHome)
+      const existing = await readHooksJson(hooksPath)
+      const previous = existing ? await installedCcgHookTrustEntries(existing, codexHome, true) : []
+      const merged = mergeCcgHooks(existing, template, codexHome)
       await writeHooksJson(hooksPath, merged)
-      trustedHooks = await readCcgHookTrust(codexHome, merged)
+      // codex-cli >= 0.129 skips hooks nobody trusted in /hooks, and `codex exec`
+      // does it without a word. Record trust for CCG's own handler only.
+      trustedHooks = await trustCcgCodexHooks(codexHome, merged, previous)
     }
 
     // Write version marker so external tools can check which CCG version installed Codex mode
@@ -614,7 +618,7 @@ export async function installCodexMode(): Promise<{ success: boolean, message: s
 
     return {
       success: true,
-      message: `Codex mode installed:\n  ~/.codex/AGENTS.md\n  ~/.codex/config.toml\n  ~/.codex/hooks.json\n  ~/.codex/hooks/ccg-workflow.py\n  ~/.codex/agents/ccg-implement.toml\n  ~/.codex/agents/ccg-review.toml\n  ~/.codex/agents/ccg-research.toml\n  ~/.codex/.ccg-version (${packageVersion})${trustedHooks ? '' : `\n\n${codexHookReviewNotice()}`}`,
+      message: `Codex mode installed:\n  ~/.codex/AGENTS.md\n  ~/.codex/config.toml\n  ~/.codex/hooks.json\n  ~/.codex/hooks/ccg-workflow.py\n  ~/.codex/agents/ccg-implement.toml\n  ~/.codex/agents/ccg-review.toml\n  ~/.codex/agents/ccg-research.toml\n  ~/.codex/.ccg-version (${packageVersion})\n\n${trustedHooks ? codexHookTrustedNotice() : codexHookReviewNotice()}`,
     }
   }
   catch (error) {

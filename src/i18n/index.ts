@@ -6,6 +6,7 @@ export const i18n = i18next
 
 const zhCN = {
   codexHookReview: '注意：codex-cli ≥ 0.129 会跳过未信任的 hook。请在 Codex 中运行 /hooks，审阅并信任 ccg-workflow.py。',
+  codexHookTrusted: '已在 ~/.codex/config.toml 的 [hooks.state] 中为 CCG 的 hook（ccg-workflow.py）记录信任，Codex 会直接运行它；你的其他 hook 未改动。撤销：在 Codex 中运行 /hooks，或执行 ccg-ros2-workflow codex-mode uninstall。',
   common: {
     yes: '是',
     no: '否',
@@ -512,6 +513,7 @@ const zhCN = {
 
 const en: typeof zhCN = {
   codexHookReview: 'Action required: codex-cli ≥ 0.129 skips untrusted hooks. Run /hooks in Codex to review and trust ccg-workflow.py.',
+  codexHookTrusted: 'Trusted the CCG hook (ccg-workflow.py) in ~/.codex/config.toml [hooks.state], so Codex runs it without a /hooks review; your other hooks are untouched. To undo: run /hooks in Codex, or ccg-ros2-workflow codex-mode uninstall.',
   common: {
     yes: 'Yes',
     no: 'No',
@@ -1018,6 +1020,10 @@ const en: typeof zhCN = {
 
 export function codexHookReviewNotice(): string {
   return i18n.isInitialized ? i18n.t('codexHookReview') : en.codexHookReview
+}
+
+export function codexHookTrustedNotice(): string {
+  return i18n.isInitialized ? i18n.t('codexHookTrusted') : en.codexHookTrusted
 }
 
 export async function initI18n(lang: SupportedLang = 'zh-CN'): Promise<void> {

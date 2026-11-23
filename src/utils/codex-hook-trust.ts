@@ -15,7 +15,12 @@ import { parse } from 'smol-toml'
  *   trusted_hash = "sha256:<hex>"
  *
  * An untrusted hook is skipped, and in `codex exec` the skip prints nothing at
- * all. Installation registers the hook; approval stays in Codex's /hooks UI.
+ * all, so a fresh `codex-mode install` used to leave Codex mode silently inert.
+ * Installation therefore records trust for the one handler it installs itself,
+ * the same way the `/hooks` screen would. Other handlers are never touched, and
+ * the rest of config.toml is kept byte for byte: the record is edited in the
+ * text, re-parsed, and written only if nothing else changed. When that cannot
+ * be shown, nothing is written and the user is pointed at `/hooks` instead.
  *
  * The hash mirrors codex-rs `hook_hash`: sha256 over key-sorted compact JSON of
  * `{event_name, matcher?, hooks: [normalized handler]}`. Verified against
@@ -162,10 +167,91 @@ export async function readCcgHookTrust(codexHome: string, hooks: Json): Promise<
   catch { return false }
 }
 
+// Write through a symlinked config.toml (dotfile managers) instead of replacing the link.
+async function configTomlPath(codexHome: string): Promise<string> {
+  const path = join(codexHome, 'config.toml')
+  return await fs.realpath(path).catch(() => path)
+}
+
+const trustHeader = (key: string) => `[hooks.state.${JSON.stringify(key)}]`
+
+// Point an existing record at the new hash, keeping its other keys and position.
+// Returns null when the record is not written as its own plain table.
+function replaceTrustedHash(text: string, key: string, hash: string): string | null {
+  const lines = text.split('\n')
+  const start = lines.findIndex(line => line.trim() === trustHeader(key))
+  if (start < 0) return null
+  const eol = lines[start].endsWith('\r') ? '\r' : ''
+  const line = `trusted_hash = "${hash}"${eol}`
+  for (let i = start + 1; i < lines.length && !/^\s*\[/.test(lines[i]); i++) {
+    if (/^\s*trusted_hash\s*=/.test(lines[i])) {
+      lines[i] = line
+      return lines.join('\n')
+    }
+  }
+  lines.splice(start + 1, 0, line)
+  return lines.join('\n')
+}
+
+function dropEmptyHookState(config: Json) {
+  if (config.hooks?.state && !Object.keys(config.hooks.state).length) delete config.hooks.state
+  if (config.hooks && !Object.keys(config.hooks).length) delete config.hooks
+}
+
+/**
+ * Record Codex trust for the CCG handler in `hooks`, which must already be on
+ * disk. Returns whether that handler ends up trusted. A hook the user disabled
+ * in Codex stays disabled, and a config.toml that cannot be edited without
+ * touching anything else (inline tables, invalid TOML) is left alone.
+ */
+export async function trustCcgCodexHooks(codexHome: string, hooks: Json, stale: CcgHookTrust[] = []): Promise<boolean> {
+  const entries = await installedCcgHookTrustEntries(hooks, codexHome)
+  if (!entries.length) return false
+  // A reinstall that moved the handler leaves approvals under its old positions.
+  const current = new Set(entries.map(e => e.key))
+  await forgetTrust(codexHome, stale.filter(e => !current.has(e.key)))
+
+  const path = await configTomlPath(codexHome)
+  const original = await fs.pathExists(path) ? await fs.readFile(path, 'utf8') : ''
+  try {
+    const before = parse(original) as Json
+    if (ccgHooksTrusted(entries, before)) return true
+    const eol = original.includes('\r\n') ? '\r\n' : '\n'
+    let text = original
+    for (const { key, hash } of entries) {
+      const previous = before.hooks?.state?.[key]
+      if (previous?.enabled === false) return false
+      if (previous?.trusted_hash === hash) continue
+      if (previous) {
+        const replaced = replaceTrustedHash(text, key, hash)
+        if (replaced === null) return false
+        text = replaced
+      }
+      else {
+        text += `${text && !text.endsWith('\n') ? eol : ''}${trustHeader(key)}${eol}trusted_hash = "${hash}"${eol}`
+      }
+    }
+    // Prove the edit added these approvals and changed nothing else.
+    const after = parse(text) as Json
+    for (const { key, hash } of entries) {
+      const previous = before.hooks?.state?.[key]
+      if (!isDeepStrictEqual({ ...after.hooks?.state?.[key] }, { ...previous, trusted_hash: hash })) return false
+      delete after.hooks.state[key]
+      if (previous) delete before.hooks.state[key]
+    }
+    dropEmptyHookState(before)
+    dropEmptyHookState(after)
+    if (!isDeepStrictEqual(before, after)) return false
+    await writeAtomic(path, text)
+    return true
+  }
+  catch { return false }
+}
+
 // Only remove an exact, unmodified approval for a handler we just uninstalled.
 // Noncanonical or inline TOML is left to Codex; never reserialize user config.
 async function forgetTrust(codexHome: string, entries: CcgHookTrust[]): Promise<number> {
-  const path = join(codexHome, 'config.toml')
+  const path = await configTomlPath(codexHome)
   if (!entries.length || !(await fs.pathExists(path))) return 0
   const original = await fs.readFile(path, 'utf8')
   let text = original

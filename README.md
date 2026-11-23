@@ -227,7 +227,7 @@ claude plugin install ccg@ccg
 
 Skills are invoked as `/ccg:<skill>`. No npx, no binary. The multi-model commands ship only through Option A (their templates carry install-time placeholders that a native plugin can't resolve).
 
-**Codex-led mode:** After `npx ccg-ros2-workflow codex-mode install`, run `/hooks` in Codex to review and trust `ccg-workflow.py`. Codex CLI ≥ 0.129 skips untrusted hooks; `npx ccg-ros2-workflow doctor` reports the current trust state.
+**Codex-led mode:** Codex CLI ≥ 0.129 skips untrusted hooks, so `npx ccg-ros2-workflow codex-mode install` records trust for its own `ccg-workflow.py` hook in `~/.codex/config.toml` (`[hooks.state]`). Your other hooks and the rest of that file are left as they are. To undo it, run `/hooks` in Codex or `npx ccg-ros2-workflow codex-mode uninstall`. If the installer reports that it could not record trust, run `/hooks` in Codex and trust `ccg-workflow.py` yourself; `npx ccg-ros2-workflow doctor` shows the current trust state.
 
 ## CLI Commands
 
