@@ -33,30 +33,35 @@ try {
 
   // Keyword → skill file routing table
   const ROUTES = [
-    { keywords: ['渗透', '红队', 'pentest', 'exploit', 'c2', '横向', '提权', 'bypass', 'red team'], skill: 'domains/security/red-team.md', name: '红队渗透' },
+    { keywords: ['渗透', '红队', 'pentest', 'exploit', '提权', 'red team'], skill: 'domains/security/red-team.md', name: '红队渗透' },
     { keywords: ['蓝队', 'ioc', '取证', 'siem', 'edr', 'blue team', 'security incident'], skill: 'domains/security/blue-team.md', name: '蓝队防御' },
     { keywords: ['sqli', 'xss', 'ssrf', 'rce', 'owasp', 'web渗透', 'api安全'], skill: 'domains/security/pentest.md', name: 'Web渗透' },
     { keywords: ['代码审计', '污点分析', '危险函数', 'code audit'], skill: 'domains/security/code-audit.md', name: '代码审计' },
-    { keywords: ['逆向', 'pwn', 'fuzzing', '栈溢出', '堆溢出', 'rop', 'reversing'], skill: 'domains/security/vuln-research.md', name: '漏洞研究' },
-    { keywords: ['osint', '威胁情报', '威胁建模', 'att&ck', 'threat', 'threat hunting'], skill: 'domains/security/threat-intel.md', name: '威胁情报' },
-    { keywords: ['api设计', 'rest api', 'restful', 'rest接口', 'rest 接口', 'graphql', 'grpc', 'api endpoint', 'api versioning', 'api design'], skill: 'domains/architecture/api-design.md', name: 'API设计' },
-    { keywords: ['缓存架构', '缓存层', '一层缓存', '分布式缓存', 'redis', 'memcached', 'cache layer', 'distributed cache', 'cdn', 'cache invalidation'], skill: 'domains/architecture/caching.md', name: '缓存架构' },
+    { keywords: ['逆向工程', '逆向分析', 'pwn', 'fuzzing', '栈溢出', '堆溢出', 'reversing'], skill: 'domains/security/vuln-research.md', name: '漏洞研究' },
+    { keywords: ['osint', '威胁情报', '威胁建模', 'att&ck', 'threat model', 'threat intel', 'threat hunting'], skill: 'domains/security/threat-intel.md', name: '威胁情报' },
+    { keywords: ['api设计', 'rest api', 'rest endpoint', 'openapi', 'restful', 'rest接口', 'rest 接口', 'graphql', 'grpc', 'api endpoint', 'api versioning', 'api design'], skill: 'domains/architecture/api-design.md', name: 'API设计' },
+    { keywords: ['缓存架构', '缓存层', '一层缓存', '分布式缓存', 'redis', 'memcached', 'cache layer', 'distributed cache', 'cdn', 'cache invalidation', 'cache eviction', '缓存穿透', '缓存雪崩', '缓存击穿', '缓存策略', '缓存失效', '缓存方案'],
+      // Adding a cache is ambiguous for tf2 and rosbag. Require a query in the same clause.
+      context: /(?:查询[^。！？；，,;\n]{0,24}加(?:个)?缓存|加(?:个)?缓存[^。！？；，,;\n]{0,24}查询|\badd (?:a )?cache\b[^.!?;,\n]{0,40}\bquer(?:y|ies)\b)/, skill: 'domains/architecture/caching.md', name: '缓存架构' },
     { keywords: ['kubernetes', 'docker', 'dockerfile', 'k8s', '微服务', 'service mesh', 'cloud native'], skill: 'domains/architecture/cloud-native.md', name: '云原生' },
-    { keywords: ['kafka', 'rabbitmq', '消息中间件', '分布式消息队列', 'message broker', 'distributed message queue'], skill: 'domains/architecture/message-queue.md', name: '消息队列' },
-    { keywords: ['rag', 'semantic retrieval', '向量数据库', '向量检索', 'embedding', 'document chunking', 'vector database', 'vector search'], skill: 'domains/ai/rag-system.md', name: 'RAG系统' },
+    { keywords: ['kafka', 'rabbitmq', '消息中间件', '分布式消息队列', 'message broker', 'distributed message queue', '消息队列解耦', '消息队列选型', '事件驱动架构', 'event driven architecture', 'message queue to decouple'], skill: 'domains/architecture/message-queue.md', name: '消息队列' },
+    { keywords: ['rag', 'graphrag', 'semantic retrieval', 'retrieval augmented', '检索增强', '向量数据库', '向量检索', 'embedding', 'document chunking', 'vector database', 'vector search', 'vector store', 'vector db', 'chunking strategy', '文档切分'],
+      context: /\bretrieval pipeline for (?:docs?|documents?|pdfs?)\b/, skill: 'domains/ai/rag-system.md', name: 'RAG系统' },
     { keywords: ['ai agent', 'tool use', 'function calling', 'agent框架', 'agent orchestration'], skill: 'domains/ai/agent-dev.md', name: 'Agent开发' },
-    { keywords: ['prompt injection', 'jailbreak', 'guardrail', 'llm安全'], skill: 'domains/ai/llm-security.md', name: 'LLM安全' },
+    { keywords: ['prompt injection', 'jailbreak', 'jailbreaking', 'guardrail', 'llm安全'], skill: 'domains/ai/llm-security.md', name: 'LLM安全' },
   ];
 
   // Find matching skills. ASCII keywords match as whole words, plurals included,
   // so "rag" does not fire on "average"; keywords with CJK characters stay
-  // substrings, because CJK text has no word boundaries.
+  // substrings, because CJK text has no word boundaries. Unlike upstream, allow
+  // spaces, hyphens and underscores between phrase words (e.g. REST-API).
   const keywordMatches = kw => {
     if (!/^[\x00-\x7f]+$/.test(kw)) return msgLower.includes(kw);
     const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    return new RegExp(`(^|[^a-z0-9])${escaped}(e?s)?([^a-z0-9]|$)`).test(msgLower);
+    const phrase = escaped.replaceAll(' ', '[\\s_-]+');
+    return new RegExp(`(^|[^a-z0-9])${phrase}(e?s)?([^a-z0-9]|$)`).test(msgLower);
   };
-  const matched = ROUTES.filter(route => route.keywords.some(keywordMatches));
+  const matched = ROUTES.filter(route => route.keywords.some(keywordMatches) || route.context?.test(msgLower));
 
   // ── Model action triggers ──
   // Detect when user wants to use a specific model for a task

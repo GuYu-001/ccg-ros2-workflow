@@ -91,10 +91,25 @@ describe('knowledge context', () => {
 })
 
 async function domainKnowledge(dir: string) {
-  for (const [sub, file] of [['ai', 'rag-system.md'], ['ai', 'agent-dev.md'], ['architecture', 'message-queue.md'], ['architecture', 'caching.md'], ['architecture', 'api-design.md'], ['architecture', 'cloud-native.md']]) {
-    const root = join(dir, 'skills', 'ccg', 'domains', sub)
+  await writeDomainFixtures(dir, {
+    ai: ['rag-system', 'agent-dev', 'llm-security'],
+    architecture: ['message-queue', 'caching', 'api-design', 'cloud-native'],
+  })
+}
+
+async function allDomainKnowledge(dir: string) {
+  await domainKnowledge(dir)
+  // Simulate an optional domain installed locally; negative prompts must still stay silent.
+  await writeDomainFixtures(dir, {
+    security: ['red-team', 'blue-team', 'pentest', 'code-audit', 'vuln-research', 'threat-intel'],
+  })
+}
+
+async function writeDomainFixtures(dir: string, domains: Record<string, string[]>) {
+  for (const [domain, names] of Object.entries(domains)) {
+    const root = join(dir, 'skills', 'ccg', 'domains', domain)
     await mkdir(root, { recursive: true })
-    await writeFile(join(root, file), `# ${file}`)
+    for (const name of names) await writeFile(join(root, `${name}.md`), `# ${name}`)
   }
 }
 
@@ -106,16 +121,86 @@ describe('domain keyword matching', () => {
     'launch orchestration: source setup.bash and run the binary',
     '排查 QoS 消息队列深度与 ROS2 pub/sub sink',
     'sensor fault injection during an incident',
+    'source install/setup.bash before starting rviz',
+    'monitor the camera sink buffer',
+    'where is the installed ROS2 binary',
+    'sensor fault injection in Gazebo',
+    'record the timing of the robot incident',
+    '检查电池电压告警来源',
+    '给机器人维护文档补充应急停车说明',
+    'message versioning for our sensor interfaces',
+    'handle tf2 frame invalidation after a clock jump',
+    'use an event driven executor for callbacks',
+    'rclcpp message queue depth on the subscription',
+    'point cloud retrieval pipeline for scan matching',
+    'rosbag2 storage chunking at playback',
+    '检查横向控制误差',
+    '逆向运动学求解失败 KDL',
+    'detect unintended bypass of the robot safety controller',
+    'detect a collision threat from the lidar scan',
+    'camera c2 extrinsic calibration',
+    'robot with ropes and pulleys',
+    'tf 缓存不够',
+    'rosbag2 缓存大小',
+    '用 message_filters::Cache 做时间同步缓存',
+    '给 tf2 buffer 加个缓存',
+    '给相机回放加缓存',
+    'publisher 和 subscriber 的消息队列满了',
+    '用消息队列深度估算 DDS 堆积',
+    'tf2 cache time for lookupTransform',
+    'add a cache for tf2 transforms',
+    'DDS endpoint discovery after node restart',
+    'std::vector<sensor_msgs::msg::Image> for camera frames',
+    '计算速度向量在 base_link 下的投影',
+    'ROS2 launch orchestration for lifecycle nodes',
+    'trace ROS2 pub/sub latency with simulated time',
+    'read the rest of the joint state samples',
+    '查询 tf 树上的坐标系',
+    'read the docs for lifecycle publishers',
   ])('does not route robot middleware vocabulary: %s', async (prompt) => {
-    expect((await runHook({}, prompt, domainKnowledge)).output).toBe('')
+    expect((await runHook({}, prompt, allDomainKnowledge)).output).toBe('')
   })
 
   it.each([
     ['用 Redis 做缓存', '缓存架构'], ['设计 REST API', 'API设计'],
     ['给 RAG 建向量数据库', 'RAG系统'], ['choose a vector database', 'RAG系统'],
     ['设计分布式消息队列', '消息队列'], ['design agent orchestration', 'Agent开发'],
+    ['用消息队列解耦两个服务', '消息队列'],
+    ['消息队列选型', '消息队列'],
+    ['use a message queue to decouple two services', '消息队列'],
+    ['event driven architecture with pub/sub', '消息队列'],
+    ['讨论事件驱动架构', '消息队列'],
+    ['加缓存提高查询性能', '缓存架构'],
+    ['给查询接口加个缓存', '缓存架构'],
+    ['add a cache to speed up queries', '缓存架构'],
+    ['缓存穿透怎么解决', '缓存架构'],
+    ['缓存雪崩和缓存击穿', '缓存架构'],
+    ['怎么防止缓存雪崩', '缓存架构'],
+    ['怎么防止缓存击穿', '缓存架构'],
+    ['缓存失效策略', '缓存架构'],
+    ['缓存策略怎么设计', '缓存架构'],
+    ['设计缓存方案', '缓存架构'],
+    ['cache eviction policy LRU vs LFU', '缓存架构'],
+    ['retrieval augmented generation', 'RAG系统'],
+    ['build a retrieval pipeline for docs', 'RAG系统'],
+    ['文档切分和 chunking 策略', 'RAG系统'],
+    ['chunking strategy for PDFs', 'RAG系统'],
+    ['build a vector store', 'RAG系统'],
+    ['vector db selection', 'RAG系统'],
+    ['检索增强生成是怎么工作的', 'RAG系统'],
+    ['GraphRAG 怎么搭', 'RAG系统'],
+    ['vector-database choice', 'RAG系统'],
+    ['design a REST endpoint for robot status', 'API设计'],
+    ['生成 OpenAPI 文档', 'API设计'],
+    ['REST-API 怎么设计', 'API设计'],
+    ['explain REST_API naming', 'API设计'],
+    ['design a REST   API', 'API设计'],
+    ['ai-agent framework', 'Agent开发'],
+    ['prompt-injection defense', 'LLM安全'],
+    ['detect jailbreaking attempts against the model', 'LLM安全'],
   ])('still routes domain-specific requests: %s', async (prompt, skill) => {
-    expect((await runHook({}, prompt, domainKnowledge)).context).toContain(skill)
+    const { context } = await runHook({}, prompt, allDomainKnowledge)
+    expect(context.match(/^## .+ \(auto-injected\)$/gm)).toEqual([`## ${skill} (auto-injected)`])
   })
 
   it('ignores English keywords that only appear inside longer words', async () => {
@@ -143,8 +228,7 @@ describe('domain keyword matching', () => {
   })
 
   it('keeps substring matching for keywords containing CJK characters', async () => {
-    expect((await runHook({}, '帮我加一层缓存', domainKnowledge)).context).toContain('缓存架构')
-    expect((await runHook({}, '这个api设计要怎么做', domainKnowledge)).context).toContain('API设计')
+    expect((await runHook({}, '给 ROS2微服务v2 写一份接口约定', domainKnowledge)).context).toContain('云原生')
   })
 })
 
