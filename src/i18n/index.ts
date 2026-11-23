@@ -5,6 +5,7 @@ import i18next from 'i18next'
 export const i18n = i18next
 
 const zhCN = {
+  codexHookReview: '注意：codex-cli ≥ 0.129 会跳过未信任的 hook。请在 Codex 中运行 /hooks，审阅并信任 ccg-workflow.py。',
   common: {
     yes: '是',
     no: '否',
@@ -510,6 +511,7 @@ const zhCN = {
 }
 
 const en: typeof zhCN = {
+  codexHookReview: 'Action required: codex-cli ≥ 0.129 skips untrusted hooks. Run /hooks in Codex to review and trust ccg-workflow.py.',
   common: {
     yes: 'Yes',
     no: 'No',
@@ -1012,6 +1014,10 @@ const en: typeof zhCN = {
       afterDone: 'After completion, the ccg command will be fully removed',
     },
   },
+}
+
+export function codexHookReviewNotice(): string {
+  return i18n.isInitialized ? i18n.t('codexHookReview') : en.codexHookReview
 }
 
 export async function initI18n(lang: SupportedLang = 'zh-CN'): Promise<void> {

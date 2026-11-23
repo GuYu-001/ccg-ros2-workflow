@@ -5,6 +5,7 @@ import { join } from 'pathe'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { stringify } from 'smol-toml'
 import { doctor } from '../doctor'
+import { installedCcgHookTrustEntries } from '../../utils/codex-hook-trust'
 import { collectDoctorReport } from '../../utils/doctor-checks'
 import { installSkills } from '../../utils/skill-manager'
 
@@ -36,7 +37,7 @@ async function codexInstall() {
   for (const file of ['agents/ccg-implement.toml', 'agents/ccg-review.toml', 'agents/ccg-research.toml', 'hooks/ccg-workflow.py']) {
     await fs.outputFile(join(home, '.codex', file), 'managed')
   }
-  await fs.outputJSON(join(home, '.codex', 'hooks.json'), { hooks: { UserPromptSubmit: [{ hooks: [{ type: 'command', command: `python3 "${join(home, '.codex', 'hooks', 'ccg-workflow.py')}"` }] }] } })
+  await fs.outputJSON(join(home, '.codex', 'hooks.json'), { hooks: { UserPromptSubmit: [{ hooks: [{ type: 'command', command: `python3 ${join(home, '.codex', 'hooks', 'ccg-workflow.py')}`, timeout: 10 }] }] } })
   await fs.outputFile(join(home, '.claude', 'bin', 'codeagent-wrapper'), 'binary')
 }
 beforeEach(async () => {
@@ -86,6 +87,12 @@ describe('CCG doctor inventory', () => {
     expect(report.failureCount).toBe(0)
     expect(report.checks.some(c => c.id === 'claude.hooks')).toBe(false)
     expect(report.checks.find(c => c.id === 'codex.hook-registration')?.status).toBe('pass')
+    expect(report.checks.find(c => c.id === 'codex.hook-trust')).toMatchObject({ status: 'warn', remediation: expect.stringContaining('/hooks') })
+    const dir = join(home, '.codex')
+    const [entry] = await installedCcgHookTrustEntries(await fs.readJson(join(dir, 'hooks.json')), dir)
+    await fs.outputFile(join(dir, 'config.toml'), stringify({ hooks: { state: { [entry.key]: { trusted_hash: entry.hash } } } }))
+    const trusted = await collectDoctorReport(deps())
+    expect(trusted.checks.find(c => c.id === 'codex.hook-trust')?.status).toBe('pass')
   })
 
   it('checks standalone Codex host without treating absent Claude config or delegation tools as damaged', async () => {
@@ -178,8 +185,44 @@ describe('CCG doctor inventory', () => {
     await config('antigravity', 'codex', ['gemini', 'claude', 'kimi', 'grok', 'opencode'])
     await claudeInstall()
     await collectDoctorReport(deps({ platform: 'win32' }))
-    expect(exec.mock.calls.map(call => call[0])).toEqual(['agy.exe', 'claude.exe', 'codex.cmd', 'gemini.cmd', 'grok.exe', 'kimi.exe', 'opencode.exe'])
-    expect(exec.mock.calls.every(call => JSON.stringify(call[1]) === '["--version"]')).toBe(true)
+    expect(exec.mock.calls.filter(call => call[1][0] === '--version').map(call => call[0])).toEqual(['agy.exe', 'claude.exe', 'codex.cmd', 'gemini.cmd', 'grok.exe', 'kimi.exe', 'opencode.exe'])
+    expect(exec.mock.calls.filter(call => call[1][0] !== '--version')).toEqual([['agy.exe', ['--help']]])
+  })
+
+  it.each([
+    ['  --output-format <format>', 'pass'],
+    ['  --output-formats', 'warn'],
+    [null, 'warn'],
+  ])('checks Antigravity help (%s) without turning capability warnings into failures', async (help, status) => {
+    await config('antigravity')
+    await claudeInstall()
+    await fs.outputFile(join(home, '.claude', 'bin', 'codeagent-wrapper'), 'fixture')
+    exec.mockImplementation((_file: string, args: string[]) => args[0] === '--help' ? help : '1.0.0')
+    const report = await collectDoctorReport(deps())
+    expect(report.failureCount).toBe(0)
+    expect(report.checks.find(c => c.id === 'cli.antigravity.output-format')).toMatchObject({
+      status, remediation: status === 'warn' ? expect.stringContaining('agy update') : null,
+    })
+  })
+
+  it('does not probe help for an unavailable or unselected Antigravity CLI', async () => {
+    await claudeInstall()
+    exec.mockReturnValue(null)
+    for (const frontend of ['antigravity', 'gemini']) {
+      await config(frontend)
+      const report = await collectDoctorReport(deps())
+      expect(report.checks.some(c => c.id === 'cli.antigravity.output-format')).toBe(false)
+    }
+    expect(exec.mock.calls.some(([, args]) => args[0] === '--help')).toBe(false)
+  })
+
+  it('probes the working Windows shim when agy.exe is absent', async () => {
+    await config('antigravity')
+    await claudeInstall()
+    exec.mockImplementation((file: string, args: string[]) => file === 'agy.exe' ? null : args[0] === '--help' ? '--output-format=json' : '1.0.0')
+    const report = await collectDoctorReport(deps({ platform: 'win32' }))
+    expect(exec).toHaveBeenCalledWith('agy.cmd', ['--help'])
+    expect(report.checks.find(c => c.id === 'cli.antigravity.output-format')?.status).toBe('pass')
   })
 
   it('marks a corrupt native skill manifest as failure and legacy skills as warnings', async () => {

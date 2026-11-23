@@ -1,9 +1,11 @@
 import type { InstallResult } from '../types'
+import { codexHookReviewNotice } from '../i18n'
 import { homedir } from 'node:os'
 import ansis from 'ansis'
 import fs from 'fs-extra'
 import { basename, join } from 'pathe'
 import { getLegacyCommandIds, getWorkflowById } from './installer-data'
+import { installedHookCommand, mergeCcgHooks, readCcgHookTrust, readHooksJson, uninstallCcgCodexHooks, writeHooksJson } from './codex-hook-trust'
 import { PACKAGE_ROOT, injectConfigVariables, injectHookConfig, replaceHomePathsInTemplate } from './installer-template'
 import { readCcgConfig } from './config'
 import { installSkillCommands } from './skill-registry'
@@ -594,11 +596,17 @@ export async function installCodexMode(): Promise<{ success: boolean, message: s
     // Codex does not reliably expand `~` when spawning the hook command, so a
     // relative/tilde path made it look for `.codex/hooks/` in the project dir.
     const hooksJsonSrc = join(codexTemplateDir, 'hooks.json')
+    let trustedHooks = false
     if (await fs.pathExists(hooksJsonSrc)) {
-      let content = await fs.readFile(hooksJsonSrc, 'utf-8')
-      const absHome = homedir().replace(/\\/g, '/')
-      content = content.replace(/~\//g, `${absHome}/`)
-      await fs.writeFile(join(codexHome, 'hooks.json'), content, 'utf-8')
+      const template = await fs.readJson(hooksJsonSrc)
+      const handler = template.hooks.UserPromptSubmit[0].hooks[0]
+      if (handler.command !== 'python3 ~/.codex/hooks/ccg-workflow.py') throw new Error('Unexpected Codex hook template')
+      handler.command = installedHookCommand(codexHome)
+      // Merge, never overwrite: ~/.codex/hooks.json may hold the user's own hooks.
+      const hooksPath = join(codexHome, 'hooks.json')
+      const merged = mergeCcgHooks(await readHooksJson(hooksPath), template, codexHome)
+      await writeHooksJson(hooksPath, merged)
+      trustedHooks = await readCcgHookTrust(codexHome, merged)
     }
 
     // Write version marker so external tools can check which CCG version installed Codex mode
@@ -606,7 +614,7 @@ export async function installCodexMode(): Promise<{ success: boolean, message: s
 
     return {
       success: true,
-      message: `Codex mode installed:\n  ~/.codex/AGENTS.md\n  ~/.codex/config.toml\n  ~/.codex/hooks.json\n  ~/.codex/hooks/ccg-workflow.py\n  ~/.codex/agents/ccg-implement.toml\n  ~/.codex/agents/ccg-review.toml\n  ~/.codex/agents/ccg-research.toml\n  ~/.codex/.ccg-version (${packageVersion})`,
+      message: `Codex mode installed:\n  ~/.codex/AGENTS.md\n  ~/.codex/config.toml\n  ~/.codex/hooks.json\n  ~/.codex/hooks/ccg-workflow.py\n  ~/.codex/agents/ccg-implement.toml\n  ~/.codex/agents/ccg-review.toml\n  ~/.codex/agents/ccg-research.toml\n  ~/.codex/.ccg-version (${packageVersion})${trustedHooks ? '' : `\n\n${codexHookReviewNotice()}`}`,
     }
   }
   catch (error) {
@@ -628,10 +636,10 @@ export async function uninstallCodexMode(): Promise<{ success: boolean, removed:
     join(codexHome, 'agents', 'ccg-review.toml'),
     join(codexHome, 'agents', 'ccg-research.toml'),
     join(codexHome, 'hooks', 'ccg-workflow.py'),
-    join(codexHome, 'hooks.json'),
     join(codexHome, '.ccg-version'),
   ]
 
+  // hooks.json is shared with the user's own hooks — handled separately below.
   // AGENTS.md — only remove if it contains CCG marker
   const agentsMd = join(codexHome, 'AGENTS.md')
 
@@ -642,6 +650,8 @@ export async function uninstallCodexMode(): Promise<{ success: boolean, removed:
         removed.push(file.replace(homedir(), '~'))
       }
     }
+
+    removed.push(...await uninstallCcgCodexHooks(codexHome))
 
     if (await fs.pathExists(agentsMd)) {
       const content = await fs.readFile(agentsMd, 'utf-8')

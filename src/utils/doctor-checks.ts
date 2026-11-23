@@ -1,9 +1,11 @@
 import fs from 'fs-extra'
-import { execFileSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import { homedir } from 'node:os'
 import { join } from 'pathe'
 import { parse } from 'smol-toml'
 import { version } from '../../package.json'
+import { codexHookReviewNotice } from '../i18n'
+import { ccgHooksTrusted, ccgHookTrustEntries, installedCcgHookTrustEntries } from './codex-hook-trust'
 import type { SkillManagerOptions } from './skill-manager'
 import { listSkills, SKILL_MANIFEST_FILE } from './skill-manager'
 
@@ -73,11 +75,13 @@ function check(id: string, label: string, status: DoctorStatus, detail: string, 
 function executeVersion(file: string, args: string[]): string | null {
   try {
     // Only fixed npm shim names use cmd.exe. Paths and configuration values
-    // never become shell commands; native executables use execFile directly.
-    if (process.platform === 'win32' && /^[\w-]+\.cmd$/.test(file)) {
-      return execFileSync('cmd.exe', ['/d', '/s', '/c', `${file} --version`], { stdio: 'pipe', timeout: 10000 }).toString().trim()
-    }
-    return execFileSync(file, args, { stdio: 'pipe', timeout: 10000 }).toString().trim()
+    // never become shell commands; native executables run directly.
+    const flag = args[0]
+    if (args.length !== 1 || (flag !== '--version' && flag !== '--help')) return null
+    const shim = process.platform === 'win32' && /^[\w-]+\.cmd$/.test(file)
+    const result = spawnSync(shim ? 'cmd.exe' : file, shim ? ['/d', '/s', '/c', `${file} ${flag}`] : args, { encoding: 'utf8', timeout: 10000, windowsHide: true })
+    if (result.error || result.status !== 0) return null
+    return [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
   }
   catch { return null }
 }
@@ -177,21 +181,28 @@ async function claudeChecks(installDir: string, commandFiles: string[]): Promise
 async function codexChecks(codexDir: string, managedAgents: boolean): Promise<DoctorCheck[]> {
   const required = ['agents/ccg-implement.toml', 'agents/ccg-review.toml', 'agents/ccg-research.toml', 'hooks/ccg-workflow.py']
   const present = await Promise.all(required.map(path => fs.pathExists(join(codexDir, path))))
-  let hookRegistered = false
+  let settings: RecordValue = {}
   try {
-    const settings = record(JSON.parse(await readText(join(codexDir, 'hooks.json')) || '{}'))
-    hookRegistered = registeredCommands(settings, 'UserPromptSubmit').some(cmd => references(cmd, join(codexDir, 'hooks', 'ccg-workflow.py')))
+    settings = record(JSON.parse(await readText(join(codexDir, 'hooks.json')) || '{}'))
   }
   catch { /* Do not expose user hook commands. */ }
   let validConfig = false
+  let parsedConfig: RecordValue = {}
   const configText = await readText(join(codexDir, 'config.toml'))
-  try { validConfig = configText !== null && !!parse(configText) }
+  try {
+    parsedConfig = configText === null ? {} : record(parse(configText))
+    validConfig = configText !== null
+  }
   catch { /* Configuration contents and errors may contain provider secrets. */ }
+  const trustEntries = await installedCcgHookTrustEntries(settings, codexDir)
+  const hookRegistered = ccgHookTrustEntries(settings, codexDir, true).length > 0
+  const hookTrusted = ccgHooksTrusted(trustEntries, parsedConfig)
   const marker = await readText(join(codexDir, '.ccg-version'))
   return [
     check('codex.agents', 'Codex mode', managedAgents ? 'pass' : 'fail', managedAgents ? 'CCG managed AGENTS.md installed' : 'CCG managed AGENTS.md missing', 'Run ccg-ros2-workflow codex-mode install.'),
     check('codex.artifacts', 'Codex files', present.every(Boolean) ? 'pass' : 'fail', `${present.filter(Boolean).length}/${required.length} managed agent and hook files`, 'Run ccg-ros2-workflow codex-mode install.'),
     check('codex.hook-registration', 'Codex hooks', hookRegistered ? 'pass' : 'fail', hookRegistered ? 'CCG workflow hook registered' : 'CCG workflow hook not registered', 'Run ccg-ros2-workflow codex-mode install.'),
+    ...(hookRegistered ? [check('codex.hook-trust', 'Codex hook trust', hookTrusted ? 'pass' : 'warn', hookTrusted ? 'CCG workflow hook trusted' : 'CCG workflow hook not trusted; codex-cli >= 0.129 skips it', codexHookReviewNotice())] : []),
     check('codex.config', 'Codex config', validConfig ? 'pass' : 'fail', validConfig ? 'Readable Codex TOML' : 'Missing or invalid Codex TOML', 'Run ccg-ros2-workflow codex-mode install or repair the existing Codex config.toml.'),
     check('codex.version', 'Codex marker', /^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(marker?.trim() || '') ? 'pass' : 'fail', marker ? 'CCG version marker present' : 'CCG version marker missing', 'Run ccg-ros2-workflow codex-mode install.'),
   ]
@@ -219,15 +230,23 @@ async function backendChecks(names: string[], pureClaude: boolean, home: string,
     const spec = BACKENDS[name]
     const candidates = platform === 'win32' ? spec.windows : spec.commands
     let output: string | null = null
+    let selected: string | undefined
     for (const command of candidates) {
       output = exec(command, ['--version'])
-      if (output) break
+      if (output) { selected = command; break }
     }
     if (!output && name === 'grok') {
       const fallback = join(home, '.grok', 'bin', platform === 'win32' ? 'grok.exe' : 'grok')
       if (await fs.pathExists(fallback)) output = exec(fallback, ['--version'])
     }
     checks.push(check(`cli.${name}`, spec.label, output ? 'pass' : 'fail', output ? versionDetail(output) : 'Not found or --version failed', `Install ${spec.label} and ensure ${spec.commands[0]} is on PATH, then run ccg-ros2-workflow doctor.`))
+    if (name === 'antigravity' && selected) {
+      const help = exec(selected, ['--help'])
+      const available = /(?:^|[\s,])--output-format(?=[\s,=<\[]|$)/m.test(help || '')
+      checks.push(check('cli.antigravity.output-format', 'Antigravity stream output', available ? 'pass' : 'warn',
+        available ? 'agy supports --output-format' : 'Could not confirm --output-format support; the wrapper needs stream-json.',
+        'Run agy update, then confirm agy --help lists --output-format.'))
+    }
   }
   return checks
 }
