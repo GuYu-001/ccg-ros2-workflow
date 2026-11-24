@@ -1,31 +1,19 @@
 # Frontend Spec — 上层应用编码规范
 
-> 本文件定义上层应用代码的编码规范。子 Agent 在写代码前会自动读取此文件。
-> 按项目实际情况修改内容。
+> 适用于 Python `rclpy` 节点及其启动、配置与可视化。按项目填写实际包名、节点名和坐标系。
 
-## 组件规范
+## 节点与 launch
 
-- 组件命名: PascalCase
-- 文件结构: 一个组件一个文件
-- Props: TypeScript 接口定义，必须有类型
-- 状态: 优先 local state，跨组件共享用 store
+- 核对 Python 节点入口是否随包安装；launch 通过包的共享目录查找配置，不写死工作区路径。
+- 检查启动参数、命名空间和重映射，确认组合启动后各节点仍能找到对应接口。
 
-## 样式规范
+## 参数与可视化
 
-- 方案: CSS Modules / Tailwind / styled-components（按项目选择）
-- 命名: BEM 或 utility-first
-- 响应式: mobile-first
-- 主题: 使用 CSS 变量 / design tokens
+- 对照节点声明检查 YAML 的节点名、参数名和类型；检查 launch 实际加载的是哪个文件。
+- RViz 没有数据时，先核对显示主题、QoS 和 Fixed Frame，再检查 tf2 变换与时间戳。
 
-## 可访问性
+## 仿真与应用配置
 
-- [ ] 语义化 HTML（button 不用 div）
-- [ ] ARIA 标签（交互元素必须有 label）
-- [ ] 键盘导航（Tab 序和 Focus 管理）
-- [ ] 颜色对比度 > 4.5:1
-
-## 性能
-
-- 图片: 使用 lazy loading + 合适格式（WebP）
-- 包大小: 关注 bundle analyzer，避免大依赖
-- 渲染: 避免不必要的 re-render
+- [ ] 仿真节点使用一致的 `use_sim_time`，确认时钟来源。
+- [ ] Nav2 配置核对地图、里程计与机器人基座坐标系；MoveIt 配置核对机器人模型、规划组与控制器。
+- [ ] 用 Gazebo 或项目已有的仿真启动文件验证；需要真机的部分单独标记，不把仿真结果当成真机通过。

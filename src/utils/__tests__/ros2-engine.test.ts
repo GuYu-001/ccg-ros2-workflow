@@ -11,6 +11,14 @@ const directories: string[] = []
 afterEach(async () => { await Promise.all(directories.splice(0).map(p => fs.remove(p))) })
 
 describe('ROS2 go engine templates', () => {
+  it.each([
+    ['backend', ['rclcpp', 'ros2_control', 'watchdog']],
+    ['frontend', ['rclpy', 'RViz', 'Nav2', 'MoveIt']],
+    ['guides', ['QoS', 'colcon test', 'tf2']],
+  ] as const)('ships a ROS2 project spec for %s', (domain, terms) => {
+    const spec = read(`spec/${domain}/index.md`)
+    for (const term of terms) expect(spec).toContain(term)
+  })
   it('maps six ROS2 domains to available native and legacy skills after reading workspace context', () => {
     const go = read('commands/go.md')
     for (const name of ['perception', 'control', 'navigation', 'manipulation', 'hardware', 'upper-app']) {
