@@ -85,25 +85,49 @@ export async function getLatestVersion(packageName = 'ccg-ros2-workflow'): Promi
   }
 }
 
+function parseVersion(version: string) {
+  if (typeof version !== 'string') return null
+  const match = /^v?(\d+(?:\.\d+){0,2})(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.exec(version)
+  if (!match) return null
+  const [, main, pre, build] = match
+  const core = main.split('.')
+  const prerelease = pre?.split('.') ?? []
+  if (core.length < 3 && (pre || build)) return null
+  if ([...core, ...prerelease].some(id => /^0\d+$/.test(id))) return null
+  while (core.length < 3) core.push('0')
+  return { core, prerelease }
+}
+
+function compareIdentifiers(a: string, b: string): number {
+  if (a === b) return 0
+  const numericA = /^\d+$/.test(a)
+  const numericB = /^\d+$/.test(b)
+  if (numericA !== numericB) return numericA ? -1 : 1
+  // No leading zeroes: digit count then ASCII order is exact even above MAX_SAFE_INTEGER.
+  if (numericA && a.length !== b.length) return a.length > b.length ? 1 : -1
+  return a > b ? 1 : -1
+}
+
 /**
- * Compare two semantic versions
- * @returns 1 if v1 > v2, -1 if v1 < v2, 0 if equal
+ * Compare SemVer precedence, ignoring build metadata. Accept a leading v and
+ * legacy bare major/minor shorthands. If either input is invalid, return 0
+ * rather than suggesting an upgrade.
  */
 export function compareVersions(v1: string, v2: string): number {
-  const parts1 = v1.split('.').map(Number)
-  const parts2 = v2.split('.').map(Number)
-
-  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
-    const num1 = parts1[i] || 0
-    const num2 = parts2[i] || 0
-
-    if (num1 > num2)
-      return 1
-    if (num1 < num2)
-      return -1
+  const a = parseVersion(v1)
+  const b = parseVersion(v2)
+  if (!a || !b) return 0
+  for (let i = 0; i < 3; i++) {
+    const order = compareIdentifiers(a.core[i], b.core[i])
+    if (order) return order
   }
-
-  return 0
+  if (!a.prerelease.length && b.prerelease.length) return 1
+  if (a.prerelease.length && !b.prerelease.length) return -1
+  for (let i = 0; i < Math.min(a.prerelease.length, b.prerelease.length); i++) {
+    const order = compareIdentifiers(a.prerelease[i], b.prerelease[i])
+    if (order) return order
+  }
+  return Math.sign(a.prerelease.length - b.prerelease.length)
 }
 
 /**

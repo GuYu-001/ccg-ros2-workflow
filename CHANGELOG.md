@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.7.6-ros2.1] - 2026-11-24
 
 - Run `ccg-ros2-workflow update` directly. The new installer prints progress and warnings as they happen; if it fails, the updater restores backed-up files and exits with an error.
+- Fixed updates incorrectly reporting “already up to date” when the patch number changes between ROS2 releases. After this release is published, users on `3.7.2-ros2.0` can run `npx ccg-ros2-workflow@latest update` to detect the newer version.
 - `init --frontend/-F` and `--backend/-B` accept comma-separated model routes. Unattended installs retain the saved UI language unless `--lang` overrides it. Removed the unused `--mode` and `--workflows` options.
 - Confirming the interactive wizard refreshes generated command, agent and engine templates with the selected settings. Back up manual edits to those templates first. The context7 checkbox now controls installation; unattended template overwrite still requires `--force`.
 - Wrapper version checks no longer echo executable diagnostics. Installation cleans up old interrupted downloads and recognizes more agy help layouts. Wrapper 5.16.1 and the existing preset are unchanged.
