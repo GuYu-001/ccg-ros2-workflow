@@ -125,12 +125,13 @@ jobs:
           echo "--- npm config (token lines stripped) ---"
           npm config list 2>&1 | grep -viE 'token|password|auth' || true
 
-      - name: Pack (dry run)
+      # Fork versions (X.Y.Z-ros2.N) are prereleases: npm 11 requires an explicit tag, and the CLI resolves updates via latest.
+      - name: Publish (dry run)
         if: inputs.dry_run
-        run: npm pack --dry-run
+        run: npm publish --dry-run --tag latest --provenance --access public --loglevel verbose
 
       # Verbose is required to see the OIDC exchange line:
-      #   npm http fetch POST <201|404> .../oidc/token/exchange/package/ccg-workflow
+      #   npm http fetch POST <201|404> .../oidc/token/exchange/package/ccg-ros2-workflow
       # A 404 there means npm has no trusted publisher for the package (check
       # the package's Access page, not the account settings); 201 means the
       # exchange succeeded. Provenance signing is Sigstore — it can succeed
@@ -148,7 +149,7 @@ jobs:
         if: ${{ !inputs.dry_run }}
         run: |
           set +e
-          out=$(npm publish --provenance --access public --loglevel verbose 2>&1)
+          out=$(npm publish --tag latest --provenance --access public --loglevel verbose 2>&1)
           code=$?
           printf '%s\n' "$out"
           if [ "$code" -eq 0 ]; then

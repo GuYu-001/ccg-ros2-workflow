@@ -10,6 +10,19 @@ const root = join(import.meta.dirname, '../../..')
 const workflow = parse(await fs.readFile(join(root, '.github/workflows/publish.yml'), 'utf8'))
 const gate = workflow.jobs['verify-preset']
 
+it.each([
+  ['Publish', false],
+  ['Publish (dry run)', true],
+] as const)('%s validates the prerelease with the public latest tag', (name, dryRun) => {
+  const step = workflow.jobs.publish.steps.find((step: { name?: string }) => step.name === name)
+  expect(step?.if).toBe(dryRun ? 'inputs.dry_run' : '${{ !inputs.dry_run }}')
+  const command = step.run.match(/^(?:out=\$\()?npm publish ([^&\n)]+)/m)?.[1]?.trim()
+  expect(command).toMatch(/(?:^| )--tag latest(?: |$)/)
+  expect(command).toMatch(/(?:^| )--access public(?: |$)/)
+  expect(command?.split(/\s+/)).toContain('--provenance')
+  expect(command?.split(/\s+/).includes('--dry-run')).toBe(dryRun)
+})
+
 it('requires an unprivileged preset check for both release tags and dry runs', () => {
   expect(workflow.jobs.publish.needs).toBe('verify-preset')
   expect(workflow.jobs.publish.if).toBeUndefined()

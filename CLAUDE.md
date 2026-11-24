@@ -761,14 +761,16 @@ git push origin vx.y.z
 ```
 
 CI 先核对 `preset` 的 Linux AMD64 wrapper 与本包期望版本，再跑 typecheck → test → build → 校验 tag 与 `package.json` 一致 → 校验该版本未发布过 →
-`npm publish --provenance`。查看结果：
+`npm publish --tag latest --provenance --access public`。本 fork 的版本号 `X.Y.Z-ros2.N` 在 semver 中属于预发布版本。npm 11 要求显式指定 dist-tag，且 CLI 通过 `latest` 查找更新，因此正式发布和 dry run 都必须带 `--tag latest`。查看结果：
 
 ```bash
 gh run list --workflow=publish.yml --limit 1
 npm view ccg-ros2-workflow version     # 确认线上版本
 ```
 
-需要重跑而不想动 tag 时用 `gh workflow run publish.yml --ref main`。Dry run 也会执行版本门禁：若升级了 wrapper，必须等 main 上的 `preset` 重建后才能通过。
+若 Git tag 已存在、版本尚未发布，先确认远端 main 的 `package.json` 仍是目标版本且已包含修复，再用 `gh workflow run publish.yml --ref main` 重跑，无需移动 tag。此次手动触发使用分支 ref，会跳过仅适用于 tag 的版本一致性校验，但仍会检查目标版本是否已发布。
+
+Dry run 使用 `npm publish --dry-run` 校验发布参数，不上传包。它也会执行版本门禁：若升级了 wrapper，必须等 main 上的 `preset` 重建后才能通过。
 
 #### 发布失败排查（OIDC 的坑很隐蔽，报错全是误导）
 
