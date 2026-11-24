@@ -12,8 +12,12 @@ const gate = workflow.jobs['verify-preset']
 
 it('requires an unprivileged preset check for both release tags and dry runs', () => {
   expect(workflow.jobs.publish.needs).toBe('verify-preset')
+  expect(workflow.jobs.publish.if).toBeUndefined()
   expect(gate.permissions).toEqual({ contents: 'read' })
   expect(gate.if).toBeUndefined()
+  expect(gate['continue-on-error']).toBeUndefined()
+  for (const step of gate.steps)
+    expect(step['continue-on-error']).toBeUndefined()
   const step = gate.steps.find((step: { run?: string }) => step.run === 'bash .github/scripts/check-preset.sh')
   expect(step).toBeDefined()
   expect(step.if).toBeUndefined()

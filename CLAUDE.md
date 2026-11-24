@@ -748,8 +748,12 @@ git switch main
 git pull --ff-only origin main
 
 # 如有 wrapper 变更，确认对应 main 提交的 build-binaries 已成功，而非上一次的结果
-gh run list --workflow=build-binaries.yml --branch main --limit 5
-gh run watch --exit-status  # 选择上一步确认的 run，必须成功后再继续
+sha=$(git rev-parse origin/main)
+gh run list --workflow=build-binaries.yml --branch main --commit "$sha" --json databaseId,status,conclusion,headSha
+# 核对 headSha。若仍在运行，用返回的 databaseId 执行 gh run watch <databaseId> --exit-status；
+# 若已完成，只在 conclusion 为 success 时继续。失败时先修复构建。
+# 若列表为空且这次合并未触及 codeagent-wrapper/**，preset 不会重建，以发布门禁的结果为准；
+# 若触及该目录却没有 run，应先排查，不要打 tag。
 
 # 推 tag 触发发布（tag 名必须是 v 前缀 + package.json 里的版本号）
 git tag -a vx.y.z -m "vx.y.z — 一句话说明"
@@ -764,7 +768,7 @@ gh run list --workflow=publish.yml --limit 1
 npm view ccg-ros2-workflow version     # 确认线上版本
 ```
 
-需要重跑而不想动 tag 时用 `gh workflow run publish.yml --ref main`。
+需要重跑而不想动 tag 时用 `gh workflow run publish.yml --ref main`。Dry run 也会执行版本门禁：若升级了 wrapper，必须等 main 上的 `preset` 重建后才能通过。
 
 #### 发布失败排查（OIDC 的坑很隐蔽，报错全是误导）
 
