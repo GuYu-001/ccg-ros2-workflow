@@ -7,8 +7,6 @@ export interface CliOptions {
   skipMcp?: boolean
   frontend?: string
   backend?: string
-  mode?: CollaborationMode
-  workflows?: string
   installDir?: string
 }
 

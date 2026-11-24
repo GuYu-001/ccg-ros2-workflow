@@ -2,7 +2,8 @@
 export type SupportedLang = 'zh-CN' | 'en'
 
 // 模型类型
-export type ModelType = 'codex' | 'gemini' | 'claude' | 'antigravity' | 'grok' | 'kimi' | 'opencode'
+export const MODEL_TYPES = ['codex', 'gemini', 'claude', 'antigravity', 'grok', 'kimi', 'opencode'] as const
+export type ModelType = typeof MODEL_TYPES[number]
 
 // 协作模式
 export type CollaborationMode = 'parallel' | 'smart' | 'sequential'
@@ -83,8 +84,6 @@ export interface InitOptions {
   // 非交互模式参数
   frontend?: string
   backend?: string
-  mode?: CollaborationMode
-  workflows?: string
   installDir?: string
   skills?: string // all / none / 逗号分隔的原生 Skill 名称
 }

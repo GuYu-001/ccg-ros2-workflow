@@ -118,7 +118,7 @@ description: '按规范执行 + 多模型协作 + 归档'
 9. **Context Checkpoint**
    - After completing a phase, report context usage.
    - If below 80K: Ask user "Continue to next phase?"
-   - If approaching 80K: Suggest "Run `/clear` and resume with `/ccg:spec:impl`"
+   - If approaching 80K: Suggest "Run `/clear` and resume with `/ccg:spec-impl`"
 
 10. **Archive on Completion**
     - When ALL tasks in `tasks.md` are marked `[x]`:

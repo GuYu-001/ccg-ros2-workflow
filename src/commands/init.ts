@@ -1,4 +1,5 @@
 import type { CollaborationMode, InitOptions, ModelRouting, ModelType, SupportedLang } from '../types'
+import { MODEL_TYPES } from '../types'
 import ansis from 'ansis'
 import fs from 'fs-extra'
 import inquirer from 'inquirer'
@@ -187,7 +188,18 @@ async function installGrokSearchMcp(keys: {
   )
 }
 
+function parseModelList(value: string | undefined, flag: string): ModelType[] | undefined {
+  if (value === undefined) return undefined
+  const models = typeof value === 'string' ? value.split(',').map(name => name.trim()) : []
+  if (!models.length || !models.every((name): name is ModelType => MODEL_TYPES.some(model => model === name)))
+    throw new Error(`Invalid ${flag}: expected a comma-separated list of ${MODEL_TYPES.join(', ')}.`)
+  return [...new Set(models)]
+}
+
 export async function init(options: InitOptions = {}): Promise<void> {
+  const requestedFrontend = parseModelList(options.frontend, '--frontend')
+  const requestedBackend = parseModelList(options.backend, '--backend')
+  const existingConfig = await readCcgConfig()
   console.log()
   console.log(ansis.cyan.bold(`  CCG - Claude + Codex + Gemini`))
   console.log(ansis.gray(`  Multi-Model Collaboration Workflow`))
@@ -196,38 +208,22 @@ export async function init(options: InitOptions = {}): Promise<void> {
   // ═══════════════════════════════════════════════════════
   // Step 0: Language selection (FIRST interactive step)
   // ═══════════════════════════════════════════════════════
-  let language: SupportedLang = 'zh-CN'
+  let language: SupportedLang = options.lang || existingConfig?.general?.language || 'zh-CN'
 
-  if (!options.skipPrompt) {
-    // Check if user already has a language preference
-    const existingConfig = await readCcgConfig()
-    const savedLang = existingConfig?.general?.language
-
-    if (savedLang) {
-      // Use saved language
-      language = savedLang
-      await initI18n(language)
-    }
-    else {
-      // First time user: ask for language
-      const { selectedLang } = await inquirer.prompt([{
-        type: 'list',
-        name: 'selectedLang',
-        message: '选择语言 / Select language',
-        choices: [
-          { name: `简体中文`, value: 'zh-CN' },
-          { name: `English`, value: 'en' },
-        ],
-        default: 'zh-CN',
-      }])
-      language = selectedLang
-      await initI18n(language)
-    }
+  if (!options.skipPrompt && !options.lang && !existingConfig?.general?.language) {
+    const { selectedLang } = await inquirer.prompt([{
+      type: 'list',
+      name: 'selectedLang',
+      message: '选择语言 / Select language',
+      choices: [
+        { name: `简体中文`, value: 'zh-CN' },
+        { name: `English`, value: 'en' },
+      ],
+      default: 'zh-CN',
+    }])
+    language = selectedLang
   }
-  else if (options.lang) {
-    language = options.lang
-    await initI18n(language)
-  }
+  await initI18n(language)
 
   // Model routing configuration (user-selectable since v2.1.0)
   let frontendModels: ModelType[] = ['antigravity']
@@ -242,7 +238,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
 
   // Non-interactive mode: preserve existing config
   if (options.skipPrompt) {
-    const existingConfig = await readCcgConfig()
     if (existingConfig?.routing) {
       frontendModels = existingConfig.routing.frontend?.models || ['antigravity']
       backendModels = existingConfig.routing.backend?.models || ['codex']
@@ -287,9 +282,8 @@ export async function init(options: InitOptions = {}): Promise<void> {
   const requestedProfile = requestedSkills?.[0] === 'all'
     ? skillCatalog.map(skill => skill.name)
     : requestedSkills?.[0] === 'none' ? [] : requestedSkills && [...new Set(requestedSkills)]
-  const savedSkillsConfig = await readCcgConfig()
-  selectedSkillsMode = savedSkillsConfig?.performance?.skillsMode
-  skillsProfile = selectedSkillsMode === 'legacy' ? undefined : savedSkillsConfig?.performance?.skillsProfile
+  selectedSkillsMode = existingConfig?.performance?.skillsMode
+  skillsProfile = selectedSkillsMode === 'legacy' ? undefined : existingConfig?.performance?.skillsProfile
   if (selectedSkillsMode === undefined && skillsProfile !== undefined)
     selectedSkillsMode = 'native'
   if (requestedSkills === undefined && selectedSkillsMode !== 'legacy'
@@ -314,6 +308,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
   // Grok Search MCP
   let wantGrokSearch = false
   let wantCodeGraph = false
+  let wantContext7 = Boolean(options.skipPrompt)
   let tavilyKey = ''
   let firecrawlKey = ''
   let grokApiUrl = ''
@@ -330,7 +325,8 @@ export async function init(options: InitOptions = {}): Promise<void> {
   // Non-interactive mode (--skip-prompt): preserve existing settings
   // ═══════════════════════════════════════════════════════
   if (options.skipPrompt) {
-    const existingConfig = await readCcgConfig()
+    frontendModels = requestedFrontend ?? frontendModels
+    backendModels = requestedBackend ?? backendModels
     if (existingConfig?.performance?.liteMode !== undefined) {
       liteMode = existingConfig.performance.liteMode
     }
@@ -351,8 +347,6 @@ export async function init(options: InitOptions = {}): Promise<void> {
   // and restart if they mistyped a URL/KEY.
   // ═══════════════════════════════════════════════════════
   if (!options.skipPrompt) {
-    const existingConfig = await readCcgConfig()
-
     // Initialize from existing config so re-running init shows saved values as defaults
     if (existingConfig?.routing) {
       const ef = existingConfig.routing.frontend?.primary
@@ -375,6 +369,8 @@ export async function init(options: InitOptions = {}): Promise<void> {
     }
 
     // ── Step runners (closures sharing outer-scope state) ──
+    frontendModels = requestedFrontend ?? frontendModels
+    backendModels = requestedBackend ?? backendModels
 
     async function runApiStep(canGoBack: boolean): Promise<StepReturn> {
       console.log()
@@ -512,8 +508,8 @@ export async function init(options: InitOptions = {}): Promise<void> {
         default: backendModels[0] || 'codex',
       }])
 
-      frontendModels = [selectedFrontend]
-      backendModels = [selectedBackend]
+      frontendModels = requestedFrontend && selectedFrontend === requestedFrontend[0] ? requestedFrontend : [selectedFrontend]
+      backendModels = requestedBackend && selectedBackend === requestedBackend[0] ? requestedBackend : [selectedBackend]
 
       if (selectedFrontend === 'opencode' || selectedBackend === 'opencode') {
         opencodeModel = await promptOpencodeModel(opencodeModel, language === 'zh-CN')
@@ -692,6 +688,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       wantFastContext = hasFastContext
       wantGrokSearch = selectedTools.includes('grok-search')
       wantCodeGraph = hasCodeGraph
+      wantContext7 = selectedTools.includes('context7')
 
       if (hasAceTool) {
         mcpProvider = 'ace-tool'
@@ -937,6 +934,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       console.log(ansis.yellow('━'.repeat(50)))
       console.log()
 
+      console.log(ansis.yellow(i18n.t('init:refreshTemplates')))
       const { action } = await inquirer.prompt([{
         type: 'list',
         name: 'action',
@@ -1118,6 +1116,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
     // Install workflows and commands
     const installDir = options.installDir || join(homedir(), '.claude')
     const result = await installWorkflows(selectedWorkflows, installDir, options.force, {
+      refreshTemplates: !options.skipPrompt,
       routing,
       liteMode,
       mcpProvider,
@@ -1284,8 +1283,7 @@ export async function init(options: InitOptions = {}): Promise<void> {
       }
     }
 
-    // Install context7 MCP + Codex sync (skip when --skip-mcp is passed)
-    if (!options.skipMcp) {
+    if (!options.skipMcp && wantContext7) {
       const context7Result = await installMcpServer(
         'context7',
         'npx',
@@ -1300,8 +1298,8 @@ export async function init(options: InitOptions = {}): Promise<void> {
         console.log(`    ${ansis.yellow('⚠')} context7 MCP install failed`)
         console.log(ansis.gray(`      ${context7Result.message}`))
       }
-
-      // ═══════════════════════════════════════════════════════
+    }
+    if (!options.skipMcp) {
       // Sync MCP servers to Codex (~/.codex/config.toml)
       // Enables /ccg:codex-exec to use MCP tools (grok-search, context7, etc.)
       // ═══════════════════════════════════════════════════════

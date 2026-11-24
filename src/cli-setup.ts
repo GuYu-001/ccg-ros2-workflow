@@ -9,6 +9,7 @@ import { doctor, status } from './commands/doctor'
 import { diagnoseMcp, fixMcp } from './commands/diagnose-mcp'
 import { init } from './commands/init'
 import { showMainMenu } from './commands/menu'
+import { update } from './commands/update'
 import { registerSkillCommands } from './commands/skills'
 import { i18n, initI18n } from './i18n'
 import { readCcgConfig } from './utils/config'
@@ -29,6 +30,7 @@ function customizeHelp(sections: any[]): any[] {
       `  ${ansis.cyan('ccg-ros2-workflow diagnose-mcp')} ${i18n.t('cli:help.commandDescriptions.diagnoseMcp')}`,
       `  ${ansis.cyan('ccg-ros2-workflow fix-mcp')}      ${i18n.t('cli:help.commandDescriptions.fixMcp')}`,
       `  ${ansis.cyan('ccg-ros2-workflow doctor')}       Check installation health`,
+      `  ${ansis.cyan('ccg-ros2-workflow update')}       ${i18n.t('menu:options.update')}`,
       `  ${ansis.cyan('ccg-ros2-workflow status')}       Show installation overview`,
       `  ${ansis.cyan('ccg-ros2-workflow codex-mode')}   Install/uninstall Codex-Led mode`,
       `  ${ansis.cyan('ccg-ros2-workflow uninstall')}    Uninstall CCG (non-interactive)`,
@@ -50,8 +52,6 @@ function customizeHelp(sections: any[]): any[] {
       `  ${ansis.green('--skip-prompt, -s')}         ${i18n.t('cli:help.optionDescriptions.skipAllPrompts')}`,
       `  ${ansis.green('--frontend, -F')} <models>   ${i18n.t('cli:help.optionDescriptions.frontendModels')}`,
       `  ${ansis.green('--backend, -B')} <models>    ${i18n.t('cli:help.optionDescriptions.backendModels')}`,
-      `  ${ansis.green('--mode, -m')} <mode>         ${i18n.t('cli:help.optionDescriptions.collaborationMode')}`,
-      `  ${ansis.green('--workflows, -w')} <list>    ${i18n.t('cli:help.optionDescriptions.workflows')}`,
       `  ${ansis.green('--install-dir, -d')} <path>  ${i18n.t('cli:help.optionDescriptions.installDir')}`,
     ].join('\n'),
   })
@@ -67,10 +67,7 @@ function customizeHelp(sections: any[]): any[] {
       `  ${ansis.cyan('npx ccg-ros2-workflow i')}`,
       '',
       ansis.gray(`  # ${i18n.t('cli:help.exampleDescriptions.customModels')}`),
-      `  ${ansis.cyan('npx ccg-ros2-workflow i --frontend gemini,codex --backend codex,gemini')}`,
-      '',
-      ansis.gray(`  # ${i18n.t('cli:help.exampleDescriptions.parallelMode')}`),
-      `  ${ansis.cyan('npx ccg-ros2-workflow i --mode parallel')}`,
+      `  ${ansis.cyan('npx ccg-ros2-workflow i --skip-prompt --frontend antigravity,codex --backend codex')}`,
       '',
     ].join('\n'),
   })
@@ -111,8 +108,6 @@ export async function setupCommands(cli: CAC): Promise<void> {
     .option('--skip-mcp', 'Skip MCP configuration (used during update)')
     .option('--frontend, -F <models>', i18n.t('cli:help.optionDescriptions.frontendModels'))
     .option('--backend, -B <models>', i18n.t('cli:help.optionDescriptions.backendModels'))
-    .option('--mode, -m <mode>', i18n.t('cli:help.optionDescriptions.collaborationMode'))
-    .option('--workflows, -w <workflows>', i18n.t('cli:help.optionDescriptions.workflows'))
     .option('--skills <names>', 'Native skills: comma-separated names, all, or none')
     .option('--install-dir, -d <path>', i18n.t('cli:help.optionDescriptions.installDir'))
     .action(async (options: CliOptions) => {
@@ -121,6 +116,8 @@ export async function setupCommands(cli: CAC): Promise<void> {
       }
       await init(options)
     })
+
+  cli.command('update', i18n.t('menu:options.update')).action(() => update())
 
   // Diagnose MCP command
   cli

@@ -33,11 +33,12 @@ export function probeAgyOutputFormat(command = findAgyOnPath(), exec = executeVe
   if (!command) return 'missing'
   const help = exec(command, ['--help'])
   const available = stripVTControlCharacters(help || '').split('\n').some(line => {
-    const usage = /^(?:usage:\s*)?agy\s/i.test(line.trim())
+    const row = line.trim().replace(/^(?:│\s*|\*\s+)/, '')
+    const usage = /^(?:usage:\s*)?agy\s/i.test(row)
     // Option rows can start with aliases and their metavars. Do not match prose.
-    if (!usage && !/^\s*\[?-/.test(line)) return false
-    const options = usage ? line : line.trim().split(/\s{2,}/, 1)[0]
-    return /(?:^|[\s,|\[])--output-format(?=[\s,:=<\[\]]|$)/.test(options)
+    if (!usage && !/^\[?-/.test(row)) return false
+    const options = usage ? row : row.split(/\s{2,}/, 1)[0]
+    return /(?:^|[\s,|\[])--output-format(?=[\s,:|=<\[\]]|$)/.test(options)
   })
   return available ? 'supported' : 'unconfirmed'
 }

@@ -4,6 +4,9 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import * as cp from 'node:child_process'
 import { init } from '../../commands/init'
+import { initI18n } from '../../i18n'
+import cac from 'cac'
+import { setupCommands } from '../../cli-setup'
 import { showBinaryDownloadWarning } from '../installer'
 import { createDefaultConfig, createDefaultRouting } from '../config'
 import { injectConfigVariables } from '../installer-template'
@@ -54,8 +57,8 @@ vi.mock('../installer', async () => ({
   installContextWeaver: vi.fn(),
   installFastContext: vi.fn(),
   installMcpServer: mocks.installMcp,
-  syncMcpToCodex: vi.fn(),
-  syncMcpToGemini: vi.fn(),
+  syncMcpToCodex: async () => ({ success: true, synced: [] }),
+  syncMcpToGemini: async () => ({ success: true, synced: [] }),
   writeFastContextPrompt: vi.fn(),
 }))
 vi.mock('../skill-manager', () => ({
@@ -115,6 +118,69 @@ function answerInitQuestions(overrides: Record<string, any> = {}) {
     }))
   })
 }
+
+describe('CLI install options', () => {
+  const unattended = { skipPrompt: true, skipMcp: true, installDir: '/tmp/ccg-init-test' }
+  it('exits nonzero when a route flag has no argument', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'ccg-cli-args-'))
+    try {
+      const result = cp.spawnSync(process.execPath, ['--import', 'tsx', 'src/cli.ts', 'init', '--skip-prompt', '-F'], {
+        cwd: join(import.meta.dirname, '../../..'), encoding: 'utf8', env: { ...process.env, HOME: home, USERPROFILE: home },
+      })
+      expect(result.stderr).toMatch(/frontend.*value is missing/)
+      expect(result.status).toBe(1)
+    }
+    finally { await rm(home, { recursive: true, force: true }) }
+  })
+  it('registers update without running it and drops obsolete init options', async () => {
+    const cli = cac()
+    await setupCommands(cli)
+    cli.parse(['node', 'ccg', 'update'], { run: false })
+    expect(cli.matchedCommand?.name).toBe('update')
+    const names = cli.commands.find(c => c.name === 'init')?.options.map(o => o.name)
+    expect(names).not.toContain('mode')
+    expect(names).not.toContain('workflows')
+  })
+  it('overrides saved routes and derives review without losing saved model IDs', async () => {
+    await init({ ...unattended, frontend: 'kimi, codex,kimi', backend: 'opencode,codex' })
+    const { routing } = mocks.writeConfig.mock.calls[0][0]
+    expect(routing.frontend).toMatchObject({ primary: 'kimi', models: ['kimi', 'codex'] })
+    expect(routing.backend).toMatchObject({ primary: 'opencode', models: ['opencode', 'codex'] })
+    expect(routing.review.models).toEqual(['kimi', 'codex', 'opencode'])
+    expect(routing.opencodeModel).toBe('deepseek/custom-test-model')
+    expect(mocks.install.mock.calls[0][3].routing).toEqual(routing)
+  })
+  it.each([['frontend', 'unknown'], ['backend', 'codex,'], ['frontend', '']])('rejects --%s=%j before writing', async (option, value) => {
+    await expect(init({ ...unattended, [option]: value })).rejects.toThrow(`--${option}`)
+    expect(mocks.writeConfig).not.toHaveBeenCalled()
+    expect(mocks.install).not.toHaveBeenCalled()
+  })
+  it('uses explicit routes as wizard defaults', async () => {
+    answerInitQuestions()
+    await init({ skipMcp: true, installDir: unattended.installDir, frontend: 'claude,codex', backend: 'grok' })
+    const prompts = mocks.prompt.mock.calls.flatMap(([questions]) => questions)
+    expect(prompts.find(q => q.name === 'selectedFrontend').default).toBe('claude')
+    expect(prompts.find(q => q.name === 'selectedBackend').default).toBe('grok')
+  })
+  it.each([[undefined, 'en'], ['zh-CN', 'zh-CN']] as const)('preserves saved language unless --lang=%s overrides it', async (lang, expected) => {
+    await init({ ...unattended, lang })
+    expect(initI18n).toHaveBeenCalledWith(expected)
+    expect(mocks.writeConfig.mock.calls[0][0].general.language).toBe(expected)
+  })
+  it('warns in the wizard summary that generated templates are refreshed', async () => {
+    answerInitQuestions()
+    await init({ skipMcp: true, installDir: unattended.installDir })
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('init:refreshTemplates'))
+    expect(mocks.install.mock.calls[0][3].refreshTemplates).toBe(true)
+  })
+  it.each([[], ['context7']].map(tools => [tools] as const))('honors context7 checkbox: %j', async (selectedTools) => {
+    mocks.installMcp.mockResolvedValue({ success: true })
+    answerInitQuestions({ gate: 'continue', selectedTools })
+    await init({ installDir: unattended.installDir })
+    const servers = mocks.installMcp.mock.calls.map(([name]) => name)
+    expect(servers.includes('context7')).toBe(selectedTools.includes('context7'))
+  })
+})
 
 describe('Antigravity compatibility at the end of noninteractive init', () => {
   let bin: string

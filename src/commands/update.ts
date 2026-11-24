@@ -1,6 +1,6 @@
 import type { ModelRouting, ModelType } from '../types'
 import ansis from 'ansis'
-import { exec } from 'node:child_process'
+import { exec, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
 import fs from 'fs-extra'
 import inquirer from 'inquirer'
@@ -365,16 +365,16 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
 
   let installSuccess = false
   try {
-    const { stdout, stderr } = await execAsync(`npx --yes ccg-ros2-workflow@latest init --force --skip-mcp --skip-prompt`, {
-      timeout: 300000, // 5min — binary download from GitHub Release may be slow (especially in China)
-      env: {
-        ...process.env,
-        CCG_UPDATE_MODE: 'true',
-      },
+    // Let the new init own the terminal, including the order of its warnings.
+    spinner.stop()
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn('npx', ['--yes', 'ccg-ros2-workflow@latest', 'init', '--force', '--skip-mcp', '--skip-prompt'], {
+        stdio: 'inherit', shell: process.platform === 'win32', timeout: 300_000,
+        env: { ...process.env, CCG_UPDATE_MODE: 'true' },
+      })
+      child.once('error', reject)
+      child.once('close', (code, signal) => code === 0 ? resolve() : reject(new Error(`init: ${signal ?? `exit ${code}`}`)))
     })
-    // Only the newly installed package knows which wrapper version it requires.
-    if (stdout) process.stdout.write(stdout)
-    if (stderr) process.stderr.write(stderr)
 
     // Step 5: Verify new installation actually produced files
     const commandsDir = join(installDir, 'commands', 'ccg')
@@ -403,8 +403,6 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
   }
   catch (error) {
     spinner.fail(i18n.t('update:installFailed'))
-    const output = (error as { stdout?: string }).stdout
-    if (output) process.stdout.write(output)
     console.log(ansis.red(`${i18n.t('common:error')}: ${error}`))
   }
 
@@ -420,6 +418,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
   }
   else {
     // Failure: restore from backups so user still has a working installation
+    process.exitCode = 1
     console.log()
     console.log(ansis.yellow.bold('  ⚠ 正在恢复旧版本文件 / Restoring old version files...'))
     let restored = 0

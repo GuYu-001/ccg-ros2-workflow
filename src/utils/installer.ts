@@ -101,6 +101,7 @@ interface InstallConfig {
 interface InstallContext {
   installDir: string
   force: boolean
+  refreshTemplates: boolean
   config: InstallConfig
   templateDir: string
   result: InstallResult
@@ -216,7 +217,7 @@ async function copyMdTemplates(
   for (const file of files) {
     if (!file.endsWith('.md')) continue
     const destFile = join(destDir, file)
-    if (ctx.force || !(await fs.pathExists(destFile))) {
+    if (ctx.force || (options.inject && ctx.refreshTemplates) || !(await fs.pathExists(destFile))) {
       let content = await fs.readFile(join(srcDir, file), 'utf-8')
       if (options.inject) content = injectConfigVariables(content, ctx.config)
       content = replaceHomePathsInTemplate(content, ctx.installDir)
@@ -253,7 +254,7 @@ async function installCommandFiles(ctx: InstallContext, workflowIds: string[]): 
 
       try {
         if (await fs.pathExists(srcFile)) {
-          if (ctx.force || !(await fs.pathExists(destFile))) {
+          if (ctx.force || ctx.refreshTemplates || !(await fs.pathExists(destFile))) {
             let content = await fs.readFile(srcFile, 'utf-8')
             content = injectConfigVariables(content, ctx.config)
             content = replaceHomePathsInTemplate(content, ctx.installDir)
@@ -792,7 +793,7 @@ export function parseWrapperVersion(output: string): string | null {
 async function readBinaryVersion(wrapperPath: string): Promise<string | null> {
   try {
     const { execFileSync } = await import('node:child_process')
-    return parseWrapperVersion(execFileSync(wrapperPath, ['--version'], { encoding: 'utf8', timeout: 10000, killSignal: 'SIGKILL' }))
+    return parseWrapperVersion(execFileSync(wrapperPath, ['--version'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 10000, killSignal: 'SIGKILL' }))
   }
   catch {
     return null
@@ -853,6 +854,20 @@ export function showBinaryDownloadWarning(binDir: string): void {
   console.log()
 }
 
+async function removeStaleWrapperDownloads(binDir: string): Promise<void> {
+  const cutoff = Date.now() - 10 * 60_000
+  const staged = /^\.ccg-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?:\.exe)?$/i
+  for (const name of await fs.readdir(binDir).catch(() => [])) {
+    if (!staged.test(name)) continue
+    const path = join(binDir, name)
+    try {
+      const stat = await fs.lstat(path)
+      if (stat.isFile() && stat.mtimeMs < cutoff) await fs.unlink(path)
+    }
+    catch { /* Another installer may already have removed it. */ }
+  }
+}
+
 /**
  * Download and install codeagent-wrapper binary for current platform.
  * Skips download if binary already exists and passes `--version` check.
@@ -862,6 +877,7 @@ async function installBinaryFile(ctx: InstallContext): Promise<void> {
   try {
     const binDir = join(ctx.installDir, 'bin')
     await fs.ensureDir(binDir)
+    await removeStaleWrapperDownloads(binDir)
 
     const binaryName = getBinaryName()
     if (!binaryName) {
@@ -1078,6 +1094,7 @@ export async function installWorkflows(
   installDir: string,
   force = false,
   config?: {
+    refreshTemplates?: boolean
     routing?: {
       mode?: string
       frontend?: { models?: string[], primary?: string }
@@ -1098,6 +1115,7 @@ export async function installWorkflows(
   const ctx: InstallContext = {
     installDir,
     force,
+    refreshTemplates: config?.refreshTemplates ?? false,
     config: {
       routing: config?.routing as InstallConfig['routing'] || {
         mode: 'smart',

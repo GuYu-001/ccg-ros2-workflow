@@ -1,6 +1,7 @@
 import { copyFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { spawnSync } from 'node:child_process'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import fs from 'fs-extra'
 import { getAllCommandIds, getWorkflowById, getWorkflowConfigs, injectConfigVariables, installWorkflows, uninstallWorkflows, verifyBinaryVersion } from '../installer'
@@ -79,6 +80,11 @@ const LEGACY_TEMPLATES_DIR = join(PACKAGE_ROOT, 'templates', 'commands-legacy')
 // A. Workflow registry consistency
 // ─────────────────────────────────────────────────────────────
 describe('workflow registry', () => {
+  it('uses registered spec command names in the implementation handoff', () => {
+    const impl = readFileSync(join(TEMPLATES_DIR, 'spec-impl.md'), 'utf8')
+    expect(impl).toContain('/ccg:spec-impl')
+    expect(impl).not.toContain('/ccg:spec:')
+  })
   it('getAllCommandIds returns at least 20 commands', () => {
     const ids = getAllCommandIds()
     expect(ids.length).toBeGreaterThanOrEqual(20)
@@ -347,6 +353,56 @@ describe('installWorkflows — binary installation', () => {
 
   afterAll(async () => {
     await fs.remove(tmpDir)
+  })
+
+  it('removes only stale wrapper staging files even when the installed version matches', async () => {
+    const dir = join(tmpDir, 'interrupted')
+    const bin = join(dir, 'bin')
+    const stale = '.ccg-a0000000-aaaa-4000-8000-000000000001'
+    const active = '.ccg-a0000000-aaaa-4000-8000-000000000002'
+    const other = '.ccg-notes'
+    for (const file of [stale, stale + '.exe', active, other]) await fs.outputFile(join(bin, file), file)
+    const old = new Date(Date.now() - 60 * 60_000)
+    for (const file of [stale, stale + '.exe', other]) await fs.utimes(join(bin, file), old, old)
+    expect((await installWithFixture(['go'], dir, false, { skillsProfile: [] })).success).toBe(true)
+    const files = await fs.readdir(bin)
+    expect(files).not.toContain(stale)
+    expect(files).not.toContain(stale + '.exe')
+    expect(files).toContain(active)
+    expect(files).toContain(other)
+  })
+
+  it('refreshes generated templates without overwriting role prompts', async () => {
+    const dir = join(tmpDir, 'refresh')
+    const command = join(dir, 'commands/ccg/spec-impl.md')
+    const engine = join(dir, '.ccg/engine/strategies/guided-develop.md')
+    const role = join(dir, '.ccg/prompts/codex/builder.md')
+    for (const file of [command, engine, role]) await fs.outputFile(file, 'edited')
+    const config = { routing: { backend: { primary: 'kimi' } }, liteMode: true, skillsProfile: [] }
+    await installWithFixture(getAllCommandIds(), dir, false, config)
+    expect(await fs.readFile(command, 'utf8')).toBe('edited')
+    expect(await fs.readFile(engine, 'utf8')).toBe('edited')
+    await installWithFixture(getAllCommandIds(), dir, false, { ...config, refreshTemplates: true })
+    for (const file of [command, engine])
+      expect(await fs.readFile(file, 'utf8')).toContain('--backend kimi')
+    expect(await fs.readFile(engine, 'utf8')).toContain('--lite')
+    expect(await fs.readFile(role, 'utf8')).toBe('edited')
+  })
+
+  it('does not leak wrapper stderr when reading a binary version', async () => {
+    const dir = join(tmpDir, 'noisy')
+    const bin = join(dir, 'bin', process.platform === 'win32' ? 'codeagent-wrapper.exe' : 'codeagent-wrapper')
+    await fs.ensureDir(dirname(bin))
+    const badOption = '--private-wrapper-diagnostic'
+    if (process.platform === 'win32') await fs.copyFile(process.execPath, bin)
+    else await fs.writeFile(bin, `#!/bin/sh\necho '${badOption}' >&2\nexit 1\n`, { mode: 0o755 })
+    const control = spawnSync(bin, ['--version'], { encoding: 'utf8', env: { ...process.env, NODE_OPTIONS: badOption } })
+    expect(control.stderr).toContain(badOption)
+    const script = `import { installedBinaryVersion } from './src/utils/installer.ts'; process.env.NODE_OPTIONS = process.argv[2]; console.log(await installedBinaryVersion(process.argv[1]))`
+    const probe = spawnSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', script, dir, badOption], { cwd: PACKAGE_ROOT, encoding: 'utf8' })
+    expect(probe.status, probe.stderr).toBe(0)
+    expect(probe.stdout.trim()).toBe('null')
+    expect(probe.stderr).not.toContain('private-wrapper-diagnostic')
   })
 
   it('installs codeagent-wrapper binary for current platform', async () => {
