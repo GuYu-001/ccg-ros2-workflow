@@ -214,7 +214,7 @@ npx ccg-ros2-workflow init --skip-prompt
 
 需要 **Node.js 20+** 和 **Claude Code CLI**。Codex CLI、Grok CLI、Kimi Code CLI 和 Antigravity 为可选（启用多模型功能）。
 
-默认 ROS2 上层应用后端 Antigravity 需要 `agy` 支持 `--output-format stream-json`。请在 `agy --help` 中确认有 `--output-format`；若没有，运行 `agy update`，然后用 `npx ccg-ros2-workflow doctor` 复查。
+默认 ROS2 上层应用后端 Antigravity 需要 `agy` 支持 `--output-format stream-json`。选择 Antigravity 时，安装器会检查 `agy --help`，无法确认支持时会给出提示。若缺少该选项，请运行 `agy update`，然后用 `npx ccg-ros2-workflow doctor` 复查。
 
 **方式 B：原生插件（仅技能，零依赖，v3.5.1+）**
 

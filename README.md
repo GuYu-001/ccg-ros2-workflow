@@ -214,7 +214,7 @@ npx ccg-ros2-workflow init --skip-prompt
 
 Requires **Node.js 20+** and **Claude Code CLI**. Codex CLI, Grok CLI, Kimi Code CLI, and Antigravity are optional (enable multi-model features).
 
-The default ROS2 upper-layer backend, Antigravity, requires an `agy` CLI that supports `--output-format stream-json`. Check `agy --help` for `--output-format`; if it is missing, run `agy update` and recheck with `npx ccg-ros2-workflow doctor`.
+The default ROS2 upper-layer backend, Antigravity, requires an `agy` CLI that supports `--output-format stream-json`. When Antigravity is selected, the installer checks `agy --help` and warns if it cannot confirm support. If the flag is missing, run `agy update` and recheck with `npx ccg-ros2-workflow doctor`.
 
 **Option B — native plugin (skills only, zero dependencies, v3.5.1+)**
 

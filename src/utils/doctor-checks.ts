@@ -1,6 +1,4 @@
 import fs from 'fs-extra'
-import { spawnSync } from 'node:child_process'
-import { stripVTControlCharacters } from 'node:util'
 import { homedir } from 'node:os'
 import { join } from 'pathe'
 import { parse } from 'smol-toml'
@@ -9,6 +7,7 @@ import { ccgHooksTrusted, hasCcgHook, installedCcgHookTrustEntries, installedHoo
 import type { SkillManagerOptions } from './skill-manager'
 import { listSkills, SKILL_MANIFEST_FILE } from './skill-manager'
 import { EXPECTED_BINARY_VERSION, parseWrapperVersion } from './installer'
+import { AGY_CLI, executeVersion, probeAgyOutputFormat } from './cli-probe'
 
 export type DoctorStatus = 'pass' | 'warn' | 'fail' | 'skip'
 export interface DoctorCheck {
@@ -49,7 +48,7 @@ const HOOK_EVENTS: Record<string, string[]> = {
 const BACKENDS: Record<string, { label: string, commands: string[], windows: string[] }> = {
   codex: { label: 'Codex CLI', commands: ['codex'], windows: ['codex.cmd', 'codex.exe'] },
   gemini: { label: 'Gemini CLI', commands: ['gemini'], windows: ['gemini.cmd'] },
-  antigravity: { label: 'Antigravity CLI', commands: ['agy'], windows: ['agy.exe', 'agy.cmd'] },
+  antigravity: AGY_CLI,
   claude: { label: 'Claude CLI', commands: ['claude'], windows: ['claude.exe', 'claude.cmd'] },
   kimi: { label: 'Kimi Code CLI', commands: ['kimi'], windows: ['kimi.exe'] },
   grok: { label: 'Grok CLI', commands: ['grok'], windows: ['grok.exe'] },
@@ -72,19 +71,6 @@ async function files(path: string): Promise<string[]> {
 }
 function check(id: string, label: string, status: DoctorStatus, detail: string, remediation?: string): DoctorCheck {
   return { id, label, status, detail, remediation: status === 'pass' || status === 'skip' ? null : remediation || 'Run npx ccg-ros2-workflow to repair the installation.' }
-}
-function executeVersion(file: string, args: string[]): string | null {
-  try {
-    // Only fixed npm shim names use cmd.exe. Paths and configuration values
-    // never become shell commands; native executables run directly.
-    const flag = args[0]
-    if (args.length !== 1 || (flag !== '--version' && flag !== '--help')) return null
-    const shim = process.platform === 'win32' && /^[\w-]+\.cmd$/.test(file)
-    const result = spawnSync(shim ? 'cmd.exe' : file, shim ? ['/d', '/s', '/c', `${file} ${flag}`] : args, { encoding: 'utf8', timeout: 10000, killSignal: 'SIGKILL', windowsHide: true })
-    if (result.error || result.status !== 0) return null
-    return (flag === '--help' ? [result.stdout, result.stderr].join('\n') : result.stdout).trim()
-  }
-  catch { return null }
 }
 function versionDetail(raw: string): string {
   // Do not echo arbitrary executable output (or terminal escape sequences).
@@ -258,14 +244,7 @@ async function backendChecks(names: string[], pureClaude: boolean, home: string,
     }
     checks.push(check(`cli.${name}`, spec.label, output ? 'pass' : 'fail', output ? versionDetail(output) : 'Not found or --version failed', `Install ${spec.label} and ensure ${spec.commands[0]} is on PATH, then run ccg-ros2-workflow doctor.`))
     if (name === 'antigravity' && selected) {
-      const help = exec(selected, ['--help'])
-      const available = stripVTControlCharacters(help || '').split('\n').some(line => {
-        const usage = /^(?:usage:\s*)?agy\s/i.test(line.trim())
-        // Option rows can start with aliases and their metavars. Do not match prose.
-        if (!usage && !/^\s*\[?-/.test(line)) return false
-        const options = usage ? line : line.trim().split(/\s{2,}/, 1)[0]
-        return /(?:^|[\s,|\[])--output-format(?=[\s,:=<\[\]]|$)/.test(options)
-      })
+      const available = probeAgyOutputFormat(selected, exec) === 'supported'
       checks.push(check('cli.antigravity.output-format', 'Antigravity stream output', available ? 'pass' : 'warn',
         available ? 'agy supports --output-format' : 'Could not confirm --output-format support; the wrapper needs stream-json.',
         'Run agy update, then confirm agy --help lists --output-format.'))

@@ -9,6 +9,7 @@ import { i18n, initI18n } from '../i18n'
 import { createDefaultConfig, ensureCcgDir, getCcgDir, readCcgConfig, writeCcgConfig } from '../utils/config'
 import { configureGeminiCliApi, getAllCommandIds, getCoreCommandIds, installAceTool, installAceToolRs, installContextWeaver, installFastContext, installMcpServer, installWorkflows, showBinaryDownloadWarning, syncMcpToCodex, syncMcpToGemini, warnBinaryVersionMismatch, writeFastContextPrompt } from '../utils/installer'
 import { isWindows } from '../utils/platform'
+import { probeAgyOutputFormat } from '../utils/cli-probe'
 import { migrateToV1_4_0, needsMigration } from '../utils/migration'
 import { promptOpencodeModel } from '../utils/model-selection'
 import { PACKAGE_ROOT } from '../utils/installer-template'
@@ -1481,6 +1482,11 @@ export async function init(options: InitOptions = {}): Promise<void> {
       console.log()
     }
 
+    if ([routing.frontend, routing.backend, routing.review].some(route => route.models.includes('antigravity'))) {
+      const support = probeAgyOutputFormat()
+      if (support !== 'supported')
+        console.warn(ansis.yellow(`  ⚠ ${i18n.t(support === 'missing' ? 'init:agyMissing' : 'init:agyUpdate')}`))
+    }
     console.log()
   }
   catch (error) {

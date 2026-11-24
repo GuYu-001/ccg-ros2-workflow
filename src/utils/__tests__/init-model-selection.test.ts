@@ -1,4 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import * as cp from 'node:child_process'
 import { init } from '../../commands/init'
 import { showBinaryDownloadWarning } from '../installer'
 import { createDefaultConfig, createDefaultRouting } from '../config'
@@ -19,6 +23,10 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('inquirer', () => ({ default: { prompt: mocks.prompt, Separator: class {} } }))
+vi.mock('node:child_process', async (original) => {
+  const actual = await original<typeof cp>()
+  return { ...actual, spawnSync: vi.fn(actual.spawnSync) }
+})
 vi.mock('fs-extra', async () => {
   const actual = await vi.importActual<{ default: typeof import('fs-extra') }>('fs-extra')
   return { default: { ...actual.default, pathExists: mocks.pathExists, writeJSON: mocks.writeSettings } }
@@ -64,6 +72,8 @@ vi.mock('../skill-manager', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.stubEnv('PATH', '/no-such-ccg-test-bin')
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
   mocks.pathExists.mockResolvedValue(false)
   mocks.installedNames.mockResolvedValue([])
   process.exitCode = undefined
@@ -85,6 +95,7 @@ afterEach(() => {
   expect(console.error).not.toHaveBeenCalled()
   process.exitCode = undefined
   vi.restoreAllMocks()
+  vi.unstubAllEnvs()
 })
 
 function answerInitQuestions(overrides: Record<string, any> = {}) {
@@ -104,6 +115,74 @@ function answerInitQuestions(overrides: Record<string, any> = {}) {
     }))
   })
 }
+
+describe('Antigravity compatibility at the end of noninteractive init', () => {
+  let bin: string
+  const win = process.platform === 'win32'
+  async function fakeAgy(help: string, code = 0) {
+    await writeFile(join(bin, win ? 'agy.cmd' : 'agy'), win
+      ? `@echo off\r\nif not "%1"=="--help" exit /b 2\r\necho ${help} 1>&2\r\nexit /b ${code}\r\n`
+      : `#!/bin/sh\n[ "$1" = --help ] || exit 2\necho '${help}' >&2\nexit ${code}\n`, { mode: 0o755 })
+  }
+  beforeEach(async () => {
+    bin = await mkdtemp(join(tmpdir(), 'ccg-agy-'))
+    vi.stubEnv('PATH', bin)
+    for (const role of ['frontend', 'backend', 'review'])
+      mocks.existing.routing[role].models = ['codex']
+  })
+  afterEach(async () => { await rm(bin, { recursive: true, force: true }) })
+  async function reinstall() {
+    await init({ skipPrompt: true, skipMcp: true, installDir: '/tmp/ccg-init-test' })
+    expect(mocks.spinnerSucceeded).toHaveBeenCalled()
+    expect(mocks.spinnerFailed).not.toHaveBeenCalled()
+    expect(process.exitCode ?? 0).toBe(0)
+  }
+  it.each(['frontend', 'backend'])('warns when %s selects an old agy', async (role) => {
+    mocks.existing.routing[role].models = ['antigravity']
+    await fakeAgy('--help')
+    await reinstall()
+    expect(console.warn).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('init:agyUpdate'))
+  })
+  it('stays silent when the flag is listed on stderr', async () => {
+    mocks.existing.routing.frontend.models = ['antigravity']
+    await fakeAgy('--output-format FMT')
+    await reinstall()
+    expect(cp.spawnSync).toHaveBeenCalledTimes(1)
+    expect(console.warn).not.toHaveBeenCalled()
+  })
+  it('never probes without an Antigravity route', async () => {
+    await fakeAgy('--help')
+    await reinstall()
+    expect(cp.spawnSync).not.toHaveBeenCalled()
+    expect(console.warn).not.toHaveBeenCalled()
+  })
+  it('uses the installed review route rather than a stale saved one', async () => {
+    mocks.existing.routing.review.models = ['antigravity']
+    await fakeAgy('--help')
+    await reinstall()
+    expect(mocks.writeConfig.mock.calls[0][0].routing.review.models).toEqual(['codex'])
+    expect(cp.spawnSync).not.toHaveBeenCalled()
+    expect(console.warn).not.toHaveBeenCalled()
+  })
+  it('recommends installation instead of updating a missing CLI', async () => {
+    mocks.existing.routing.backend.models = ['antigravity']
+    await reinstall()
+    expect(console.warn).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('init:agyMissing'))
+  })
+  it.each(['nonzero', 'timeout'])('warns without failing installation on a %s help probe', async (failure) => {
+    mocks.existing.routing.frontend.models = ['antigravity']
+    await fakeAgy('--output-format FMT', 1)
+    if (failure === 'timeout') {
+      vi.mocked(cp.spawnSync).mockReturnValueOnce({
+        error: Object.assign(new Error('spawn timed out'), { code: 'ETIMEDOUT' }),
+        pid: 123, status: null, signal: 'SIGKILL', output: [], stdout: '', stderr: '',
+      })
+    }
+    await reinstall()
+    expect(cp.spawnSync).toHaveBeenCalledWith(expect.any(String), expect.any(Array), expect.objectContaining({ timeout: 10000, killSignal: 'SIGKILL' }))
+    expect(console.warn).toHaveBeenCalledExactlyOnceWith(expect.stringContaining('init:agyUpdate'))
+  })
+})
 
 describe('API configuration during init', () => {
   it('reports a lagging preset at init without calling it a failed download', async () => {
