@@ -40,7 +40,7 @@
 | `ccg fix-mcp` | — | 修复 Windows MCP 配置 | `commands/diagnose-mcp.ts:fixMcp()` |
 | `ccg config mcp` | — | 配置 MCP Token | `commands/config-mcp.ts:configMcp()` |
 
-**全局选项**：`--lang/-l`（覆盖语言）、`--force/-f`（强制覆盖）、`--skip-prompt/-s`（非交互模式）、`--frontend/-F`、`--backend/-B`、`--mode/-m`、`--install-dir/-d`
+**init 选项**：`--lang/-l`（覆盖语言，也可用于无参菜单）、`--force/-f`（强制覆盖）、`--skip-prompt/-s`（非交互模式）、`--frontend/-F`、`--backend/-B`、`--install-dir/-d`、`--skip-mcp`、`--skills`。
 
 ### 库导出 API（`src/index.ts`）
 

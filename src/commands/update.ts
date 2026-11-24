@@ -1,6 +1,6 @@
 import type { ModelRouting, ModelType } from '../types'
 import ansis from 'ansis'
-import { exec, spawn } from 'node:child_process'
+import { type ChildProcess, exec, spawn, type SpawnOptions } from 'node:child_process'
 import { promisify } from 'node:util'
 import fs from 'fs-extra'
 import inquirer from 'inquirer'
@@ -14,10 +14,106 @@ import { i18n } from '../i18n'
 
 const execAsync = promisify(exec)
 
+interface InstallTiming {
+  timeoutMs?: number
+  graceMs?: number
+}
+
+class UnconfirmedStop extends Error {}
+
+function runInstaller({ timeoutMs = 300_000, graceMs = 5_000 }: InstallTiming): Promise<void> {
+  const args = ['--yes', 'ccg-ros2-workflow@latest', 'init', '--force', '--skip-mcp', '--skip-prompt']
+  const windows = process.platform === 'win32'
+  const options: SpawnOptions = {
+    detached: true, windowsHide: true, stdio: ['ignore', 'inherit', 'inherit'],
+    env: { ...process.env, CCG_UPDATE_MODE: 'true' },
+  }
+  // .cmd needs cmd.exe. Only this fixed command goes through a shell, without an argv array.
+  const child = windows
+    ? spawn(`npx.cmd ${args.join(' ')}`, { ...options, shell: true })
+    : spawn('npx', args, options)
+
+  return new Promise((resolve, reject) => {
+    const pid = child.pid
+    let closed = false
+    let stopping: Error | undefined
+    let spawnError: Error | undefined
+    let killer: ChildProcess | undefined
+    let taskkillSucceeded = false
+    let poll: NodeJS.Timeout | undefined
+    let escalate: NodeJS.Timeout | undefined
+    let deadline: NodeJS.Timeout | undefined
+    const timeout = setTimeout(() => stop(new Error('init timed out')), timeoutMs)
+    const interrupt = () => stop(new Error('init interrupted (SIGINT)'))
+    process.on('SIGINT', interrupt)
+
+    function finish(error?: Error) {
+      clearTimeout(timeout)
+      clearTimeout(deadline)
+      clearTimeout(escalate)
+      clearInterval(poll)
+      process.off('SIGINT', interrupt)
+      if (error) reject(error)
+      else resolve()
+    }
+
+    function signalGroup(signal: NodeJS.Signals | 0): boolean {
+      if (!pid) return false
+      try { process.kill(-pid, signal) }
+      catch (error) { return (error as NodeJS.ErrnoException).code === 'ESRCH' }
+      return false
+    }
+
+    function confirmStop() {
+      // 'close' only accounts for npx. Its descendants may still have the install directory open.
+      if (closed && (windows ? taskkillSucceeded : signalGroup(0))) {
+        finish(stopping)
+        return true
+      }
+      return false
+    }
+
+    function stop(reason: Error) {
+      if (stopping) return
+      stopping = reason
+      deadline = setTimeout(() => {
+        if (confirmStop()) return
+        child.unref()
+        killer?.unref()
+        finish(new UnconfirmedStop(reason.message))
+      }, windows ? graceMs : graceMs * 2)
+      if (!pid) return
+      if (windows) {
+        killer = spawn('taskkill.exe', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true })
+        killer.once('error', () => { /* Cannot confirm; keep backups at the deadline. */ })
+        killer.once('close', (code) => {
+          taskkillSucceeded = code === 0
+          confirmStop()
+        })
+      }
+      else {
+        signalGroup('SIGTERM')
+        poll = setInterval(confirmStop, 50)
+        escalate = setTimeout(() => { if (!confirmStop()) signalGroup('SIGKILL') }, graceMs)
+      }
+    }
+
+    child.once('error', error => { spawnError = error })
+    child.once('close', (code, signal) => {
+      closed = true
+      if (spawnError && !pid) return finish(spawnError) // spawn failed: no tree was started
+      if (stopping) { confirmStop(); return }
+      const failure = spawnError ?? (code === 0 ? undefined : new Error(`init: ${signal ?? `exit ${code}`}`))
+      if (failure && !windows && pid && !signalGroup(0)) stop(failure)
+      else finish(failure)
+    })
+  })
+}
+
 /**
  * Main update command - checks for updates and installs if available
  */
-export async function update(): Promise<void> {
+export async function update(timing: InstallTiming = {}): Promise<void> {
   console.log()
   console.log(ansis.cyan.bold(`🔄 ${i18n.t('update:checking')}`))
   console.log()
@@ -78,7 +174,7 @@ export async function update(): Promise<void> {
 
     // Pass localVersion as fromVersion for accurate display
     const fromVersion = needsWorkflowUpdate ? localVersion : currentVersion
-    await performUpdate(fromVersion, latestVersion || currentVersion, hasUpdate)
+    await performUpdate(fromVersion, latestVersion || currentVersion, hasUpdate, timing)
   }
   catch (error) {
     spinner.stop()
@@ -199,7 +295,7 @@ async function checkIfGlobalInstall(): Promise<boolean> {
 /**
  * Perform the actual update process
  */
-async function performUpdate(fromVersion: string, toVersion: string, isNewVersion: boolean): Promise<void> {
+async function performUpdate(fromVersion: string, toVersion: string, isNewVersion: boolean, timing: InstallTiming): Promise<void> {
   console.log()
   console.log(ansis.yellow.bold(`⚙️  ${i18n.t('update:starting')}`))
   console.log()
@@ -367,14 +463,7 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
   try {
     // Let the new init own the terminal, including the order of its warnings.
     spinner.stop()
-    await new Promise<void>((resolve, reject) => {
-      const child = spawn('npx', ['--yes', 'ccg-ros2-workflow@latest', 'init', '--force', '--skip-mcp', '--skip-prompt'], {
-        stdio: 'inherit', shell: process.platform === 'win32', timeout: 300_000,
-        env: { ...process.env, CCG_UPDATE_MODE: 'true' },
-      })
-      child.once('error', reject)
-      child.once('close', (code, signal) => code === 0 ? resolve() : reject(new Error(`init: ${signal ?? `exit ${code}`}`)))
-    })
+    await runInstaller(timing)
 
     // Step 5: Verify new installation actually produced files
     const commandsDir = join(installDir, 'commands', 'ccg')
@@ -404,6 +493,12 @@ async function performUpdate(fromVersion: string, toVersion: string, isNewVersio
   catch (error) {
     spinner.fail(i18n.t('update:installFailed'))
     console.log(ansis.red(`${i18n.t('common:error')}: ${error}`))
+    if (error instanceof UnconfirmedStop) {
+      process.exitCode = 1
+      console.log(ansis.yellow('安装进程可能仍在运行，未回滚，已保留备份。确认进程已退出后，请重新运行 ccg-ros2-workflow update。'))
+      console.log('The installer may still be running. Backups were kept; retry ccg-ros2-workflow update after it exits.')
+      return
+    }
   }
 
   // Step 6: Cleanup or rollback
