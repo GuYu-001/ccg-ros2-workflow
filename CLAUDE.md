@@ -2,7 +2,7 @@
 
 > [根目录](../CLAUDE.md) > **skills-v2**
 
-**Last Updated**: 2026-11-23 (v3.7.6-ros2.0)
+**Last Updated**: 2026-11-24 (v3.7.6-ros2.1)
 
 > ⚠ 本文档主体仍停留在 v2.1.16 架构描述（v3.0 引擎重构后未全量同步）。下方变更记录保留 v3.x 修复轨迹，完整历史见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -11,6 +11,11 @@
 ## 变更记录 (Changelog)
 
 > 完整变更历史请查看 [CHANGELOG.md](./CHANGELOG.md)
+
+### 2026-11-24 (v3.7.6-ros2.1)
+- `update` 可直接从 CLI 调用；`init` 支持路由参数，非交互重装保留界面语言，向导确认后刷新注入配置的模板并按选择安装 context7。
+- 更新时实时显示安装输出，安装失败恢复旧目录；清理中断下载的陈旧临时文件，兼容更多 agy 帮助格式。wrapper 仍为 5.16.1。
+- 将随包提供的 backend、frontend、guides 示例规范改为 ROS2 内容，修正 `/ccg:spec-impl` 命令名。
 
 ### 2026-11-23 (v3.7.6-ros2.0)
 - wrapper 5.16.1 的 Web UI 仅监听本机；远程查看可用 SSH 端口转发。Antigravity 需支持 `--output-format`，doctor 会检查。
@@ -364,7 +369,7 @@
 |--------|------|------|
 | TypeScript CLI 源码 | [src/CLAUDE.md](./src/CLAUDE.md) | CLI 主入口、命令实现、安装器、i18n、工具链 |
 | 模板文件 | [templates/CLAUDE.md](./templates/CLAUDE.md) | 斜杠命令、提示词、子智能体、技能、规则模板 |
-| codeagent-wrapper | [codeagent-wrapper/CLAUDE.md](./codeagent-wrapper/CLAUDE.md) | Go 二进制包装器，多模型调用桥接，v5.10.0 |
+| codeagent-wrapper | [codeagent-wrapper/CLAUDE.md](./codeagent-wrapper/CLAUDE.md) | Go 二进制包装器，多模型调用桥接，v5.16.1 |
 
 ---
 
@@ -374,10 +379,10 @@
 
 ```bash
 # 一键安装（推荐）
-npx ccg-ros2-workflow
+npx ccg-ros2-workflow init
 
 # 交互式菜单
-npx ccg-ros2-workflow menu
+npx ccg-ros2-workflow
 ```
 
 ### CLI 入口点
@@ -386,14 +391,15 @@ npx ccg-ros2-workflow menu
 - **核心命令**：
   - `init` - 初始化工作流（`src/commands/init.ts`）
   - `update` - 更新工作流（`src/commands/update.ts`）
-  - `menu` - 交互式菜单（`src/commands/menu.ts`）
+  - 无参数 - 交互式菜单（`src/commands/menu.ts`）
   - `config` - MCP 配置管理（`src/commands/config-mcp.ts`）
   - `diagnose-mcp` - MCP 诊断（`src/commands/diagnose-mcp.ts`）
 
 ### codeagent-wrapper 入口
 
 - **主入口**：`codeagent-wrapper/main.go`
-- **当前版本**：v5.10.0
+- **当前版本**：v5.16.1
+- **Antigravity 权限**：`--skip-permissions` 和 `CODEAGENT_SKIP_PERMISSIONS` 暂不传给 agy。用 `CODEAGENT_AGY_SETTINGS` 指向 agy 设置文件（`agy --help` 须列出 `--settings`）。
 - **调用语法**：
   ```bash
   codeagent-wrapper --backend <codex|gemini|claude> - [工作目录] <<'EOF'
@@ -410,8 +416,8 @@ npx ccg-ros2-workflow menu
 
 | 命令 | 用途 |
 |------|------|
-| `npx ccg-ros2-workflow` | 一键安装/菜单 |
-| `npx ccg-ros2-workflow menu` | 交互式菜单 |
+| `npx ccg-ros2-workflow init` | 安装向导 |
+| `npx ccg-ros2-workflow` | 交互式菜单 |
 | `npx ccg-ros2-workflow update` | 更新到最新版本 |
 | `npx ccg-ros2-workflow diagnose-mcp` | 诊断 MCP 配置 |
 
@@ -691,7 +697,7 @@ graph TD
     Init --> Agents["~/.claude/agents/ccg/<br/>7 个子智能体"]
     Init --> Skills["~/.claude/skills/ccg/<br/>100+ 技能文件"]
     Init --> Prompts["~/.claude/.ccg/prompts/<br/>19 个专家提示词"]
-    Init --> Binary["~/.claude/bin/<br/>codeagent-wrapper v5.10.0"]
+    Init --> Binary["~/.claude/bin/<br/>codeagent-wrapper v5.16.1"]
     Init --> MCP["~/.claude.json<br/>MCP 配置（可选）"]
 
     User2["Claude Code 用户"] --> SlashCmd["/ccg:workflow<br/>/ccg:frontend<br/>..."]
@@ -739,8 +745,7 @@ pnpm test
 
 ### 6. 提交 + 打 tag 发布
 
-**⛔ 不要在本地跑 `npm publish`。** 自 v3.5.0 起，npm 发布由 GitHub Actions 通过
-**Trusted Publishing (OIDC)** 完成，本地和 CI 都不存任何 npm token（[publish.yml](.github/workflows/publish.yml)）。
+首选由 GitHub Actions 通过 **Trusted Publishing (OIDC)** 发布。前提是在 npmjs.com 给本包配置 Trusted Publisher：GitHub Actions、`GuYu-001/ccg-ros2-workflow`、`publish.yml`、环境 `npm-publish`（见 [publish.yml](.github/workflows/publish.yml) 顶部注释）。
 
 ```bash
 # 先将已审查的发布提交合并到 main，并同步到最新 main
@@ -771,6 +776,10 @@ npm view ccg-ros2-workflow version     # 确认线上版本
 若 Git tag 已存在、版本尚未发布，先确认远端 main 的 `package.json` 仍是目标版本且已包含修复，再用 `gh workflow run publish.yml --ref main` 重跑，无需移动 tag。此次手动触发使用分支 ref，会跳过仅适用于 tag 的版本一致性校验，但仍会检查目标版本是否已发布。
 
 Dry run 使用 `npm publish --dry-run` 校验发布参数，不上传包。它也会执行版本门禁：若升级了 wrapper，必须等 main 上的 `preset` 重建后才能通过。
+
+Trusted Publisher 尚未配置时，可从已验证的发布提交本地发布（3.7.6-ros2.0 使用了这条路径）。先完成相同的构建、测试和 preset 版本核对，确认 CI 未发布或暂存该版本；用 `npm whoami` 确认已登录维护者账号，再运行 `npm publish --access public --tag latest`。
+
+扫描期间版本号已被占用，不要重复发布或改版本号。刚上线时 tarball 地址也可能因缓存短暂返回 404；等几分钟再检查。
 
 #### 发布失败排查（OIDC 的坑很隐蔽，报错全是误导）
 

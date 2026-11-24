@@ -216,6 +216,8 @@ npx ccg-ros2-workflow init --skip-prompt
 
 默认 ROS2 上层应用后端 Antigravity 需要 `agy` 支持 `--output-format stream-json`。选择 Antigravity 时，安装器会检查 `agy --help`，无法确认支持时会给出提示。若缺少该选项，请运行 `agy update`，然后用 `npx ccg-ros2-workflow doctor` 复查。
 
+wrapper 5.16.1 不会把 `--skip-permissions` 或 `CODEAGENT_SKIP_PERMISSIONS` 传给 agy。要配置 Antigravity 的权限，请用 `CODEAGENT_AGY_SETTINGS` 指向 agy 的设置文件，并确认 `agy --help` 列出了 `--settings`。
+
 **方式 B：原生插件（仅技能，零依赖，v3.5.1+）**
 
 只想要 ROS2 领域知识、通用工程参考和质量关卡，不需要多模型编排时：
@@ -234,6 +236,7 @@ claude plugin install ccg@ccg
 ```bash
 npx ccg-ros2-workflow                          # 交互式菜单
 npx ccg-ros2-workflow init                     # 4 步安装向导
+npx ccg-ros2-workflow update                   # 检查更新并刷新已安装的工作流
 npx ccg-ros2-workflow doctor                   # 环境健康检查
 npx ccg-ros2-workflow doctor --json            # 机器可读的诊断报告
 npx ccg-ros2-workflow skills list              # 查看目录与原生选择
@@ -275,7 +278,7 @@ npx ccg-ros2-workflow diagnose-mcp             # 诊断 MCP 问题
 ## 更新 / 卸载
 
 ```bash
-npx ccg-ros2-workflow@latest     # 更新到最新版
+npx ccg-ros2-workflow@latest update # 更新到最新版
 npx ccg-ros2-workflow doctor     # 更新后健康检查
 npx ccg-ros2-workflow uninstall  # 彻底卸载
 ```
@@ -320,4 +323,4 @@ MIT
 
 ---
 
-v3.7.6-ros2.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.7.6-ros2.1 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)

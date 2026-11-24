@@ -216,6 +216,8 @@ Requires **Node.js 20+** and **Claude Code CLI**. Codex CLI, Grok CLI, Kimi Code
 
 The default ROS2 upper-layer backend, Antigravity, requires an `agy` CLI that supports `--output-format stream-json`. When Antigravity is selected, the installer checks `agy --help` and warns if it cannot confirm support. If the flag is missing, run `agy update` and recheck with `npx ccg-ros2-workflow doctor`.
 
+Wrapper 5.16.1 does not forward `--skip-permissions` or `CODEAGENT_SKIP_PERMISSIONS` to agy. To configure permissions for Antigravity, point `CODEAGENT_AGY_SETTINGS` to an agy settings file; your `agy --help` must list `--settings`.
+
 **Option B — native plugin (skills only, zero dependencies, v3.5.1+)**
 
 Want just the ROS2 domain knowledge, engineering references, and quality gates without the multi-model orchestration?
@@ -234,6 +236,7 @@ Skills are invoked as `/ccg:<skill>`. No npx, no binary. The multi-model command
 ```bash
 npx ccg-ros2-workflow                          # Interactive menu
 npx ccg-ros2-workflow init                     # 4-step install wizard
+npx ccg-ros2-workflow update                   # Check for updates and refresh the installation
 npx ccg-ros2-workflow doctor                   # Environment health check
 npx ccg-ros2-workflow doctor --json            # Machine-readable health report
 npx ccg-ros2-workflow skills list              # Catalog and native selection
@@ -275,7 +278,7 @@ Set in `~/.claude/settings.json` under `"env"`:
 ## Update / Uninstall
 
 ```bash
-npx ccg-ros2-workflow@latest     # Update to latest
+npx ccg-ros2-workflow@latest update # Update to latest
 npx ccg-ros2-workflow doctor     # Check health after update
 npx ccg-ros2-workflow uninstall  # Clean uninstall
 ```
@@ -320,4 +323,4 @@ MIT
 
 ---
 
-v3.7.6-ros2.0 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)
+v3.7.6-ros2.1 | [Issues](https://github.com/GuYu-001/ccg-ros2-workflow/issues) | [Contributing](./CONTRIBUTING.md)

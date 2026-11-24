@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.7.6-ros2.1] - 2026-11-24
+
+- Run `ccg-ros2-workflow update` directly. The new installer prints progress and warnings as they happen; if it fails, the updater restores backed-up files and exits with an error.
+- `init --frontend/-F` and `--backend/-B` accept comma-separated model routes. Unattended installs retain the saved UI language unless `--lang` overrides it. Removed the unused `--mode` and `--workflows` options.
+- Confirming the interactive wizard refreshes generated command, agent and engine templates with the selected settings. Back up manual edits to those templates first. The context7 checkbox now controls installation; unattended template overwrite still requires `--force`.
+- Wrapper version checks no longer echo executable diagnostics. Installation cleans up old interrupted downloads and recognizes more agy help layouts. Wrapper 5.16.1 and the existing preset are unchanged.
+- Replaced web conventions in the packaged project spec examples with ROS2 control, application and integration conventions. Fixed the `/ccg:spec-impl` resume instruction.
+
 ## [3.7.6-ros2.0] - 2026-11-23
 
 - **升级须知（从 3.7.2-ros2.0 升级）：** 旧版 `update` 仍按 5.15.0 核对 wrapper，所以升级成功后也会显示一次红色「二进制下载失败」。运行 `npx ccg-ros2-workflow doctor`，若 wrapper 显示 5.16.1，可忽略该提示；若版本仍不符，请稍后重试 `ccg-ros2-workflow update`。使用 Antigravity 时，`agy --help` 必须列出 `--output-format`；否则先运行 `agy update`。
